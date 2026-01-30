@@ -169,7 +169,8 @@ def capture(base, hostname):
         # Flash message with summary
         if failed_commands:
             flash(
-                f"Capture completed for {hostname}: {len(successful_commands)} successful, "
+                f"Capture completed for {hostname}: "
+                f"{len(successful_commands)} successful, "
                 f"{len(failed_commands)} timed out",
                 "warning",
             )
@@ -186,7 +187,8 @@ def capture(base, hostname):
             create_unavailable_marker(filepath, "connection_failed")
 
         flash(
-            f"Failed to connect to {hostname}: {str(exc)}. All commands marked as unavailable.",
+            f"Failed to connect to {hostname}: {str(exc)}. "
+            f"All commands marked as unavailable.",
             "error",
         )
         return redirect(url_for("host_list"))
@@ -297,7 +299,8 @@ def capture_all(base):
             # Continue with next device
 
     logger.info(
-        "Capture all completed: %d successful, %d failed, %d total, %d command timeouts",
+        "Capture all completed: %d successful, %d failed, %d total, "
+        "%d command timeouts",
         success_count,
         failure_count,
         total_hosts,
