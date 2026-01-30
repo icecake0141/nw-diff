@@ -52,6 +52,13 @@
                     <div>
                         <strong>{{ item.command }}</strong><br>
                         <small>{{ item.mtime }}</small>
+                        {% if item.status == 'timeout' %}
+                            <span class="badge badge-warning">TIMEOUT</span>
+                        {% elif item.status == 'connection_failed' %}
+                            <span class="badge badge-danger">CONNECTION FAILED</span>
+                        {% elif item.status == 'unavailable' %}
+                            <span class="badge badge-secondary">UNAVAILABLE</span>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </td>
@@ -60,6 +67,13 @@
                     <div>
                         <strong>{{ item.command }}</strong><br>
                         <small>{{ item.mtime }}</small>
+                        {% if item.status == 'timeout' %}
+                            <span class="badge badge-warning">TIMEOUT</span>
+                        {% elif item.status == 'connection_failed' %}
+                            <span class="badge badge-danger">CONNECTION FAILED</span>
+                        {% elif item.status == 'unavailable' %}
+                            <span class="badge badge-secondary">UNAVAILABLE</span>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </td>
@@ -69,6 +83,14 @@
                         <span class="badge" style="background-color: #ffff99; font-weight: bold; color: black;">{{ item.command }}: {{ item.status }}</span>
                     {% elif item.status == "identical" %}
                         <span class="badge" style="background-color: #add8e6; font-weight: bold; color: black;">{{ item.command }}: {{ item.status }}</span>
+                    {% elif item.status == "timeout" %}
+                        <span class="badge badge-warning">{{ item.command }}: timeout</span>
+                    {% elif item.status == "connection_failed" %}
+                        <span class="badge badge-danger">{{ item.command }}: connection failed</span>
+                    {% elif item.status == "unavailable" %}
+                        <span class="badge badge-secondary">{{ item.command }}: unavailable</span>
+                    {% elif "timeout" in item.status or "connection_failed" in item.status or "unavailable" in item.status %}
+                        <span class="badge badge-warning">{{ item.command }}: {{ item.status }}</span>
                     {% else %}
                         <span class="badge badge-info">{{ item.command }}: {{ item.status }}</span>
                     {% endif %}
