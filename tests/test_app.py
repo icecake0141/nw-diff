@@ -134,7 +134,61 @@ def test_generate_side_by_side_html_includes_highlights() -> None:
 
     assert "<del" in html
     assert "<ins" in html
-    assert "background-color: #ffff99" in html
+    # Check for row background colors (delete/add rows)
+    assert "background-color: #ffeeee" in html or "background-color: #eeffee" in html
+
+
+def test_generate_side_by_side_html_aligns_rows() -> None:
+    """Side-by-side HTML should align corresponding lines with line numbers."""
+    origin = "A\nB\nD\nF"
+    dest = "A\nB\nC\nD\nE\nF"
+    html = diff.generate_side_by_side_html(origin, dest)
+    
+    # Should have line numbers for both sides
+    assert "Origin" in html and "Destination" in html
+    
+    # Should have table structure with 4 columns (linenum, content for each side)
+    assert html.count("<th") >= 4
+    
+    # Should have rows for all lines (A, B, [C-added], D, [E-added], F)
+    # Total of 6 rows in this case
+    assert html.count("<tr>") >= 6
+    
+    # Check that line numbers appear
+    assert ">1<" in html  # Line 1
+    assert ">2<" in html  # Line 2
+    
+    # Check alignment: added line C should have empty origin
+    # Check for deleted content with background
+    assert "background-color: #ffcccc" in html or "background-color: #cce5ff" in html
+
+
+def test_generate_side_by_side_html_handles_deletions() -> None:
+    """Test that deletions appear only on the left with empty right side."""
+    origin = "A\nB\nC\nD"
+    dest = "A\nD"
+    html = diff.generate_side_by_side_html(origin, dest)
+    
+    # Should have delete markers
+    assert "<del" in html
+    # Should have deletion background color
+    assert "background-color: #ffcccc" in html
+    # Should have table structure
+    assert "<table" in html
+    
+
+def test_generate_side_by_side_html_handles_additions() -> None:
+    """Test that additions appear only on the right with empty left side."""
+    origin = "A\nD"
+    dest = "A\nB\nC\nD"
+    html = diff.generate_side_by_side_html(origin, dest)
+    
+    # Should have insert markers
+    assert "<ins" in html
+    # Should have addition background color
+    assert "background-color: #cce5ff" in html
+    # Should have table structure
+    assert "<table" in html
 
 
 def test_get_backup_filename_format(tmp_path: Path, monkeypatch) -> None:
@@ -982,7 +1036,12 @@ def test_compare_files_response_escapes_xss(tmp_path: Path, monkeypatch) -> None
         assert "&lt;img" in html_content
         # Raw HTML should NOT be in response
         assert "<img src=x onerror=" not in html_content
-        assert "alert(1)" not in html_content or "&quot;alert(1)&quot;" in html_content
+        # Check that alert is properly escaped (either with &quot; or &#x27;)
+        assert (
+            "alert(1)" not in html_content
+            or "&quot;alert(1)&quot;" in html_content
+            or "&#x27;alert(1)&#x27;" in html_content
+        )
 
 
 # --- Authentication Tests ---

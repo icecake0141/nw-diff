@@ -12,6 +12,7 @@ This file was created or modified with the assistance of an AI (Large Language M
 Review required for correctness, security, and licensing.
 """
 
+import difflib
 import html as html_lib
 
 from diff_match_patch import diff_match_patch
@@ -85,79 +86,126 @@ def compute_diff(origin_data, dest_data, view="inline"):
 
 def generate_side_by_side_html(origin_data, dest_data):
     """
-    Generates side-by-side HTML displaying the origin content
-    (common parts plus deletions) on the left and the destination
-    content (common parts plus insertions) on the right.
-    For each column:
-      - At the character level, text in <del> tags is highlighted
-        with a red background and text in <ins> tags with a blue
-        background.
-      - At the line level, any line containing diff tags is wrapped
-        with a yellow background.
+    Generates side-by-side HTML displaying the origin content on the left
+    and destination content on the right with aligned rows.
+    
+    Lines are aligned row-by-row similar to GitHub's diff viewer:
+    - Equal lines appear on the same row
+    - Deleted lines appear only on the left (right side is empty)
+    - Added lines appear only on the right (left side is empty)
+    - Line numbers are shown for both sides
+    - Changed lines are highlighted with appropriate backgrounds
+    
     All text is HTML-escaped to prevent XSS attacks.
     """
-    dmp = diff_match_patch()
-    diffs = dmp.diff_main(origin_data, dest_data)
-    dmp.diff_cleanupSemantic(diffs)
-
-    origin_parts = []
-    dest_parts = []
-    for op, text in diffs:
-        # Escape text to prevent XSS
-        escaped_text = html_lib.escape(text)
-        if op == 0:
-            origin_parts.append(escaped_text)
-            dest_parts.append(escaped_text)
-        elif op == -1:
-            # Highlight deleted text with a red background
-            origin_parts.append(
-                f"<del style='background-color: #ffcccc;'>{escaped_text}</del>"
-            )
-        elif op == 1:
-            # Highlight added text with a blue background
-            dest_parts.append(
-                f"<ins style='background-color: #cce5ff;'>{escaped_text}</ins>"
-            )
-    origin_html = "".join(origin_parts)
-    dest_html = "".join(dest_parts)
-
-    # Replace newlines with <br> to preserve formatting
-    origin_html = origin_html.replace("\n", "<br>")
-    dest_html = dest_html.replace("\n", "<br>")
-
-    # Origin side: wrap lines containing diff tags with a yellow background
-    new_origin_lines = []
-    for line in origin_html.split("<br>"):
-        if "<del" in line or "<ins" in line:
-            new_origin_lines.append(
-                f"<div style='background-color: #ffff99;'>{line}</div>"
-            )
-        else:
-            new_origin_lines.append(line)
-    origin_html = "<br>".join(new_origin_lines)
-
-    # Destination side: wrap lines containing diff tags with a yellow background
-    new_dest_lines = []
-    for line in dest_html.split("<br>"):
-        if "<del" in line or "<ins" in line:
-            new_dest_lines.append(
-                f"<div style='background-color: #ffff99;'>{line}</div>"
-            )
-        else:
-            new_dest_lines.append(line)
-    dest_html = "<br>".join(new_dest_lines)
-
-    # Build the side-by-side table HTML
+    # Split into lines for line-level diffing
+    origin_lines = origin_data.splitlines() if origin_data else []
+    dest_lines = dest_data.splitlines() if dest_data else []
+    
+    # Use difflib.SequenceMatcher for line-by-line comparison
+    matcher = difflib.SequenceMatcher(None, origin_lines, dest_lines)
+    
+    # Build aligned rows with line numbers
+    rows = []
+    origin_line_num = 1
+    dest_line_num = 1
+    
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == 'equal':
+            # Lines are the same in both
+            for i in range(i1, i2):
+                escaped_line = html_lib.escape(origin_lines[i])
+                rows.append({
+                    'origin_num': origin_line_num,
+                    'origin_content': escaped_line,
+                    'dest_num': dest_line_num,
+                    'dest_content': escaped_line,
+                    'type': 'equal'
+                })
+                origin_line_num += 1
+                dest_line_num += 1
+        elif tag == 'delete':
+            # Lines only in origin
+            for i in range(i1, i2):
+                escaped_line = html_lib.escape(origin_lines[i])
+                rows.append({
+                    'origin_num': origin_line_num,
+                    'origin_content': f"<del style='background-color: #ffcccc;'>{escaped_line}</del>",
+                    'dest_num': '',
+                    'dest_content': '',
+                    'type': 'delete'
+                })
+                origin_line_num += 1
+        elif tag == 'insert':
+            # Lines only in dest
+            for j in range(j1, j2):
+                escaped_line = html_lib.escape(dest_lines[j])
+                rows.append({
+                    'origin_num': '',
+                    'origin_content': '',
+                    'dest_num': dest_line_num,
+                    'dest_content': f"<ins style='background-color: #cce5ff;'>{escaped_line}</ins>",
+                    'type': 'add'
+                })
+                dest_line_num += 1
+        elif tag == 'replace':
+            # Lines changed - show deletions and insertions
+            for i in range(i1, i2):
+                escaped_line = html_lib.escape(origin_lines[i])
+                rows.append({
+                    'origin_num': origin_line_num,
+                    'origin_content': f"<del style='background-color: #ffcccc;'>{escaped_line}</del>",
+                    'dest_num': '',
+                    'dest_content': '',
+                    'type': 'delete'
+                })
+                origin_line_num += 1
+            for j in range(j1, j2):
+                escaped_line = html_lib.escape(dest_lines[j])
+                rows.append({
+                    'origin_num': '',
+                    'origin_content': '',
+                    'dest_num': dest_line_num,
+                    'dest_content': f"<ins style='background-color: #cce5ff;'>{escaped_line}</ins>",
+                    'type': 'add'
+                })
+                dest_line_num += 1
+    
+    # Build the HTML table with aligned rows
     table_class = "table table-bordered"
     table_style = "width:100%; border-collapse: collapse; table-layout: fixed;"
-    td_style = (
-        "vertical-align: top; width:50%; white-space: pre-wrap; "
-        "word-break: break-word; overflow-wrap: break-word;"
-    )
-    html = f"""<table class="{table_class}" style="{table_style}">
-  <tr>
-    <td style="{td_style}">{origin_html}</td>
-    <td style="{td_style}">{dest_html}</td>
-  </tr>
-</table>"""
-    return html
+    
+    # Header row
+    header_style = "background-color: #f0f0f0; font-weight: bold; padding: 5px; text-align: center;"
+    linenum_style = "width: 40px; text-align: right; padding: 2px 8px; color: #666; user-select: none; background-color: #f7f7f7; border-right: 1px solid #ddd;"
+    content_style = "white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; padding: 2px 8px; vertical-align: top;"
+    
+    html_parts = [f'<table class="{table_class}" style="{table_style}">']
+    html_parts.append(f'<thead><tr>')
+    html_parts.append(f'<th style="{header_style} width: 40px;">#</th>')
+    html_parts.append(f'<th style="{header_style} width: calc(50% - 40px);">Origin</th>')
+    html_parts.append(f'<th style="{header_style} width: 40px;">#</th>')
+    html_parts.append(f'<th style="{header_style} width: calc(50% - 40px);">Destination</th>')
+    html_parts.append(f'</tr></thead><tbody>')
+    
+    # Data rows
+    for row in rows:
+        row_bg = ''
+        if row['type'] == 'delete':
+            row_bg = ' background-color: #ffeeee;'
+        elif row['type'] == 'add':
+            row_bg = ' background-color: #eeffee;'
+        
+        html_parts.append('<tr>')
+        # Origin line number
+        html_parts.append(f'<td style="{linenum_style}{row_bg}">{row["origin_num"]}</td>')
+        # Origin content
+        html_parts.append(f'<td style="{content_style}{row_bg}">{row["origin_content"]}</td>')
+        # Dest line number
+        html_parts.append(f'<td style="{linenum_style}{row_bg}">{row["dest_num"]}</td>')
+        # Dest content
+        html_parts.append(f'<td style="{content_style}{row_bg}">{row["dest_content"]}</td>')
+        html_parts.append('</tr>')
+    
+    html_parts.append('</tbody></table>')
+    return ''.join(html_parts)
