@@ -1913,9 +1913,7 @@ def test_get_file_status_not_found(tmp_path: Path) -> None:
     assert content is None
 
 
-def test_capture_creates_timeout_marker(
-    tmp_path: Path, monkeypatch, caplog
-) -> None:
+def test_capture_creates_timeout_marker(tmp_path: Path, monkeypatch, caplog) -> None:
     """Test that capture endpoint creates marker file on timeout."""
     # Setup test data
     hosts_csv = tmp_path / "hosts.csv"
@@ -1968,9 +1966,7 @@ def test_capture_creates_timeout_marker(
     assert content == "Version output"
 
 
-def test_capture_creates_connection_failed_markers(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_capture_creates_connection_failed_markers(tmp_path: Path, monkeypatch) -> None:
     """Test that capture endpoint creates marker files on connection failure."""
     # Setup test data
     hosts_csv = tmp_path / "hosts.csv"
@@ -1989,8 +1985,7 @@ def test_capture_creates_connection_failed_markers(
 
     # Mock ConnectHandler to raise connection error
     with patch(
-        "nw_diff.app.ConnectHandler",
-        side_effect=Exception("Connection refused")
+        "nw_diff.app.ConnectHandler", side_effect=Exception("Connection refused")
     ):
         with app.app.test_client() as client:
             response = client.post("/capture/origin/router1")
@@ -2012,9 +2007,7 @@ def test_capture_creates_connection_failed_markers(
     assert "[UNAVAILABLE: connection_failed]" in content2
 
 
-def test_capture_all_creates_timeout_markers(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_capture_all_creates_timeout_markers(tmp_path: Path, monkeypatch) -> None:
     """Test that capture_all creates marker files on timeout."""
     # Setup test data with two hosts
     hosts_csv = tmp_path / "hosts.csv"
@@ -2102,10 +2095,7 @@ router2,10.0.0.2,admin,22,cisco
             # Second device fails
             raise Exception("Connection refused")
 
-    with patch(
-        "nw_diff.app.ConnectHandler",
-        side_effect=connect_handler_side_effect
-    ):
+    with patch("nw_diff.app.ConnectHandler", side_effect=connect_handler_side_effect):
         with app.app.test_client() as client:
             response = client.post("/capture_all/origin")
 
@@ -2224,8 +2214,7 @@ def test_export_json_includes_timeout_status(tmp_path: Path, monkeypatch) -> Non
 
     # Find the command with timeout
     cmd_data = next(
-        (cmd for cmd in data["commands"] if "show version" in cmd["command"]),
-        None
+        (cmd for cmd in data["commands"] if "show version" in cmd["command"]), None
     )
     assert cmd_data is not None
     assert cmd_data["origin"]["status"] == "timeout"
@@ -2266,8 +2255,7 @@ def test_export_json_includes_connection_failed_status(
 
     # Find the command with connection_failed
     cmd_data = next(
-        (cmd for cmd in data["commands"] if "show version" in cmd["command"]),
-        None
+        (cmd for cmd in data["commands"] if "show version" in cmd["command"]), None
     )
     assert cmd_data is not None
     assert cmd_data["origin"]["status"] == "connection_failed"
