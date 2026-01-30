@@ -1900,6 +1900,7 @@ def test_get_file_status_connection_failed(tmp_path: Path) -> None:
     status, content = storage.get_file_status(str(test_file))
 
     assert status == "connection_failed"
+    assert "[UNAVAILABLE: connection_failed]" in content
 
 
 def test_get_file_status_not_found(tmp_path: Path) -> None:

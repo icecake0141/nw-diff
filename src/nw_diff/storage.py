@@ -212,6 +212,7 @@ def get_file_status(filepath):
             - 'connection_failed': Could not connect to device
             - 'unavailable': Other unavailability reason
             - 'not_found': File does not exist
+            - 'error': Error occurred while reading file
     """
     if not os.path.exists(filepath):
         return ("not_found", None)

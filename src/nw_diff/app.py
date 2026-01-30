@@ -61,7 +61,14 @@ app = Flask(__name__, template_folder=str(TEMPLATE_DIR))
 
 # Set secret key for session management (needed for flash messages)
 # In production, this should be set via environment variable
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24).hex())
+if "FLASK_SECRET_KEY" not in os.environ:
+    logger.warning(
+        "FLASK_SECRET_KEY environment variable not set. "
+        "Using a random key. Sessions will not persist across restarts."
+    )
+    app.secret_key = os.urandom(24).hex()
+else:
+    app.secret_key = os.environ["FLASK_SECRET_KEY"]
 
 # Apply ProxyFix middleware to handle X-Forwarded-* headers from reverse proxy
 # This ensures correct URL generation, HTTPS detection, and client IP logging
@@ -375,7 +382,13 @@ def host_list():
                 "timeout",
                 "connection_failed",
                 "unavailable",
-            ) or dest_status in ("timeout", "connection_failed", "unavailable"):
+                "error",
+            ) or dest_status in (
+                "timeout",
+                "connection_failed",
+                "unavailable",
+                "error",
+            ):
                 # Use the status from the unavailable file
                 if origin_status != "available":
                     status = origin_status
@@ -443,7 +456,12 @@ def host_detail(hostname):
                 command,
                 diff_status,
             )
-        elif origin_status in ("timeout", "connection_failed", "unavailable"):
+        elif origin_status in (
+            "timeout",
+            "connection_failed",
+            "unavailable",
+            "error",
+        ):
             diff_status = f"origin {origin_status}"
             diff_html = (
                 f"<div class='alert alert-warning'>Origin data {origin_status}</div>"
@@ -454,7 +472,12 @@ def host_detail(hostname):
                 command,
                 origin_status,
             )
-        elif dest_status in ("timeout", "connection_failed", "unavailable"):
+        elif dest_status in (
+            "timeout",
+            "connection_failed",
+            "unavailable",
+            "error",
+        ):
             diff_status = f"dest {dest_status}"
             diff_html = (
                 f"<div class='alert alert-warning'>Destination data {dest_status}</div>"
@@ -724,11 +747,22 @@ def export_diff(hostname):
                 )
 
             # Show unavailability message
-            if origin_status in ("timeout", "connection_failed", "unavailable"):
+            if origin_status in (
+                "timeout",
+                "connection_failed",
+                "unavailable",
+                "error",
+            ):
                 html_parts.append(
-                    f"<p class='text-warning'>Origin data unavailable: {origin_status}</p>"
+                    f"<p class='text-warning'>Origin data "
+                    f"unavailable: {origin_status}</p>"
                 )
-            if dest_status in ("timeout", "connection_failed", "unavailable"):
+            if dest_status in (
+                "timeout",
+                "connection_failed",
+                "unavailable",
+                "error",
+            ):
                 html_parts.append(
                     f"<p class='text-warning'>Destination data "
                     f"unavailable: {dest_status}</p>"

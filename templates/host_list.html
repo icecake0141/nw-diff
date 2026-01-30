@@ -26,6 +26,9 @@
             <option value="all">All Devices</option>
             <option value="changes detected">Changes Detected</option>
             <option value="identical">Identical</option>
+            <option value="timeout">Timeout</option>
+            <option value="connection_failed">Connection Failed</option>
+            <option value="unavailable">Unavailable</option>
             <option value="file not found">File Not Found</option>
         </select>
     </div>
@@ -87,9 +90,10 @@
                         <span class="badge badge-warning">{{ item.command }}: timeout</span>
                     {% elif item.status == "connection_failed" %}
                         <span class="badge badge-danger">{{ item.command }}: connection failed</span>
-                    {% elif item.status == "unavailable" %}
-                        <span class="badge badge-secondary">{{ item.command }}: unavailable</span>
+                    {% elif item.status == "unavailable" or item.status == "error" %}
+                        <span class="badge badge-secondary">{{ item.command }}: {{ item.status }}</span>
                     {% elif "timeout" in item.status or "connection_failed" in item.status or "unavailable" in item.status %}
+                        {# Handle composite statuses like "origin timeout" or "dest connection_failed" #}
                         <span class="badge badge-warning">{{ item.command }}: {{ item.status }}</span>
                     {% else %}
                         <span class="badge badge-info">{{ item.command }}: {{ item.status }}</span>
