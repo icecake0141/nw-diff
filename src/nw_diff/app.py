@@ -25,7 +25,6 @@ from flask import (
     redirect,
     render_template,
     request,
-    session,
     url_for,
 )
 from netmiko import ConnectHandler, NetMikoTimeoutException
@@ -159,29 +158,29 @@ def capture(base, hostname):
             len(successful_commands),
             len(failed_commands),
         )
-        
+
         # Flash message with summary
         if failed_commands:
             flash(
                 f"Capture completed for {hostname}: {len(successful_commands)} successful, "
                 f"{len(failed_commands)} timed out",
-                "warning"
+                "warning",
             )
         else:
             flash(f"Successfully captured all data for {hostname}", "success")
-        
+
         return redirect(url_for("host_list"))
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.error("Failed to connect to %s: %s", hostname, exc, exc_info=True)
-        
+
         # Create marker files for all commands indicating connection failure
         for command in commands:
             filepath = get_file_path(hostname, command, base)
             create_unavailable_marker(filepath, "connection_failed")
-        
+
         flash(
             f"Failed to connect to {hostname}: {str(exc)}. All commands marked as unavailable.",
-            "error"
+            "error",
         )
         return redirect(url_for("host_list"))
 
@@ -281,9 +280,7 @@ def capture_all(base):
             if host_timeout_count > 0:
                 timeout_count += host_timeout_count
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            logger.error(
-                "Error connecting to %s: %s", hostname, exc, exc_info=True
-            )
+            logger.error("Error connecting to %s: %s", hostname, exc, exc_info=True)
             failure_count += 1
             failed_hosts.append((hostname, str(exc)))
             # Create marker files for all commands indicating connection failure
@@ -299,7 +296,7 @@ def capture_all(base):
         total_hosts,
         timeout_count,
     )
-    
+
     # Flash summary message
     if failure_count > 0 or timeout_count > 0:
         summary_parts = []
@@ -309,19 +306,19 @@ def capture_all(base):
             summary_parts.append(f"{failure_count} devices failed to connect")
         if timeout_count > 0:
             summary_parts.append(f"{timeout_count} commands timed out")
-        
+
         flash(
             f"Batch capture completed: {', '.join(summary_parts)}. "
             f"Check logs for details.",
-            "warning"
+            "warning",
         )
-        
+
         # Log detailed failure info
         if failed_hosts:
             logger.info("Failed hosts: %s", ", ".join([h[0] for h in failed_hosts]))
     else:
         flash(f"Successfully captured all data from {total_hosts} devices", "success")
-    
+
     return redirect(url_for("host_list"))
 
 
@@ -346,40 +343,47 @@ def host_list():
         for command in commands:
             origin_path = get_file_path(hostname, command, "origin")
             dest_path = get_file_path(hostname, command, "dest")
-            
+
             # Get file status
             origin_status, origin_data = get_file_status(origin_path)
             dest_status, dest_data = get_file_status(dest_path)
-            
+
             # Add origin info with status
-            origin_mtime = get_file_mtime(origin_path) if origin_status != 'not_found' else "file not found"
-            origin_info.append({
-                "command": command,
-                "mtime": origin_mtime,
-                "status": origin_status
-            })
-            
+            origin_mtime = (
+                get_file_mtime(origin_path)
+                if origin_status != "not_found"
+                else "file not found"
+            )
+            origin_info.append(
+                {"command": command, "mtime": origin_mtime, "status": origin_status}
+            )
+
             # Add dest info with status
-            dest_mtime = get_file_mtime(dest_path) if dest_status != 'not_found' else "file not found"
-            dest_info.append({
-                "command": command,
-                "mtime": dest_mtime,
-                "status": dest_status
-            })
-            
+            dest_mtime = (
+                get_file_mtime(dest_path)
+                if dest_status != "not_found"
+                else "file not found"
+            )
+            dest_info.append(
+                {"command": command, "mtime": dest_mtime, "status": dest_status}
+            )
+
             # Compute diff status
-            if origin_status == 'available' and dest_status == 'available':
+            if origin_status == "available" and dest_status == "available":
                 status = compute_diff_status(origin_data, dest_data)
-            elif origin_status in ('timeout', 'connection_failed', 'unavailable') or \
-                 dest_status in ('timeout', 'connection_failed', 'unavailable'):
+            elif origin_status in (
+                "timeout",
+                "connection_failed",
+                "unavailable",
+            ) or dest_status in ("timeout", "connection_failed", "unavailable"):
                 # Use the status from the unavailable file
-                if origin_status != 'available':
+                if origin_status != "available":
                     status = origin_status
                 else:
                     status = dest_status
             else:
                 status = "file not found"
-            
+
             diff_info.append({"command": command, "status": status})
         hosts.append(
             {
@@ -414,24 +418,24 @@ def host_detail(hostname):
     for command in commands:
         origin_path = get_file_path(hostname, command, "origin")
         dest_path = get_file_path(hostname, command, "dest")
-        
+
         # Get file status
         origin_status, origin_data = get_file_status(origin_path)
         dest_status, dest_data = get_file_status(dest_path)
-        
+
         # Get modification times
-        if origin_status != 'not_found':
+        if origin_status != "not_found":
             origin_mtime = get_file_mtime(origin_path)
         else:
             origin_mtime = "file not found"
 
-        if dest_status != 'not_found':
+        if dest_status != "not_found":
             dest_mtime = get_file_mtime(dest_path)
         else:
             dest_mtime = "file not found"
 
         # Compute diff based on file status
-        if origin_status == 'available' and dest_status == 'available':
+        if origin_status == "available" and dest_status == "available":
             diff_status, diff_html = compute_diff(origin_data, dest_data, view)
             logger.debug(
                 "Computed diff for %s - command: %s, status: %s",
@@ -439,18 +443,22 @@ def host_detail(hostname):
                 command,
                 diff_status,
             )
-        elif origin_status in ('timeout', 'connection_failed', 'unavailable'):
+        elif origin_status in ("timeout", "connection_failed", "unavailable"):
             diff_status = f"origin {origin_status}"
-            diff_html = f"<div class='alert alert-warning'>Origin data {origin_status}</div>"
+            diff_html = (
+                f"<div class='alert alert-warning'>Origin data {origin_status}</div>"
+            )
             logger.warning(
                 "Origin file unavailable for %s - command: %s, reason: %s",
                 hostname,
                 command,
                 origin_status,
             )
-        elif dest_status in ('timeout', 'connection_failed', 'unavailable'):
+        elif dest_status in ("timeout", "connection_failed", "unavailable"):
             diff_status = f"dest {dest_status}"
-            diff_html = f"<div class='alert alert-warning'>Destination data {dest_status}</div>"
+            diff_html = (
+                f"<div class='alert alert-warning'>Destination data {dest_status}</div>"
+            )
             logger.warning(
                 "Dest file unavailable for %s - command: %s, reason: %s",
                 hostname,
@@ -465,7 +473,7 @@ def host_detail(hostname):
                 hostname,
                 command,
             )
-        
+
         # Save the diff file for later review
         diff_file_path = get_diff_file_path(hostname, command)
         try:
@@ -625,7 +633,7 @@ def export_diff(hostname):
         origin_status, origin_data = get_file_status(origin_path)
         dest_status, dest_data = get_file_status(dest_path)
 
-        if origin_status == 'available' and dest_status == 'available':
+        if origin_status == "available" and dest_status == "available":
             try:
                 origin_mtime = get_file_mtime(origin_path)
                 dest_mtime = get_file_mtime(dest_path)
@@ -683,10 +691,14 @@ def export_diff(hostname):
             )
             html_parts.append(cmd_header)
             html_parts.append("<div class='card-body'>")
-            
+
             # Display status information
-            if origin_status != 'available':
-                origin_mtime = get_file_mtime(origin_path) if origin_status != 'not_found' else "N/A"
+            if origin_status != "available":
+                origin_mtime = (
+                    get_file_mtime(origin_path)
+                    if origin_status != "not_found"
+                    else "N/A"
+                )
                 html_parts.append(
                     f"<p><strong>Origin Modified:</strong> {origin_mtime} "
                     f"<span class='badge badge-warning'>{origin_status}</span></p>"
@@ -696,9 +708,11 @@ def export_diff(hostname):
                 html_parts.append(
                     f"<p><strong>Origin Modified:</strong> {origin_mtime}</p>"
                 )
-            
-            if dest_status != 'available':
-                dest_mtime = get_file_mtime(dest_path) if dest_status != 'not_found' else "N/A"
+
+            if dest_status != "available":
+                dest_mtime = (
+                    get_file_mtime(dest_path) if dest_status != "not_found" else "N/A"
+                )
                 html_parts.append(
                     f"<p><strong>Dest Modified:</strong> {dest_mtime} "
                     f"<span class='badge badge-warning'>{dest_status}</span></p>"
@@ -708,21 +722,22 @@ def export_diff(hostname):
                 html_parts.append(
                     f"<p><strong>Dest Modified:</strong> {dest_mtime}</p>"
                 )
-            
+
             # Show unavailability message
-            if origin_status in ('timeout', 'connection_failed', 'unavailable'):
+            if origin_status in ("timeout", "connection_failed", "unavailable"):
                 html_parts.append(
                     f"<p class='text-warning'>Origin data unavailable: {origin_status}</p>"
                 )
-            if dest_status in ('timeout', 'connection_failed', 'unavailable'):
+            if dest_status in ("timeout", "connection_failed", "unavailable"):
                 html_parts.append(
-                    f"<p class='text-warning'>Destination data unavailable: {dest_status}</p>"
+                    f"<p class='text-warning'>Destination data "
+                    f"unavailable: {dest_status}</p>"
                 )
-            if origin_status == 'not_found' and dest_status == 'not_found':
+            if origin_status == "not_found" and dest_status == "not_found":
                 html_parts.append(
                     "<p class='text-danger'>Files not found for this command</p>"
                 )
-            
+
             html_parts.append("</div></div>")
 
     html_parts.extend(["</div>", "</body>", "</html>"])
@@ -773,7 +788,7 @@ def export_json(hostname):
         origin_status, origin_data = get_file_status(origin_path)
         dest_status, dest_data = get_file_status(dest_path)
 
-        if origin_status == 'available' and dest_status == 'available':
+        if origin_status == "available" and dest_status == "available":
             try:
                 origin_mtime = get_file_mtime(origin_path)
                 dest_mtime = get_file_mtime(dest_path)
@@ -781,8 +796,16 @@ def export_json(hostname):
 
                 command_data = {
                     "command": command,
-                    "origin": {"exists": True, "timestamp": origin_mtime, "status": "available"},
-                    "dest": {"exists": True, "timestamp": dest_mtime, "status": "available"},
+                    "origin": {
+                        "exists": True,
+                        "timestamp": origin_mtime,
+                        "status": "available",
+                    },
+                    "dest": {
+                        "exists": True,
+                        "timestamp": dest_mtime,
+                        "status": "available",
+                    },
                     "diff_status": status,
                 }
                 export_data["commands"].append(command_data)
@@ -798,9 +821,9 @@ def export_json(hostname):
                 export_data["commands"].append(command_data)
         else:
             # Handle unavailable files
-            origin_exists = origin_status != 'not_found'
-            dest_exists = dest_status != 'not_found'
-            
+            origin_exists = origin_status != "not_found"
+            dest_exists = dest_status != "not_found"
+
             command_data = {
                 "command": command,
                 "origin": {
@@ -812,13 +835,11 @@ def export_json(hostname):
                 },
                 "dest": {
                     "exists": dest_exists,
-                    "timestamp": (
-                        get_file_mtime(dest_path) if dest_exists else None
-                    ),
+                    "timestamp": (get_file_mtime(dest_path) if dest_exists else None),
                     "status": dest_status,
                 },
                 "diff_status": (
-                    origin_status if origin_status != 'available' else dest_status
+                    origin_status if origin_status != "available" else dest_status
                 ),
             }
             export_data["commands"].append(command_data)
