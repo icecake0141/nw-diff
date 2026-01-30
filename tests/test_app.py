@@ -1913,7 +1913,7 @@ def test_get_file_status_not_found(tmp_path: Path) -> None:
     assert content is None
 
 
-def test_capture_creates_timeout_marker(tmp_path: Path, monkeypatch, caplog) -> None:
+def test_capture_creates_timeout_marker(tmp_path: Path, monkeypatch) -> None:
     """Test that capture endpoint creates marker file on timeout."""
     # Setup test data
     hosts_csv = tmp_path / "hosts.csv"
@@ -2091,9 +2091,8 @@ router2,10.0.0.2,admin,22,cisco
             mock_connection.disconnect = Mock()
             mock_connection.send_command = Mock(return_value="Output")
             return mock_connection
-        else:
-            # Second device fails
-            raise Exception("Connection refused")
+        # Second device fails
+        raise ConnectionError("Connection refused")
 
     with patch("nw_diff.app.ConnectHandler", side_effect=connect_handler_side_effect):
         with app.app.test_client() as client:
