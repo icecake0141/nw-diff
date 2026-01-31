@@ -1851,3 +1851,410 @@ def test_capture_timeout_logs_correct_device_and_command(
         cmd in timeout_log.message
         for cmd in ["show version", "show running-config", "show ip interface brief"]
     )
+
+
+# --- Tests for marker file functionality ---
+
+
+def test_create_unavailable_marker(tmp_path: Path, monkeypatch) -> None:
+    """Test that unavailable marker files are created correctly."""
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+
+    filepath = origin_dir / "test-marker.txt"
+    storage.create_unavailable_marker(str(filepath), "timeout")
+
+    assert filepath.exists()
+    content = filepath.read_text(encoding="utf-8")
+    assert content == "[UNAVAILABLE: timeout]\n"
+
+
+def test_get_file_status_available(tmp_path: Path) -> None:
+    """Test get_file_status returns 'available' for normal files."""
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("Normal content", encoding="utf-8")
+
+    status, content = storage.get_file_status(str(test_file))
+
+    assert status == "available"
+    assert content == "Normal content"
+
+
+def test_get_file_status_timeout(tmp_path: Path) -> None:
+    """Test get_file_status detects timeout marker files."""
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("[UNAVAILABLE: timeout]\n", encoding="utf-8")
+
+    status, content = storage.get_file_status(str(test_file))
+
+    assert status == "timeout"
+    assert "[UNAVAILABLE: timeout]" in content
+
+
+def test_get_file_status_connection_failed(tmp_path: Path) -> None:
+    """Test get_file_status detects connection_failed marker files."""
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("[UNAVAILABLE: connection_failed]\n", encoding="utf-8")
+
+    status, content = storage.get_file_status(str(test_file))
+
+    assert status == "connection_failed"
+    assert "[UNAVAILABLE: connection_failed]" in content
+
+
+def test_get_file_status_not_found(tmp_path: Path) -> None:
+    """Test get_file_status returns 'not_found' for missing files."""
+    test_file = tmp_path / "nonexistent.txt"
+
+    status, content = storage.get_file_status(str(test_file))
+
+    assert status == "not_found"
+    assert content is None
+
+
+def test_capture_creates_timeout_marker(tmp_path: Path, monkeypatch) -> None:
+    """Test that capture endpoint creates marker file on timeout."""
+    # Setup test data
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+    monkeypatch.setenv("DEVICE_PASSWORD", "test_password")
+
+    # Setup storage directories
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+
+    # Mock ConnectHandler - timeout on show running-config
+    mock_connection = Mock()
+    mock_connection.enable = Mock()
+    mock_connection.disconnect = Mock()
+
+    def send_command_side_effect(
+        command, read_timeout=None
+    ):  # pylint: disable=unused-argument
+        if "show version" in command:
+            return "Version output"
+        if "show running-config" in command:
+            raise NetMikoTimeoutException("Command timed out")
+        return f"Output for {command}"
+
+    mock_connection.send_command = Mock(side_effect=send_command_side_effect)
+
+    with patch("nw_diff.app.ConnectHandler", return_value=mock_connection):
+        with app.app.test_client() as client:
+            response = client.post("/capture/origin/router1")
+
+    # Verify redirect (not error)
+    assert response.status_code == 302
+
+    # Verify marker file was created for timed out command
+    marker_file = origin_dir / "router1-show_running-config.txt"
+    assert marker_file.exists()
+    content = marker_file.read_text(encoding="utf-8")
+    assert "[UNAVAILABLE: timeout]" in content
+
+    # Verify successful command still has normal file
+    success_file = origin_dir / "router1-show_version.txt"
+    assert success_file.exists()
+    content = success_file.read_text(encoding="utf-8")
+    assert content == "Version output"
+
+
+def test_capture_creates_connection_failed_markers(tmp_path: Path, monkeypatch) -> None:
+    """Test that capture endpoint creates marker files on connection failure."""
+    # Setup test data
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+    monkeypatch.setenv("DEVICE_PASSWORD", "test_password")
+
+    # Setup storage directories
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+
+    # Mock ConnectHandler to raise connection error
+    with patch(
+        "nw_diff.app.ConnectHandler", side_effect=Exception("Connection refused")
+    ):
+        with app.app.test_client() as client:
+            response = client.post("/capture/origin/router1")
+
+    # Verify redirect (not error 500)
+    assert response.status_code == 302
+
+    # Verify marker files were created for all commands
+    marker_file1 = origin_dir / "router1-show_version.txt"
+    marker_file2 = origin_dir / "router1-show_running-config.txt"
+
+    assert marker_file1.exists()
+    assert marker_file2.exists()
+
+    content1 = marker_file1.read_text(encoding="utf-8")
+    content2 = marker_file2.read_text(encoding="utf-8")
+
+    assert "[UNAVAILABLE: connection_failed]" in content1
+    assert "[UNAVAILABLE: connection_failed]" in content2
+
+
+def test_capture_all_creates_timeout_markers(tmp_path: Path, monkeypatch) -> None:
+    """Test that capture_all creates marker files on timeout."""
+    # Setup test data with two hosts
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model
+router1,10.0.0.1,admin,22,cisco
+router2,10.0.0.2,admin,22,cisco
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+    monkeypatch.setenv("DEVICE_PASSWORD", "test_password")
+
+    # Setup storage directories
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+
+    # Mock ConnectHandler
+    mock_connection = Mock()
+    mock_connection.enable = Mock()
+    mock_connection.disconnect = Mock()
+
+    def send_command_side_effect(
+        command, read_timeout=None
+    ):  # pylint: disable=unused-argument
+        # Timeout on show running-config for all devices
+        if "show running-config" in command:
+            raise NetMikoTimeoutException("Command timed out")
+        return f"Output for {command}"
+
+    mock_connection.send_command = Mock(side_effect=send_command_side_effect)
+
+    with patch("nw_diff.app.ConnectHandler", return_value=mock_connection):
+        with app.app.test_client() as client:
+            response = client.post("/capture_all/origin")
+
+    # Verify redirect
+    assert response.status_code == 302
+
+    # Verify marker files were created for timed out commands
+    for router in ["router1", "router2"]:
+        marker_file = origin_dir / f"{router}-show_running-config.txt"
+        assert marker_file.exists()
+        content = marker_file.read_text(encoding="utf-8")
+        assert "[UNAVAILABLE: timeout]" in content
+
+
+def test_capture_all_creates_connection_failed_markers(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Test that capture_all creates marker files when a device fails to connect."""
+    # Setup test data with two hosts
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model
+router1,10.0.0.1,admin,22,cisco
+router2,10.0.0.2,admin,22,cisco
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+    monkeypatch.setenv("DEVICE_PASSWORD", "test_password")
+
+    # Setup storage directories
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+
+    # Mock ConnectHandler - first call succeeds, second fails
+    connection_count = {"count": 0}
+
+    def connect_handler_side_effect(*args, **kwargs):  # pylint: disable=unused-argument
+        connection_count["count"] += 1
+        if connection_count["count"] == 1:
+            # First device succeeds
+            mock_connection = Mock()
+            mock_connection.enable = Mock()
+            mock_connection.disconnect = Mock()
+            mock_connection.send_command = Mock(return_value="Output")
+            return mock_connection
+        # Second device fails
+        raise ConnectionError("Connection refused")
+
+    with patch("nw_diff.app.ConnectHandler", side_effect=connect_handler_side_effect):
+        with app.app.test_client() as client:
+            response = client.post("/capture_all/origin")
+
+    # Verify redirect
+    assert response.status_code == 302
+
+    # Verify marker files were created for router2 (failed connection)
+    marker_file1 = origin_dir / "router2-show_version.txt"
+    marker_file2 = origin_dir / "router2-show_running-config.txt"
+
+    assert marker_file1.exists()
+    assert marker_file2.exists()
+
+    content1 = marker_file1.read_text(encoding="utf-8")
+    content2 = marker_file2.read_text(encoding="utf-8")
+
+    assert "[UNAVAILABLE: connection_failed]" in content1
+    assert "[UNAVAILABLE: connection_failed]" in content2
+
+
+def test_host_list_displays_timeout_status(tmp_path: Path, monkeypatch) -> None:
+    """Test that host list page shows timeout status correctly."""
+    # Setup test data
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+
+    # Setup storage directories
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    dest_dir = tmp_path / "dest"
+    dest_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+    monkeypatch.setattr(storage, "DEST_DIR", str(dest_dir))
+
+    # Create marker file for timeout
+    marker_file = origin_dir / "router1-show_version.txt"
+    marker_file.write_text("[UNAVAILABLE: timeout]\n", encoding="utf-8")
+
+    with app.app.test_client() as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    # Check that timeout is displayed
+    assert "timeout" in html.lower() or "TIMEOUT" in html
+
+
+def test_host_list_displays_connection_failed_status(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Test that host list page shows connection failed status correctly."""
+    # Setup test data
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+
+    # Setup storage directories
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    dest_dir = tmp_path / "dest"
+    dest_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+    monkeypatch.setattr(storage, "DEST_DIR", str(dest_dir))
+
+    # Create marker file for connection failed
+    marker_file = origin_dir / "router1-show_version.txt"
+    marker_file.write_text("[UNAVAILABLE: connection_failed]\n", encoding="utf-8")
+
+    with app.app.test_client() as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    # Check that connection failed is displayed
+    assert "connection" in html.lower() and "failed" in html.lower()
+
+
+def test_export_json_includes_timeout_status(tmp_path: Path, monkeypatch) -> None:
+    """Test that JSON export includes timeout status."""
+    # Setup test data
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+
+    # Setup storage directories
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    dest_dir = tmp_path / "dest"
+    dest_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+    monkeypatch.setattr(storage, "DEST_DIR", str(dest_dir))
+
+    # Create marker file for timeout
+    marker_file = origin_dir / "router1-show_version.txt"
+    marker_file.write_text("[UNAVAILABLE: timeout]\n", encoding="utf-8")
+
+    with app.app.test_client() as client:
+        response = client.get("/api/export/router1")
+
+    assert response.status_code == 200
+    data = response.json
+    assert data is not None
+    assert "commands" in data
+    assert len(data["commands"]) > 0
+
+    # Find the command with timeout
+    cmd_data = next(
+        (cmd for cmd in data["commands"] if "show version" in cmd["command"]), None
+    )
+    assert cmd_data is not None
+    assert cmd_data["origin"]["status"] == "timeout"
+
+
+def test_export_json_includes_connection_failed_status(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Test that JSON export includes connection_failed status."""
+    # Setup test data
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+
+    # Setup storage directories
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    dest_dir = tmp_path / "dest"
+    dest_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+    monkeypatch.setattr(storage, "DEST_DIR", str(dest_dir))
+
+    # Create marker file for connection failed
+    marker_file = origin_dir / "router1-show_version.txt"
+    marker_file.write_text("[UNAVAILABLE: connection_failed]\n", encoding="utf-8")
+
+    with app.app.test_client() as client:
+        response = client.get("/api/export/router1")
+
+    assert response.status_code == 200
+    data = response.json
+    assert data is not None
+    assert "commands" in data
+
+    # Find the command with connection_failed
+    cmd_data = next(
+        (cmd for cmd in data["commands"] if "show version" in cmd["command"]), None
+    )
+    assert cmd_data is not None
+    assert cmd_data["origin"]["status"] == "connection_failed"

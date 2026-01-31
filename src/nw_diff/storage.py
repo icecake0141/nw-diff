@@ -178,3 +178,59 @@ def get_file_mtime(filepath):
             "%Y-%m-%d %H:%M:%S"
         )
     return "file not found"
+
+
+def create_unavailable_marker(filepath, reason):
+    """
+    Creates a marker file indicating the command output is unavailable.
+
+    Args:
+        filepath: Path where the marker file should be created
+        reason: Reason for unavailability ('timeout', 'connection_failed', etc.)
+
+    The marker file contains a special format that can be detected when reading.
+    """
+    marker_content = f"[UNAVAILABLE: {reason}]\n"
+    try:
+        # Ensure parent directory exists
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(marker_content)
+        logger.debug("Created unavailable marker: %s (reason: %s)", filepath, reason)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.warning("Failed to create unavailable marker for %s: %s", filepath, exc)
+
+
+def get_file_status(filepath):
+    """
+    Returns the status of a file.
+
+    Returns:
+        tuple: (status, content) where status is one of:
+            - 'available': Normal file with content
+            - 'timeout': Command timed out
+            - 'connection_failed': Could not connect to device
+            - 'unavailable': Other unavailability reason
+            - 'not_found': File does not exist
+            - 'error': Error occurred while reading file
+    """
+    if not os.path.exists(filepath):
+        return ("not_found", None)
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Check if it's a marker file
+        if content.startswith("[UNAVAILABLE:"):
+            # Extract reason from marker
+            match = content.split("[UNAVAILABLE:")
+            if len(match) > 1:
+                reason = match[1].split("]")[0].strip()
+                return (reason, content)
+            return ("unavailable", content)
+
+        return ("available", content)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.warning("Error reading file %s: %s", filepath, exc)
+        return ("error", None)
