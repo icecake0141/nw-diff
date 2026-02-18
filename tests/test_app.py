@@ -134,8 +134,8 @@ def test_generate_side_by_side_html_includes_highlights() -> None:
 
     assert "<del" in html
     assert "<ins" in html
-    # Check for row background colors (delete/add rows)
-    assert "background-color: #ffeeee" in html or "background-color: #eeffee" in html
+    assert "background-color: #ffcccc" in html
+    assert "background-color: #cce5ff" in html
 
 
 def test_generate_side_by_side_html_aligns_rows() -> None:
@@ -161,6 +161,16 @@ def test_generate_side_by_side_html_aligns_rows() -> None:
     # Check alignment: added line C should have empty origin
     # Check for deleted content with background
     assert "background-color: #ffcccc" in html or "background-color: #cce5ff" in html
+
+
+def test_generate_side_by_side_html_aligns_replacements() -> None:
+    """Replaced lines should align with partial highlights."""
+    html = diff.generate_side_by_side_html("hello", "hallo")
+
+    assert re.search(r"<tr>.*?>1<.*?>1<.*?</tr>", html, re.DOTALL)
+    assert "<del style='background-color: #ffcccc;'>e</del>" in html
+    assert "<ins style='background-color: #cce5ff;'>a</ins>" in html
+    assert "<del style='background-color: #ffcccc;'>hello</del>" not in html
 
 
 def test_generate_side_by_side_html_handles_deletions() -> None:

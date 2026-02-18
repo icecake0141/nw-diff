@@ -84,6 +84,26 @@ def compute_diff(origin_data, dest_data, view="inline"):
     return status, diff_html
 
 
+def _build_side_by_side_line_diff(origin_line, dest_line, del_style, ins_style):
+    dmp = diff_match_patch()
+    diffs = dmp.diff_main(origin_line, dest_line)
+    dmp.diff_cleanupSemantic(diffs)
+
+    origin_parts = []
+    dest_parts = []
+    for op, text in diffs:
+        escaped_text = html_lib.escape(text)
+        if op == 0:
+            origin_parts.append(escaped_text)
+            dest_parts.append(escaped_text)
+        elif op == -1:
+            origin_parts.append(f"<del style='{del_style}'>{escaped_text}</del>")
+        elif op == 1:
+            dest_parts.append(f"<ins style='{ins_style}'>{escaped_text}</ins>")
+
+    return "".join(origin_parts), "".join(dest_parts)
+
+
 def generate_side_by_side_html(origin_data, dest_data):
     """
     Generates side-by-side HTML displaying the origin content on the left
@@ -110,6 +130,9 @@ def generate_side_by_side_html(origin_data, dest_data):
     origin_line_num = 1
     dest_line_num = 1
 
+    del_style = "background-color: #ffcccc;"
+    ins_style = "background-color: #cce5ff;"
+
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == "equal":
             # Lines are the same in both
@@ -130,7 +153,6 @@ def generate_side_by_side_html(origin_data, dest_data):
             # Lines only in origin
             for i in range(i1, i2):
                 escaped_line = html_lib.escape(origin_lines[i])
-                del_style = "background-color: #ffcccc;"
                 origin_content = f"<del style='{del_style}'>{escaped_line}</del>"
                 rows.append(
                     {
@@ -146,7 +168,6 @@ def generate_side_by_side_html(origin_data, dest_data):
             # Lines only in dest
             for j in range(j1, j2):
                 escaped_line = html_lib.escape(dest_lines[j])
-                ins_style = "background-color: #cce5ff;"
                 dest_content = f"<ins style='{ins_style}'>{escaped_line}</ins>"
                 rows.append(
                     {
@@ -159,35 +180,55 @@ def generate_side_by_side_html(origin_data, dest_data):
                 )
                 dest_line_num += 1
         elif tag == "replace":
-            # Lines changed - show deletions and insertions
-            for i in range(i1, i2):
-                escaped_line = html_lib.escape(origin_lines[i])
-                del_style = "background-color: #ffcccc;"
-                origin_content = f"<del style='{del_style}'>{escaped_line}</del>"
-                rows.append(
-                    {
-                        "origin_num": origin_line_num,
-                        "origin_content": origin_content,
-                        "dest_num": "",
-                        "dest_content": "",
-                        "type": "delete",
-                    }
-                )
-                origin_line_num += 1
-            for j in range(j1, j2):
-                escaped_line = html_lib.escape(dest_lines[j])
-                ins_style = "background-color: #cce5ff;"
-                dest_content = f"<ins style='{ins_style}'>{escaped_line}</ins>"
-                rows.append(
-                    {
-                        "origin_num": "",
-                        "origin_content": "",
-                        "dest_num": dest_line_num,
-                        "dest_content": dest_content,
-                        "type": "add",
-                    }
-                )
-                dest_line_num += 1
+            origin_chunk = origin_lines[i1:i2]
+            dest_chunk = dest_lines[j1:j2]
+            chunk_len = max(len(origin_chunk), len(dest_chunk))
+
+            for index in range(chunk_len):
+                origin_line = origin_chunk[index] if index < len(origin_chunk) else None
+                dest_line = dest_chunk[index] if index < len(dest_chunk) else None
+
+                if origin_line is not None and dest_line is not None:
+                    origin_content, dest_content = _build_side_by_side_line_diff(
+                        origin_line, dest_line, del_style, ins_style
+                    )
+                    rows.append(
+                        {
+                            "origin_num": origin_line_num,
+                            "origin_content": origin_content,
+                            "dest_num": dest_line_num,
+                            "dest_content": dest_content,
+                            "type": "replace",
+                        }
+                    )
+                    origin_line_num += 1
+                    dest_line_num += 1
+                elif origin_line is not None:
+                    escaped_line = html_lib.escape(origin_line)
+                    origin_content = f"<del style='{del_style}'>{escaped_line}</del>"
+                    rows.append(
+                        {
+                            "origin_num": origin_line_num,
+                            "origin_content": origin_content,
+                            "dest_num": "",
+                            "dest_content": "",
+                            "type": "delete",
+                        }
+                    )
+                    origin_line_num += 1
+                elif dest_line is not None:
+                    escaped_line = html_lib.escape(dest_line)
+                    dest_content = f"<ins style='{ins_style}'>{escaped_line}</ins>"
+                    rows.append(
+                        {
+                            "origin_num": "",
+                            "origin_content": "",
+                            "dest_num": dest_line_num,
+                            "dest_content": dest_content,
+                            "type": "add",
+                        }
+                    )
+                    dest_line_num += 1
 
     # Build the HTML table with aligned rows
     table_class = "table table-bordered"
