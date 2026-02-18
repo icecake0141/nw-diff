@@ -136,6 +136,7 @@ def test_generate_side_by_side_html_includes_highlights() -> None:
     assert "<ins" in html
     assert "background-color: #ffcccc" in html
     assert "background-color: #cce5ff" in html
+    assert "text-decoration: none" in html
 
 
 def test_generate_side_by_side_html_aligns_rows() -> None:
@@ -168,8 +169,12 @@ def test_generate_side_by_side_html_aligns_replacements() -> None:
     html = diff.generate_side_by_side_html("hello", "hallo")
 
     assert re.search(r"<tr>.*?>1<.*?>1<.*?</tr>", html, re.DOTALL)
-    assert "<del style='background-color: #ffcccc;'>e</del>" in html
-    assert "<ins style='background-color: #cce5ff;'>a</ins>" in html
+    assert (
+        "<del style='background-color: #ffcccc; text-decoration: none;'>e</del>" in html
+    )
+    assert (
+        "<ins style='background-color: #cce5ff; text-decoration: none;'>a</ins>" in html
+    )
     assert "<del style='background-color: #ffcccc;'>hello</del>" not in html
 
 
