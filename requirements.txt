@@ -11,7 +11,7 @@ Jinja2==3.1.6
 markdown-it-py==3.0.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
-netmiko==4.5.0
+netmiko==4.6.0
 ntc_templates==8.1.0
 paramiko==3.5.1
 pycparser==3.0
