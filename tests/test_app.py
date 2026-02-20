@@ -1868,6 +1868,104 @@ def test_capture_timeout_logs_correct_device_and_command(
     )
 
 
+# --- Tests for streaming task logs ---
+
+
+def test_capture_stream_creates_task_and_sets_session_log(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Streaming capture should return task metadata and set session_log."""
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+    monkeypatch.setenv("DEVICE_PASSWORD", "test_password")
+
+    origin_dir = tmp_path / "origin"
+    origin_dir.mkdir()
+    dest_dir = tmp_path / "dest"
+    dest_dir.mkdir()
+    monkeypatch.setattr(storage, "ORIGIN_DIR", str(origin_dir))
+    monkeypatch.setattr(storage, "DEST_DIR", str(dest_dir))
+
+    task_log_dir = tmp_path / "task-logs"
+    monkeypatch.setattr(app, "TASK_LOG_DIR", task_log_dir)
+    monkeypatch.setattr(app, "TASK_LOG_RETENTION_SECONDS", -1)
+    monkeypatch.setattr(app, "TASK_LOG_DELETE_ON_COMPLETE", False)
+    app.TASKS.clear()
+
+    mock_connection = Mock()
+    mock_connection.enable = Mock()
+    mock_connection.disconnect = Mock()
+    mock_connection.send_command = Mock(return_value="Version output")
+
+    with patch("nw_diff.app.ConnectHandler", return_value=mock_connection) as connector:
+        with app.app.test_client() as client:
+            response = client.post("/api/capture/origin/router1/stream")
+            payload = response.get_json()
+
+        assert response.status_code == 202
+        assert payload is not None
+
+        task_state = app._get_task_state(  # pylint: disable=protected-access
+            payload["task_id"]
+        )
+        assert task_state is not None
+        assert task_state.done_event.wait(timeout=2)
+        assert connector.call_args.kwargs["session_log"] == str(task_state.log_path)
+        assert task_state.status == "completed"
+
+
+def test_task_stream_masks_password(tmp_path: Path, monkeypatch) -> None:
+    """Task stream should mask DEVICE_PASSWORD values."""
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+    monkeypatch.setenv("DEVICE_PASSWORD", "secret")
+
+    task_log_dir = tmp_path / "task-logs"
+    monkeypatch.setattr(app, "TASK_LOG_DIR", task_log_dir)
+    monkeypatch.setattr(app, "TASK_LOG_RETENTION_SECONDS", -1)
+    monkeypatch.setattr(app, "TASK_LOG_DELETE_ON_COMPLETE", False)
+    app.TASKS.clear()
+
+    task_state = app._create_task_state(  # pylint: disable=protected-access
+        "origin", "router1", batch=False
+    )
+    task_state.log_path.write_text("password=secret\nline2\n", encoding="utf-8")
+    task_state.status = "completed"
+    task_state.done_event.set()
+
+    with app.app.test_client() as client:
+        response = client.get(f"/api/tasks/{task_state.task_id}/stream")
+        data = response.get_data(as_text=True)
+
+    assert "secret" not in data
+    assert "password=***" in data
+
+
+def test_task_cancel_sets_cancel_flag(tmp_path: Path, monkeypatch) -> None:
+    """Cancel endpoint should set the task cancellation flag."""
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+
+    task_log_dir = tmp_path / "task-logs"
+    monkeypatch.setattr(app, "TASK_LOG_DIR", task_log_dir)
+    monkeypatch.setattr(app, "TASK_LOG_RETENTION_SECONDS", -1)
+    monkeypatch.setattr(app, "TASK_LOG_DELETE_ON_COMPLETE", False)
+    app.TASKS.clear()
+
+    task_state = app._create_task_state(  # pylint: disable=protected-access
+        "origin", "router1", batch=False
+    )
+
+    with app.app.test_client() as client:
+        response = client.post(f"/api/tasks/{task_state.task_id}/cancel")
+
+    assert response.status_code == 200
+    assert task_state.cancel_event.is_set()
+
+
 # --- Tests for marker file functionality ---
 
 

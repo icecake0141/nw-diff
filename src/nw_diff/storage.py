@@ -210,6 +210,7 @@ def get_file_status(filepath):
             - 'available': Normal file with content
             - 'timeout': Command timed out
             - 'connection_failed': Could not connect to device
+            - 'cancelled': Capture was cancelled before completion
             - 'unavailable': Other unavailability reason
             - 'not_found': File does not exist
             - 'error': Error occurred while reading file
