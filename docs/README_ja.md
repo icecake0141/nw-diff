@@ -17,6 +17,18 @@ NW-Diff は、ネットワークデバイスから収集された設定または
 
   キャプチャされた出力は、それぞれ `origin` と `dest` ディレクトリに保存されます。
 
+- **リアルタイムのセッションログ配信:**
+  Netmiko の session_log をタスク単位のログファイルとして保存し、SSE で配信できます:
+  - `POST /api/capture/<base>/<hostname>/stream`（バッチは
+    `POST /api/capture_all/<base>/stream`）でタスクを開始
+  - `GET /api/tasks/<task_id>/stream` に接続してリアルタイム出力を取得
+  - `POST /api/tasks/<task_id>/cancel` でタスクをキャンセル
+  - ログは既定で `logs/tasks/<task_id>.log` に保存
+    (`NW_DIFF_TASK_LOG_DIR` で変更可)
+  - `NW_DIFF_TASK_LOG_MAX_FILES`（既定 200）でローテーションし、
+    `NW_DIFF_TASK_LOG_RETENTION_SECONDS`（既定 3600）で保持
+  - `DEVICE_PASSWORD` や `password=...` の文字列は配信前にマスク
+
 - **設定バックアップ:**
   履歴設定を保持し、データ損失を防ぐため、ファイル上書き前に自動バックアップを作成します:
   - キャプチャ操作時、ファイルが上書きされる前に自動的にバックアップが作成されます

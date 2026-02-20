@@ -15,22 +15,30 @@ Review required for correctness, security, and licensing.
 
 import os
 import re
+import threading
+import time
+import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable, Optional
 
 from flask import (
     Flask,
     flash,
     jsonify,
     make_response,
+    Response,
     redirect,
     render_template,
     request,
+    stream_with_context,
     url_for,
 )
 from netmiko import ConnectHandler, NetMikoTimeoutException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Import from nw_diff modules
+from nw_diff import logging_config
 from nw_diff.logging_config import logger
 from nw_diff.auth import require_api_token
 from nw_diff.security import (
@@ -82,34 +90,195 @@ app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
     app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1
 )
 
+TASK_ID_PATTERN = re.compile(r"^[a-f0-9]{32}$")
+TASK_LOG_DIR = Path(
+    os.environ.get(
+        "NW_DIFF_TASK_LOG_DIR", os.path.join(logging_config.LOGS_DIR, "tasks")
+    )
+)
+TASK_LOG_MAX_FILES = int(os.environ.get("NW_DIFF_TASK_LOG_MAX_FILES", "200"))
+TASK_LOG_RETENTION_SECONDS = int(
+    os.environ.get("NW_DIFF_TASK_LOG_RETENTION_SECONDS", "3600")
+)
+TASK_LOG_DELETE_ON_COMPLETE = os.environ.get(
+    "NW_DIFF_TASK_LOG_DELETE_ON_COMPLETE", "false"
+).lower() in ("1", "true", "yes")
+TASK_STREAM_SLEEP_SECONDS = float(
+    os.environ.get("NW_DIFF_TASK_STREAM_SLEEP_SECONDS", "0.25")
+)
 
-# --- Capture endpoint for individual host ---
-@app.route("/capture/<base>/<hostname>", methods=["POST"])
-@require_api_token
-def capture(base, hostname):
-    """
-    Triggered when clicking the "Capture Origin" or "Capture Dest"
-    button on the host list page.
-    Establishes a single connection to the target device and retrieves
-    output for each command (based on the device's model) before
-    disconnecting. CSV reading ignores comment lines.
-    Validates inputs to prevent path traversal attacks.
-    """
-    logger.info("Capture request received for host=%s, base=%s", hostname, base)
 
-    if not validate_base_directory(base):
-        logger.error("Invalid capture type requested: %s", base)
-        return "Invalid capture type", 400
+@dataclass
+class CaptureResult:
+    """Container for single-device capture outcomes."""
 
-    if not validate_hostname(hostname):
-        logger.error("Invalid hostname for capture: %s", hostname)
-        return "Invalid hostname", 400
+    successful_commands: list[str] = field(default_factory=list)
+    failed_commands: list[tuple[str, str]] = field(default_factory=list)
+    error: Optional[str] = None
+    status_code: int = 200
 
+
+@dataclass
+class CaptureAllResult:  # pylint: disable=too-many-instance-attributes
+    """Container for batch capture outcomes."""
+
+    success_count: int = 0
+    failure_count: int = 0
+    timeout_count: int = 0
+    total_hosts: int = 0
+    failed_hosts: list[tuple[str, str]] = field(default_factory=list)
+    timed_out_commands: list[tuple[str, str]] = field(default_factory=list)
+    error: Optional[str] = None
+    status_code: int = 200
+
+
+@dataclass
+class TaskState:  # pylint: disable=too-many-instance-attributes
+    """Represents a streaming capture task."""
+
+    task_id: str
+    log_path: Path
+    base: str
+    hostname: Optional[str]
+    batch: bool
+    started_at: float = field(default_factory=time.time)
+    done_event: threading.Event = field(default_factory=threading.Event)
+    cancel_event: threading.Event = field(default_factory=threading.Event)
+    status: str = "running"
+    error: Optional[str] = None
+    result: Optional[dict] = None
+
+
+TASKS: dict[str, TaskState] = {}
+TASKS_LOCK = threading.Lock()
+
+
+def _ensure_task_log_dir() -> None:
+    """Ensure the task log directory exists with restrictive permissions."""
+    try:
+        os.makedirs(TASK_LOG_DIR, exist_ok=True)
+        os.chmod(TASK_LOG_DIR, 0o700)
+    except OSError as exc:
+        logger.warning("Unable to set task log directory permissions: %s", exc)
+
+
+def _rotate_task_logs() -> None:
+    """Rotate task log files to prevent excessive disk usage."""
+    if TASK_LOG_MAX_FILES <= 0 or not TASK_LOG_DIR.exists():
+        return
+    log_files = sorted(
+        TASK_LOG_DIR.glob("*.log"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for old_log in log_files[TASK_LOG_MAX_FILES:]:
+        try:
+            old_log.unlink()
+        except OSError as exc:
+            logger.warning("Failed to remove old task log %s: %s", old_log, exc)
+
+
+def _create_task_state(base: str, hostname: Optional[str], batch: bool) -> TaskState:
+    _ensure_task_log_dir()
+    _rotate_task_logs()
+    task_id = uuid.uuid4().hex
+    log_path = TASK_LOG_DIR / f"{task_id}.log"
+    try:
+        fd = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.close(fd)
+    except OSError as exc:
+        logger.warning("Unable to create task log file %s: %s", log_path, exc)
+    task_state = TaskState(
+        task_id=task_id, log_path=log_path, base=base, hostname=hostname, batch=batch
+    )
+    with TASKS_LOCK:
+        TASKS[task_id] = task_state
+    return task_state
+
+
+def _get_task_state(task_id: str) -> Optional[TaskState]:
+    with TASKS_LOCK:
+        return TASKS.get(task_id)
+
+
+def _schedule_task_cleanup(task_id: str) -> None:
+    if TASK_LOG_RETENTION_SECONDS < 0:
+        return
+
+    def _delayed_cleanup() -> None:
+        time.sleep(TASK_LOG_RETENTION_SECONDS)
+        _cleanup_task(task_id)
+
+    threading.Thread(target=_delayed_cleanup, daemon=True).start()
+
+
+def _cleanup_task(task_id: str) -> None:
+    with TASKS_LOCK:
+        task_state = TASKS.get(task_id)
+        if not task_state or not task_state.done_event.is_set():
+            return
+        TASKS.pop(task_id, None)
+    if TASK_LOG_DELETE_ON_COMPLETE:
+        try:
+            task_state.log_path.unlink(missing_ok=True)
+        except OSError as exc:
+            logger.warning("Failed to delete task log %s: %s", task_state.log_path, exc)
+
+
+def _mask_sensitive_data(line: str, secrets: list[str]) -> str:
+    masked = line
+    for secret in secrets:
+        if secret:
+            masked = masked.replace(secret, "***")
+    masked = re.sub(r"(password\s*[:=]\s*)(\S+)", r"\1***", masked, flags=re.IGNORECASE)
+    return masked
+
+
+def _tail_task_log(task_state: TaskState) -> Response:
+    secrets = [os.environ.get("DEVICE_PASSWORD", "")]
+
+    def _generate():
+        with open(task_state.log_path, "r", encoding="utf-8", errors="replace") as log:
+            while True:
+                line = log.readline()
+                if line:
+                    masked_line = _mask_sensitive_data(line.rstrip("\n"), secrets)
+                    yield f"data: {masked_line}\n\n"
+                    continue
+                if task_state.done_event.is_set():
+                    status_line = task_state.status or "completed"
+                    yield f"event: status\ndata: {status_line}\n\n"
+                    break
+                time.sleep(TASK_STREAM_SLEEP_SECONDS)
+
+    return Response(stream_with_context(_generate()), mimetype="text/event-stream")
+
+
+def _mark_remaining_commands_cancelled(
+    hostname: str, base: str, commands: list[str], start_index: int
+) -> None:
+    for command in commands[start_index:]:
+        filepath = get_file_path(hostname, command, base)
+        create_unavailable_marker(filepath, "cancelled")
+
+
+def _perform_capture_device(
+    base: str, hostname: str, task_state: Optional[TaskState] = None
+) -> CaptureResult:
     commands = get_commands_for_host(hostname)
     device_info = get_device_info(hostname)
     if not device_info:
-        logger.error("Could not find device info in CSV for host: %s", hostname)
-        return f"Could not find device info in CSV for host: {hostname}", 404
+        message = f"Could not find device info in CSV for host: {hostname}"
+        logger.error(message)
+        if task_state:
+            task_state.status = "failed"
+            task_state.error = message
+        return CaptureResult(error=message, status_code=404)
+
+    if task_state and task_state.cancel_event.is_set():
+        task_state.status = "cancelled"
+        task_state.error = "Task cancelled before connection."
+        return CaptureResult(error=task_state.error, status_code=409)
 
     device = {
         "device_type": device_info["model"],
@@ -118,6 +287,8 @@ def capture(base, hostname):
         "port": device_info["port"],
         "password": os.environ.get("DEVICE_PASSWORD", "your_password"),
     }
+    if task_state:
+        device["session_log"] = str(task_state.log_path)
 
     logger.info(
         "Connecting to device: %s (IP: %s, Type: %s)",
@@ -126,16 +297,21 @@ def capture(base, hostname):
         device_info["model"],
     )
 
-    failed_commands = []
-    successful_commands = []
+    failed_commands: list[tuple[str, str]] = []
+    successful_commands: list[str] = []
 
     try:
         connection = ConnectHandler(**device)
         logger.debug("Connection established to %s", hostname)
         connection.enable()
 
-        # Execute all commands in a single session
-        for command in commands:
+        for index, command in enumerate(commands):
+            if task_state and task_state.cancel_event.is_set():
+                logger.info("Task %s cancelled during capture", task_state.task_id)
+                _mark_remaining_commands_cancelled(hostname, base, commands, index)
+                task_state.status = "cancelled"
+                task_state.error = "Task cancelled by user."
+                break
             logger.debug("Executing command on %s: %s", hostname, command)
             try:
                 output = connection.send_command(command, read_timeout=10)
@@ -159,25 +335,25 @@ def capture(base, hostname):
                 continue
 
         connection.disconnect()
+        if task_state and task_state.status == "cancelled":
+            logger.info("Capture cancelled for %s", hostname)
+            return CaptureResult(
+                successful_commands=successful_commands,
+                failed_commands=failed_commands,
+                error=task_state.error,
+                status_code=409,
+            )
         logger.info(
             "Completed capture for %s: %d successful, %d failed",
             hostname,
             len(successful_commands),
             len(failed_commands),
         )
-
-        # Flash message with summary
-        if failed_commands:
-            flash(
-                f"Capture completed for {hostname}: "
-                f"{len(successful_commands)} successful, "
-                f"{len(failed_commands)} timed out",
-                "warning",
-            )
-        else:
-            flash(f"Successfully captured all data for {hostname}", "success")
-
-        return redirect(url_for("host_list"))
+        if task_state and task_state.status == "running":
+            task_state.status = "completed"
+        return CaptureResult(
+            successful_commands=successful_commands, failed_commands=failed_commands
+        )
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.error("Failed to connect to %s: %s", hostname, exc, exc_info=True)
 
@@ -185,42 +361,31 @@ def capture(base, hostname):
         for command in commands:
             filepath = get_file_path(hostname, command, base)
             create_unavailable_marker(filepath, "connection_failed")
-
-        flash(
-            f"Failed to connect to {hostname}: {str(exc)}. "
-            f"All commands marked as unavailable.",
-            "error",
-        )
-        return redirect(url_for("host_list"))
+        if task_state:
+            task_state.status = "failed"
+            task_state.error = str(exc)
+        return CaptureResult(error=str(exc), status_code=500)
 
 
-# --- New endpoint: Capture for all devices ---
-@app.route("/capture_all/<base>", methods=["POST"])
-@require_api_token
-def capture_all(base):
-    """
-    Captures data for all devices registered in hosts.csv.
-    Establishes a connection for each device and retrieves the output for each command.
-    CSV reading ignores comment lines.
-    Validates inputs to prevent path traversal attacks.
-    """
-    logger.info("Capture all request received for base=%s", base)
-
-    if not validate_base_directory(base):
-        logger.error("Invalid capture type requested: %s", base)
-        return "Invalid capture type", 400
-
+def _perform_capture_all(
+    base: str, task_state: Optional[TaskState] = None
+) -> CaptureAllResult:
     rows = read_hosts_csv()
     total_hosts = len(rows)
     success_count = 0
     failure_count = 0
     timeout_count = 0
-    failed_hosts = []
-    timed_out_commands = []
+    failed_hosts: list[tuple[str, str]] = []
+    timed_out_commands: list[tuple[str, str]] = []
 
     logger.info("Starting capture for %d device(s)", total_hosts)
 
     for row in rows:
+        if task_state and task_state.cancel_event.is_set():
+            logger.info("Task %s cancelled during batch capture", task_state.task_id)
+            task_state.status = "cancelled"
+            task_state.error = "Task cancelled by user."
+            break
         hostname = row["host"]
         commands = get_commands_for_host(hostname)
         device_info = get_device_info(hostname)
@@ -241,6 +406,8 @@ def capture_all(base):
             "port": device_info["port"],
             "password": os.environ.get("DEVICE_PASSWORD", "your_password"),
         }
+        if task_state:
+            device["session_log"] = str(task_state.log_path)
 
         logger.info(
             "Connecting to device: %s (IP: %s, Type: %s)",
@@ -255,7 +422,15 @@ def capture_all(base):
             connection.enable()
 
             host_timeout_count = 0
-            for command in commands:
+            for index, command in enumerate(commands):
+                if task_state and task_state.cancel_event.is_set():
+                    logger.info(
+                        "Task %s cancelled during host capture", task_state.task_id
+                    )
+                    _mark_remaining_commands_cancelled(hostname, base, commands, index)
+                    task_state.status = "cancelled"
+                    task_state.error = "Task cancelled by user."
+                    break
                 logger.debug("Executing command on %s: %s", hostname, command)
                 try:
                     output = connection.send_command(command, read_timeout=10)
@@ -279,6 +454,8 @@ def capture_all(base):
                     continue
 
             connection.disconnect()
+            if task_state and task_state.status == "cancelled":
+                break
             logger.info(
                 "Completed capture for %s: %d commands (%d timeouts)",
                 hostname,
@@ -297,25 +474,112 @@ def capture_all(base):
                 filepath = get_file_path(hostname, command, base)
                 create_unavailable_marker(filepath, "connection_failed")
             # Continue with next device
+        if task_state and task_state.status == "cancelled":
+            break
+
+    if task_state and task_state.status == "running":
+        task_state.status = "completed"
+
+    return CaptureAllResult(
+        success_count=success_count,
+        failure_count=failure_count,
+        timeout_count=timeout_count,
+        total_hosts=total_hosts,
+        failed_hosts=failed_hosts,
+        timed_out_commands=timed_out_commands,
+        error=(
+            task_state.error
+            if task_state and task_state.status == "cancelled"
+            else None
+        ),
+        status_code=409 if task_state and task_state.status == "cancelled" else 200,
+    )
+
+
+# --- Capture endpoint for individual host ---
+@app.route("/capture/<base>/<hostname>", methods=["POST"])
+@require_api_token
+def capture(base, hostname):
+    """
+    Triggered when clicking the "Capture Origin" or "Capture Dest"
+    button on the host list page.
+    Establishes a single connection to the target device and retrieves
+    output for each command (based on the device's model) before
+    disconnecting. CSV reading ignores comment lines.
+    Validates inputs to prevent path traversal attacks.
+    """
+    logger.info("Capture request received for host=%s, base=%s", hostname, base)
+
+    if not validate_base_directory(base):
+        logger.error("Invalid capture type requested: %s", base)
+        return "Invalid capture type", 400
+
+    if not validate_hostname(hostname):
+        logger.error("Invalid hostname for capture: %s", hostname)
+        return "Invalid hostname", 400
+
+    capture_result = _perform_capture_device(base, hostname)
+    if capture_result.error and capture_result.status_code == 404:
+        return capture_result.error, 404
+
+    # Flash message with summary
+    if capture_result.failed_commands:
+        flash(
+            f"Capture completed for {hostname}: "
+            f"{len(capture_result.successful_commands)} successful, "
+            f"{len(capture_result.failed_commands)} timed out",
+            "warning",
+        )
+    elif capture_result.error:
+        flash(
+            f"Failed to connect to {hostname}: {capture_result.error}. "
+            f"All commands marked as unavailable.",
+            "error",
+        )
+    else:
+        flash(f"Successfully captured all data for {hostname}", "success")
+
+    return redirect(url_for("host_list"))
+
+
+# --- New endpoint: Capture for all devices ---
+@app.route("/capture_all/<base>", methods=["POST"])
+@require_api_token
+def capture_all(base):
+    """
+    Captures data for all devices registered in hosts.csv.
+    Establishes a connection for each device and retrieves the output for each command.
+    CSV reading ignores comment lines.
+    Validates inputs to prevent path traversal attacks.
+    """
+    logger.info("Capture all request received for base=%s", base)
+
+    if not validate_base_directory(base):
+        logger.error("Invalid capture type requested: %s", base)
+        return "Invalid capture type", 400
+
+    capture_result = _perform_capture_all(base)
 
     logger.info(
         "Capture all completed: %d successful, %d failed, %d total, "
         "%d command timeouts",
-        success_count,
-        failure_count,
-        total_hosts,
-        timeout_count,
+        capture_result.success_count,
+        capture_result.failure_count,
+        capture_result.total_hosts,
+        capture_result.timeout_count,
     )
 
     # Flash summary message
-    if failure_count > 0 or timeout_count > 0:
+    if capture_result.failure_count > 0 or capture_result.timeout_count > 0:
         summary_parts = []
-        if success_count > 0:
-            summary_parts.append(f"{success_count} devices successful")
-        if failure_count > 0:
-            summary_parts.append(f"{failure_count} devices failed to connect")
-        if timeout_count > 0:
-            summary_parts.append(f"{timeout_count} commands timed out")
+        if capture_result.success_count > 0:
+            summary_parts.append(f"{capture_result.success_count} devices successful")
+        if capture_result.failure_count > 0:
+            summary_parts.append(
+                f"{capture_result.failure_count} devices failed to connect"
+            )
+        if capture_result.timeout_count > 0:
+            summary_parts.append(f"{capture_result.timeout_count} commands timed out")
 
         flash(
             f"Batch capture completed: {', '.join(summary_parts)}. "
@@ -324,12 +588,149 @@ def capture_all(base):
         )
 
         # Log detailed failure info
-        if failed_hosts:
-            logger.info("Failed hosts: %s", ", ".join([h[0] for h in failed_hosts]))
+        if capture_result.failed_hosts:
+            logger.info(
+                "Failed hosts: %s",
+                ", ".join([h[0] for h in capture_result.failed_hosts]),
+            )
     else:
-        flash(f"Successfully captured all data from {total_hosts} devices", "success")
+        flash(
+            f"Successfully captured all data from {capture_result.total_hosts} devices",
+            "success",
+        )
 
     return redirect(url_for("host_list"))
+
+
+def _start_task_thread(
+    task_state: TaskState,
+    target: Callable[..., CaptureResult | CaptureAllResult],
+    *args,
+) -> None:
+    def _run() -> None:
+        result = target(*args, task_state=task_state)
+        if isinstance(result, CaptureResult):
+            task_state.result = {
+                "successful_commands": result.successful_commands,
+                "failed_commands": result.failed_commands,
+                "error": result.error,
+            }
+            if result.error and task_state.status == "running":
+                task_state.status = "failed"
+        if isinstance(result, CaptureAllResult):
+            task_state.result = {
+                "success_count": result.success_count,
+                "failure_count": result.failure_count,
+                "timeout_count": result.timeout_count,
+                "total_hosts": result.total_hosts,
+                "failed_hosts": result.failed_hosts,
+                "timed_out_commands": result.timed_out_commands,
+                "error": result.error,
+            }
+            if result.error and task_state.status == "running":
+                task_state.status = "failed"
+        task_state.done_event.set()
+        _schedule_task_cleanup(task_state.task_id)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
+def _task_response(task_state: TaskState) -> Response:
+    return jsonify(
+        {
+            "task_id": task_state.task_id,
+            "status": task_state.status,
+            "started_at": task_state.started_at,
+            "completed": task_state.done_event.is_set(),
+            "error": task_state.error,
+            "result": task_state.result,
+            "stream_url": url_for(
+                "task_log_stream", task_id=task_state.task_id, _external=True
+            ),
+            "cancel_url": url_for(
+                "task_cancel", task_id=task_state.task_id, _external=True
+            ),
+            "status_url": url_for(
+                "task_status", task_id=task_state.task_id, _external=True
+            ),
+        }
+    )
+
+
+@app.route("/api/capture/<base>/<hostname>/stream", methods=["POST"])
+@require_api_token
+def capture_stream(base, hostname):
+    """Start a capture task with real-time session log streaming."""
+    logger.info(
+        "Streaming capture request received for host=%s, base=%s", hostname, base
+    )
+
+    if not validate_base_directory(base):
+        logger.error("Invalid capture type requested: %s", base)
+        return jsonify({"error": "Invalid capture type"}), 400
+
+    if not validate_hostname(hostname):
+        logger.error("Invalid hostname for capture: %s", hostname)
+        return jsonify({"error": "Invalid hostname"}), 400
+
+    task_state = _create_task_state(base, hostname, batch=False)
+    _start_task_thread(task_state, _perform_capture_device, base, hostname)
+    return _task_response(task_state), 202
+
+
+@app.route("/api/capture_all/<base>/stream", methods=["POST"])
+@require_api_token
+def capture_all_stream(base):
+    """Start a batch capture task with real-time session log streaming."""
+    logger.info("Streaming capture-all request received for base=%s", base)
+
+    if not validate_base_directory(base):
+        logger.error("Invalid capture type requested: %s", base)
+        return jsonify({"error": "Invalid capture type"}), 400
+
+    task_state = _create_task_state(base, hostname=None, batch=True)
+    _start_task_thread(task_state, _perform_capture_all, base)
+    return _task_response(task_state), 202
+
+
+@app.route("/api/tasks/<task_id>/stream", methods=["GET"])
+@require_api_token
+def task_log_stream(task_id):
+    """Stream session logs for a running task using Server-Sent Events."""
+    if not TASK_ID_PATTERN.match(task_id):
+        return jsonify({"error": "Invalid task id"}), 400
+    task_state = _get_task_state(task_id)
+    if not task_state:
+        return jsonify({"error": "Task not found"}), 404
+    if not task_state.log_path.exists():
+        return jsonify({"error": "Task log not found"}), 404
+    return _tail_task_log(task_state)
+
+
+@app.route("/api/tasks/<task_id>", methods=["GET"])
+@require_api_token
+def task_status(task_id):
+    """Return status for a running or completed task."""
+    if not TASK_ID_PATTERN.match(task_id):
+        return jsonify({"error": "Invalid task id"}), 400
+    task_state = _get_task_state(task_id)
+    if not task_state:
+        return jsonify({"error": "Task not found"}), 404
+    return _task_response(task_state)
+
+
+@app.route("/api/tasks/<task_id>/cancel", methods=["POST"])
+@require_api_token
+def task_cancel(task_id):
+    """Cancel a running capture task."""
+    if not TASK_ID_PATTERN.match(task_id):
+        return jsonify({"error": "Invalid task id"}), 400
+    task_state = _get_task_state(task_id)
+    if not task_state:
+        return jsonify({"error": "Task not found"}), 404
+    task_state.cancel_event.set()
+    logger.info("Cancellation requested for task %s", task_id)
+    return _task_response(task_state)
 
 
 # --- Host List page ---
@@ -384,11 +785,13 @@ def host_list():
             elif origin_status in (
                 "timeout",
                 "connection_failed",
+                "cancelled",
                 "unavailable",
                 "error",
             ) or dest_status in (
                 "timeout",
                 "connection_failed",
+                "cancelled",
                 "unavailable",
                 "error",
             ):
@@ -462,6 +865,7 @@ def host_detail(hostname):
         elif origin_status in (
             "timeout",
             "connection_failed",
+            "cancelled",
             "unavailable",
             "error",
         ):
@@ -478,6 +882,7 @@ def host_detail(hostname):
         elif dest_status in (
             "timeout",
             "connection_failed",
+            "cancelled",
             "unavailable",
             "error",
         ):
@@ -753,6 +1158,7 @@ def export_diff(hostname):
             if origin_status in (
                 "timeout",
                 "connection_failed",
+                "cancelled",
                 "unavailable",
                 "error",
             ):
@@ -763,6 +1169,7 @@ def export_diff(hostname):
             if dest_status in (
                 "timeout",
                 "connection_failed",
+                "cancelled",
                 "unavailable",
                 "error",
             ):
@@ -902,12 +1309,7 @@ def logs_view():
     except ValueError:
         limit = 1000
 
-    # Import LOGS_DIR at runtime to allow test mocking
-    from nw_diff.logging_config import (  # pylint: disable=import-outside-toplevel
-        LOGS_DIR as current_logs_dir,
-    )
-
-    log_file_path = os.path.join(current_logs_dir, "nw-diff.log")
+    log_file_path = os.path.join(logging_config.LOGS_DIR, "nw-diff.log")
     lines = []
     try:
         if os.path.exists(log_file_path):
@@ -948,12 +1350,7 @@ def logs_api():
 
     tail = request.args.get("tail", "true").lower() == "true"
 
-    # Import LOGS_DIR at runtime to allow test mocking
-    from nw_diff.logging_config import (  # pylint: disable=import-outside-toplevel
-        LOGS_DIR as current_logs_dir,
-    )
-
-    log_file_path = os.path.join(current_logs_dir, "nw-diff.log")
+    log_file_path = os.path.join(logging_config.LOGS_DIR, "nw-diff.log")
     log_entries = []
 
     try:

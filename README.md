@@ -38,6 +38,18 @@ NW-Diff is a Flask-based web application designed to retrieve, compare, and disp
   - Timeout errors are logged with the specific device and command for troubleshooting
   - This ensures maximum data collection even in unreliable network conditions
 
+- **Real-Time Session Log Streaming:**
+  Stream Netmiko session logs to the WebUI using a per-task log file and SSE:
+  - Start a streaming task with `POST /api/capture/<base>/<hostname>/stream`
+    (or `POST /api/capture_all/<base>/stream` for batch capture)
+  - Connect to `GET /api/tasks/<task_id>/stream` (Server-Sent Events) for live output
+  - Cancel tasks with `POST /api/tasks/<task_id>/cancel`
+  - Task logs default to `logs/tasks/<task_id>.log` (override with
+    `NW_DIFF_TASK_LOG_DIR`)
+  - Logs are rotated by count (`NW_DIFF_TASK_LOG_MAX_FILES`, default 200) and
+    retained for `NW_DIFF_TASK_LOG_RETENTION_SECONDS` (default 3600)
+  - `DEVICE_PASSWORD` and `password=...` strings are masked before streaming
+
 - **Configuration Backup:**
   Automatic backup creation before overwriting files to preserve historical configurations and prevent data loss:
   - Backups are created automatically before any file is overwritten during capture operations
