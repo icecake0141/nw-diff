@@ -186,6 +186,7 @@ def test_invalid_bearer_token_with_basic_auth_configured(monkeypatch) -> None:
 def test_basic_auth_not_enforced_when_no_api_token(monkeypatch) -> None:
     """Test that Basic auth is not enforced when NW_DIFF_API_TOKEN is not set."""
     monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+    monkeypatch.setenv("NW_DIFF_ENV", "development")
     monkeypatch.setenv("NW_DIFF_BASIC_USER", "admin")
     monkeypatch.setenv("NW_DIFF_BASIC_PASSWORD", "testpass")
 
@@ -193,6 +194,20 @@ def test_basic_auth_not_enforced_when_no_api_token(monkeypatch) -> None:
         # Should work without any auth header
         response = client.get("/api/logs")
         assert response.status_code != 401
+
+
+def test_auth_fails_without_api_token_in_production(monkeypatch) -> None:
+    """No-token mode should be blocked outside development."""
+    monkeypatch.delenv("NW_DIFF_API_TOKEN", raising=False)
+    monkeypatch.setenv("NW_DIFF_ENV", "production")
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+
+    with app.app.test_client() as client:
+        response = client.get("/api/logs")
+
+    assert response.status_code == 503
+    assert response.json is not None
+    assert response.json["error"] == "Server authentication is not configured"
 
 
 # --- Tests for invalid Basic auth formats ---

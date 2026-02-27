@@ -15,6 +15,7 @@ Review required for correctness, security, and licensing.
 
 import os
 import re
+import html
 import threading
 import time
 import uuid
@@ -147,10 +148,12 @@ class TaskState:  # pylint: disable=too-many-instance-attributes
     status: str = "running"
     error: Optional[str] = None
     result: Optional[dict] = None
+    reserved_hosts: set[str] = field(default_factory=set)
 
 
 TASKS: dict[str, TaskState] = {}
 TASKS_LOCK = threading.Lock()
+ACTIVE_CAPTURE_HOSTS: set[str] = set()
 
 
 def _ensure_task_log_dir() -> None:
@@ -178,7 +181,9 @@ def _rotate_task_logs() -> None:
             logger.warning("Failed to remove old task log %s: %s", old_log, exc)
 
 
-def _create_task_state(base: str, hostname: Optional[str], batch: bool) -> TaskState:
+def _create_task_state(
+    base: str, hostname: Optional[str], batch: bool, reserved_hosts: set[str]
+) -> TaskState:
     _ensure_task_log_dir()
     _rotate_task_logs()
     task_id = uuid.uuid4().hex
@@ -189,11 +194,41 @@ def _create_task_state(base: str, hostname: Optional[str], batch: bool) -> TaskS
     except OSError as exc:
         logger.warning("Unable to create task log file %s: %s", log_path, exc)
     task_state = TaskState(
-        task_id=task_id, log_path=log_path, base=base, hostname=hostname, batch=batch
+        task_id=task_id,
+        log_path=log_path,
+        base=base,
+        hostname=hostname,
+        batch=batch,
+        reserved_hosts=reserved_hosts,
     )
+    acquired, conflicts = _reserve_capture_hosts(reserved_hosts)
+    if not acquired:
+        conflict_hosts = ", ".join(sorted(conflicts))
+        raise ValueError(f"Capture already running for host(s): {conflict_hosts}")
     with TASKS_LOCK:
         TASKS[task_id] = task_state
     return task_state
+
+
+def _reserve_capture_hosts(hosts: set[str]) -> tuple[bool, set[str]]:
+    """Reserve hostnames for capture, preventing same-host concurrent runs."""
+    normalized_hosts = {host for host in hosts if host}
+    if not normalized_hosts:
+        return True, set()
+    with TASKS_LOCK:
+        conflicts = normalized_hosts.intersection(ACTIVE_CAPTURE_HOSTS)
+        if conflicts:
+            return False, conflicts
+        ACTIVE_CAPTURE_HOSTS.update(normalized_hosts)
+        return True, set()
+
+
+def _release_capture_hosts(hosts: set[str]) -> None:
+    """Release reserved hostnames after capture completion/cancellation."""
+    if not hosts:
+        return
+    with TASKS_LOCK:
+        ACTIVE_CAPTURE_HOSTS.difference_update(hosts)
 
 
 def _get_task_state(task_id: str) -> Optional[TaskState]:
@@ -280,12 +315,21 @@ def _perform_capture_device(
         task_state.error = "Task cancelled before connection."
         return CaptureResult(error=task_state.error, status_code=409)
 
+    device_password = os.environ.get("DEVICE_PASSWORD")
+    if not device_password:
+        message = "DEVICE_PASSWORD environment variable is not set."
+        logger.error(message)
+        if task_state:
+            task_state.status = "failed"
+            task_state.error = message
+        return CaptureResult(error=message, status_code=500)
+
     device = {
         "device_type": device_info["model"],
         "host": device_info["ip"],
         "username": device_info["username"],
-        "port": device_info["port"],
-        "password": os.environ.get("DEVICE_PASSWORD", "your_password"),
+        "port": int(device_info["port"]),
+        "password": device_password,
     }
     if task_state:
         device["session_log"] = str(task_state.log_path)
@@ -300,6 +344,7 @@ def _perform_capture_device(
     failed_commands: list[tuple[str, str]] = []
     successful_commands: list[str] = []
 
+    connection = None
     try:
         connection = ConnectHandler(**device)
         logger.debug("Connection established to %s", hostname)
@@ -334,7 +379,6 @@ def _perform_capture_device(
                 # Continue with next command instead of failing the entire session
                 continue
 
-        connection.disconnect()
         if task_state and task_state.status == "cancelled":
             logger.info("Capture cancelled for %s", hostname)
             return CaptureResult(
@@ -365,6 +409,12 @@ def _perform_capture_device(
             task_state.status = "failed"
             task_state.error = str(exc)
         return CaptureResult(error=str(exc), status_code=500)
+    finally:
+        if connection is not None:
+            try:
+                connection.disconnect()
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                logger.warning("Failed to disconnect from %s cleanly: %s", hostname, exc)
 
 
 def _perform_capture_all(
@@ -379,6 +429,20 @@ def _perform_capture_all(
     timed_out_commands: list[tuple[str, str]] = []
 
     logger.info("Starting capture for %d device(s)", total_hosts)
+
+    device_password = os.environ.get("DEVICE_PASSWORD")
+    if not device_password:
+        message = "DEVICE_PASSWORD environment variable is not set."
+        logger.error(message)
+        if task_state:
+            task_state.status = "failed"
+            task_state.error = message
+        return CaptureAllResult(
+            total_hosts=total_hosts,
+            failure_count=total_hosts,
+            error=message,
+            status_code=500,
+        )
 
     for row in rows:
         if task_state and task_state.cancel_event.is_set():
@@ -403,8 +467,8 @@ def _perform_capture_all(
             "device_type": device_info["model"],
             "host": device_info["ip"],
             "username": device_info["username"],
-            "port": device_info["port"],
-            "password": os.environ.get("DEVICE_PASSWORD", "your_password"),
+            "port": int(device_info["port"]),
+            "password": device_password,
         }
         if task_state:
             device["session_log"] = str(task_state.log_path)
@@ -416,6 +480,7 @@ def _perform_capture_all(
             device_info["model"],
         )
 
+        connection = None
         try:
             connection = ConnectHandler(**device)
             logger.debug("Connection established to %s", hostname)
@@ -453,7 +518,6 @@ def _perform_capture_all(
                     # Continue with next command instead of failing the entire session
                     continue
 
-            connection.disconnect()
             if task_state and task_state.status == "cancelled":
                 break
             logger.info(
@@ -474,6 +538,14 @@ def _perform_capture_all(
                 filepath = get_file_path(hostname, command, base)
                 create_unavailable_marker(filepath, "connection_failed")
             # Continue with next device
+        finally:
+            if connection is not None:
+                try:
+                    connection.disconnect()
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    logger.warning(
+                        "Failed to disconnect from %s cleanly: %s", hostname, exc
+                    )
         if task_state and task_state.status == "cancelled":
             break
 
@@ -518,7 +590,20 @@ def capture(base, hostname):
         logger.error("Invalid hostname for capture: %s", hostname)
         return "Invalid hostname", 400
 
-    capture_result = _perform_capture_device(base, hostname)
+    acquired, conflicts = _reserve_capture_hosts({hostname})
+    if not acquired:
+        conflict_hosts = ", ".join(sorted(conflicts))
+        logger.warning("Capture rejected due to active capture on host(s): %s", conflict_hosts)
+        flash(
+            f"Capture rejected. Already running for host(s): {conflict_hosts}",
+            "warning",
+        )
+        return redirect(url_for("host_list"))
+
+    try:
+        capture_result = _perform_capture_device(base, hostname)
+    finally:
+        _release_capture_hosts({hostname})
     if capture_result.error and capture_result.status_code == 404:
         return capture_result.error, 404
 
@@ -558,7 +643,23 @@ def capture_all(base):
         logger.error("Invalid capture type requested: %s", base)
         return "Invalid capture type", 400
 
-    capture_result = _perform_capture_all(base)
+    hosts_to_capture = {row["host"] for row in read_hosts_csv()}
+    acquired, conflicts = _reserve_capture_hosts(hosts_to_capture)
+    if not acquired:
+        conflict_hosts = ", ".join(sorted(conflicts))
+        logger.warning(
+            "Batch capture rejected due to active capture on host(s): %s", conflict_hosts
+        )
+        flash(
+            f"Batch capture rejected. Already running for host(s): {conflict_hosts}",
+            "warning",
+        )
+        return redirect(url_for("host_list"))
+
+    try:
+        capture_result = _perform_capture_all(base)
+    finally:
+        _release_capture_hosts(hosts_to_capture)
 
     logger.info(
         "Capture all completed: %d successful, %d failed, %d total, "
@@ -608,29 +709,36 @@ def _start_task_thread(
     *args,
 ) -> None:
     def _run() -> None:
-        result = target(*args, task_state=task_state)
-        if isinstance(result, CaptureResult):
-            task_state.result = {
-                "successful_commands": result.successful_commands,
-                "failed_commands": result.failed_commands,
-                "error": result.error,
-            }
-            if result.error and task_state.status == "running":
-                task_state.status = "failed"
-        if isinstance(result, CaptureAllResult):
-            task_state.result = {
-                "success_count": result.success_count,
-                "failure_count": result.failure_count,
-                "timeout_count": result.timeout_count,
-                "total_hosts": result.total_hosts,
-                "failed_hosts": result.failed_hosts,
-                "timed_out_commands": result.timed_out_commands,
-                "error": result.error,
-            }
-            if result.error and task_state.status == "running":
-                task_state.status = "failed"
-        task_state.done_event.set()
-        _schedule_task_cleanup(task_state.task_id)
+        try:
+            result = target(*args, task_state=task_state)
+            if isinstance(result, CaptureResult):
+                task_state.result = {
+                    "successful_commands": result.successful_commands,
+                    "failed_commands": result.failed_commands,
+                    "error": result.error,
+                }
+                if result.error and task_state.status == "running":
+                    task_state.status = "failed"
+            if isinstance(result, CaptureAllResult):
+                task_state.result = {
+                    "success_count": result.success_count,
+                    "failure_count": result.failure_count,
+                    "timeout_count": result.timeout_count,
+                    "total_hosts": result.total_hosts,
+                    "failed_hosts": result.failed_hosts,
+                    "timed_out_commands": result.timed_out_commands,
+                    "error": result.error,
+                }
+                if result.error and task_state.status == "running":
+                    task_state.status = "failed"
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.error("Unexpected error in capture task %s: %s", task_state.task_id, exc)
+            task_state.status = "failed"
+            task_state.error = str(exc)
+        finally:
+            _release_capture_hosts(task_state.reserved_hosts)
+            task_state.done_event.set()
+            _schedule_task_cleanup(task_state.task_id)
 
     threading.Thread(target=_run, daemon=True).start()
 
@@ -673,7 +781,10 @@ def capture_stream(base, hostname):
         logger.error("Invalid hostname for capture: %s", hostname)
         return jsonify({"error": "Invalid hostname"}), 400
 
-    task_state = _create_task_state(base, hostname, batch=False)
+    try:
+        task_state = _create_task_state(base, hostname, batch=False, reserved_hosts={hostname})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 409
     _start_task_thread(task_state, _perform_capture_device, base, hostname)
     return _task_response(task_state), 202
 
@@ -688,7 +799,13 @@ def capture_all_stream(base):
         logger.error("Invalid capture type requested: %s", base)
         return jsonify({"error": "Invalid capture type"}), 400
 
-    task_state = _create_task_state(base, hostname=None, batch=True)
+    hosts_to_capture = {row["host"] for row in read_hosts_csv()}
+    try:
+        task_state = _create_task_state(
+            base, hostname=None, batch=True, reserved_hosts=hosts_to_capture
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 409
     _start_task_thread(task_state, _perform_capture_all, base)
     return _task_response(task_state), 202
 
@@ -1041,18 +1158,21 @@ def export_diff(hostname):
     bootstrap_css = (
         "https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
     )
+    display_hostname = html.escape(hostname)
+    display_ip = html.escape(str(device_info["ip"]))
+
     html_parts = [
         "<!DOCTYPE html>",
         "<html lang='en'>",
         "<head>",
         "<meta charset='UTF-8'>",
-        f"<title>Diff Export - {hostname}</title>",
+        f"<title>Diff Export - {display_hostname}</title>",
         f"<link rel='stylesheet' href='{bootstrap_css}'>",
         "</head>",
         "<body>",
         "<div class='container mt-4'>",
-        f"<h1>Diff Export for Host: {hostname}</h1>",
-        f"<p><strong>IP Address:</strong> {device_info['ip']}</p>",
+        f"<h1>Diff Export for Host: {display_hostname}</h1>",
+        f"<p><strong>IP Address:</strong> {display_ip}</p>",
         "<hr>",
     ]
 
@@ -1064,6 +1184,7 @@ def export_diff(hostname):
         origin_status, origin_data = get_file_status(origin_path)
         dest_status, dest_data = get_file_status(dest_path)
 
+        display_command = html.escape(command)
         if origin_status == "available" and dest_status == "available":
             try:
                 origin_mtime = get_file_mtime(origin_path)
@@ -1073,7 +1194,7 @@ def export_diff(hostname):
                 html_parts.append("<div class='card mb-3'>")
                 cmd_header = (
                     f"<div class='card-header'>"
-                    f"<strong>Command:</strong> {command}</div>"
+                    f"<strong>Command:</strong> {display_command}</div>"
                 )
                 html_parts.append(cmd_header)
                 html_parts.append("<div class='card-body'>")
@@ -1105,12 +1226,12 @@ def export_diff(hostname):
                 html_parts.append("<div class='card mb-3'>")
                 cmd_header = (
                     f"<div class='card-header'>"
-                    f"<strong>Command:</strong> {command}</div>"
+                    f"<strong>Command:</strong> {display_command}</div>"
                 )
                 html_parts.append(cmd_header)
                 html_parts.append("<div class='card-body'>")
                 html_parts.append(
-                    f"<p class='text-danger'>Error reading files: {exc}</p>"
+                    f"<p class='text-danger'>Error reading files: {html.escape(str(exc))}</p>"
                 )
                 html_parts.append("</div></div>")
         else:
@@ -1118,7 +1239,7 @@ def export_diff(hostname):
             html_parts.append("<div class='card mb-3'>")
             cmd_header = (
                 f"<div class='card-header'>"
-                f"<strong>Command:</strong> {command}</div>"
+                f"<strong>Command:</strong> {display_command}</div>"
             )
             html_parts.append(cmd_header)
             html_parts.append("<div class='card-body'>")

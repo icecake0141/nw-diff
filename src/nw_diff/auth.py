@@ -25,6 +25,19 @@ from werkzeug.security import check_password_hash
 logger = logging.getLogger("nw-diff")
 
 
+def _is_development_environment() -> bool:
+    """Return True when running in an explicitly development-like environment."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return True
+    env = (
+        os.environ.get("NW_DIFF_ENV")
+        or os.environ.get("APP_ENV")
+        or os.environ.get("FLASK_ENV")
+        or ""
+    )
+    return env.lower() in {"dev", "development", "local", "test"}
+
+
 # pylint: disable=too-many-return-statements
 def _verify_basic_auth(auth_header: str) -> bool:
     """
@@ -110,13 +123,21 @@ def require_api_token(f):
     def decorated_function(*args, **kwargs):
         expected_token = os.environ.get("NW_DIFF_API_TOKEN")
 
-        # If no token is configured, authentication is not enforced
+        # If no token is configured, only allow bypass in development environments.
         if not expected_token:
-            logger.warning(
-                "NW_DIFF_API_TOKEN not set - authentication not enforced for %s",
+            if _is_development_environment():
+                logger.warning(
+                    "NW_DIFF_API_TOKEN not set in development mode - "
+                    "authentication bypassed for %s",
+                    request.path,
+                )
+                return f(*args, **kwargs)
+            logger.error(
+                "NW_DIFF_API_TOKEN not set in non-development environment - "
+                "blocking access to %s",
                 request.path,
             )
-            return f(*args, **kwargs)
+            return jsonify({"error": "Server authentication is not configured"}), 503
 
         # Check Authorization header
         auth_header = request.headers.get("Authorization")

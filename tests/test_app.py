@@ -550,6 +550,50 @@ def test_read_hosts_csv_handles_file_not_found(tmp_path: Path, monkeypatch) -> N
     assert not rows
 
 
+def test_read_hosts_csv_filters_invalid_rows(tmp_path: Path, monkeypatch) -> None:
+    """Invalid rows should be skipped while valid rows are retained."""
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        (
+            "host,ip,username,port,model\n"
+            "router1,10.0.0.1,admin,22,cisco\n"
+            "bad-host,10.0.0.999,admin,22,cisco\n"
+            "router2,10.0.0.2,admin,70000,cisco\n"
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+
+    rows = devices.read_hosts_csv()
+
+    assert len(rows) == 1
+    assert rows[0]["host"] == "router1"
+
+
+def test_capture_stream_rejects_same_host_concurrent_run(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Streaming capture should return 409 when same host is already reserved."""
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+
+    acquired, _ = app._reserve_capture_hosts({"router1"})  # pylint: disable=protected-access
+    assert acquired is True
+    try:
+        with app.app.test_client() as client:
+            response = client.post("/api/capture/origin/router1/stream")
+        assert response.status_code == 409
+        json_data = response.get_json()
+        assert json_data is not None
+        assert "already running" in json_data["error"].lower()
+    finally:
+        app._release_capture_hosts({"router1"})  # pylint: disable=protected-access
+
+
 def test_debug_mode_disabled_by_default(monkeypatch) -> None:
     """Test that Flask debug mode is disabled by default."""
     # Ensure APP_DEBUG is not set
@@ -1931,7 +1975,7 @@ def test_task_stream_masks_password(tmp_path: Path, monkeypatch) -> None:
     app.TASKS.clear()
 
     task_state = app._create_task_state(  # pylint: disable=protected-access
-        "origin", "router1", batch=False
+        "origin", "router1", batch=False, reserved_hosts={"router1"}
     )
     task_state.log_path.write_text("password=secret\nline2\n", encoding="utf-8")
     task_state.status = "completed"
@@ -1943,6 +1987,7 @@ def test_task_stream_masks_password(tmp_path: Path, monkeypatch) -> None:
 
     assert "secret" not in data
     assert "password=***" in data
+    app._release_capture_hosts({"router1"})  # pylint: disable=protected-access
 
 
 def test_task_cancel_sets_cancel_flag(tmp_path: Path, monkeypatch) -> None:
@@ -1956,7 +2001,7 @@ def test_task_cancel_sets_cancel_flag(tmp_path: Path, monkeypatch) -> None:
     app.TASKS.clear()
 
     task_state = app._create_task_state(  # pylint: disable=protected-access
-        "origin", "router1", batch=False
+        "origin", "router1", batch=False, reserved_hosts={"router1"}
     )
 
     with app.app.test_client() as client:
@@ -1964,6 +2009,7 @@ def test_task_cancel_sets_cancel_flag(tmp_path: Path, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert task_state.cancel_event.is_set()
+    app._release_capture_hosts({"router1"})  # pylint: disable=protected-access
 
 
 # --- Tests for marker file functionality ---
