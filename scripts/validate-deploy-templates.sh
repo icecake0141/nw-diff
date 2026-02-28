@@ -35,16 +35,42 @@ validate_nginx() {
     return
   fi
 
+  local tmp_dir
   local tmp_v2_conf
   local tmp_cutover_conf
-  tmp_v2_conf="$(mktemp /tmp/nw-diff-nginx-v2-XXXXXX.conf)"
-  tmp_cutover_conf="$(mktemp /tmp/nw-diff-nginx-cutover-XXXXXX.conf)"
+  local tmp_v2_template
+  local tmp_cutover_template
+  tmp_dir="$(mktemp -d /tmp/nw-diff-nginx-validate-XXXXXX)"
+  tmp_v2_conf="${tmp_dir}/nginx-v2.conf"
+  tmp_cutover_conf="${tmp_dir}/nginx-cutover.conf"
+  tmp_v2_template="${tmp_dir}/nginx-v2.conf.example"
+  tmp_cutover_template="${tmp_dir}/nginx-v1-v2-cutover.conf.example"
+
+  cp "${ROOT_DIR}/docs/deploy/nginx-v2.conf.example" "${tmp_v2_template}"
+  cp "${ROOT_DIR}/docs/deploy/nginx-v1-v2-cutover.conf.example" "${tmp_cutover_template}"
+
+  # Validate syntax without requiring real TLS cert/key files on CI runners.
+  sed -i \
+    -e 's/listen 443 ssl http2;/listen 443;/' \
+    -e '/^[[:space:]]*ssl_certificate[[:space:]]/d' \
+    -e '/^[[:space:]]*ssl_certificate_key[[:space:]]/d' \
+    -e '/^[[:space:]]*ssl_protocols[[:space:]]/d' \
+    -e '/^[[:space:]]*ssl_prefer_server_ciphers[[:space:]]/d' \
+    "${tmp_v2_template}"
+  sed -i \
+    -e 's/listen 443 ssl http2;/listen 443;/' \
+    -e '/^[[:space:]]*ssl_certificate[[:space:]]/d' \
+    -e '/^[[:space:]]*ssl_certificate_key[[:space:]]/d' \
+    -e '/^[[:space:]]*ssl_protocols[[:space:]]/d' \
+    -e '/^[[:space:]]*ssl_prefer_server_ciphers[[:space:]]/d' \
+    "${tmp_cutover_template}"
+
   cat >"${tmp_v2_conf}" <<EOF
 pid /tmp/nginx.pid;
 error_log /tmp/nginx-error.log;
 events {}
 http {
-  include ${ROOT_DIR}/docs/deploy/nginx-v2.conf.example;
+  include ${tmp_v2_template};
 }
 EOF
 
@@ -53,23 +79,23 @@ pid /tmp/nginx.pid;
 error_log /tmp/nginx-error.log;
 events {}
 http {
-  include ${ROOT_DIR}/docs/deploy/nginx-v1-v2-cutover.conf.example;
+  include ${tmp_cutover_template};
 }
 EOF
 
   if ! nginx -t -c "${tmp_v2_conf}"; then
-    rm -f "${tmp_v2_conf}" "${tmp_cutover_conf}"
+    rm -rf "${tmp_dir}"
     ERRORS+=("nginx-v2.conf.example failed syntax check")
     HAS_ERROR=1
     return 1
   fi
   if ! nginx -t -c "${tmp_cutover_conf}"; then
-    rm -f "${tmp_v2_conf}" "${tmp_cutover_conf}"
+    rm -rf "${tmp_dir}"
     ERRORS+=("nginx-v1-v2-cutover.conf.example failed syntax check")
     HAS_ERROR=1
     return 1
   fi
-  rm -f "${tmp_v2_conf}" "${tmp_cutover_conf}"
+  rm -rf "${tmp_dir}"
   CHECKS+=("nginx templates validated")
   echo "OK: nginx templates validated"
 }
@@ -86,6 +112,10 @@ validate_systemd() {
   tmp_worker_service="$(mktemp /tmp/nw-diff-v2-worker-XXXXXX.service)"
   cp "${ROOT_DIR}/docs/deploy/nw-diff-v2-api.service.example" "${tmp_api_service}"
   cp "${ROOT_DIR}/docs/deploy/nw-diff-v2-worker.service.example" "${tmp_worker_service}"
+
+  # Validate unit syntax without requiring deployment-specific virtualenv paths.
+  sed -i -E 's|^ExecStart=.*|ExecStart=/usr/bin/true|' "${tmp_api_service}"
+  sed -i -E 's|^ExecStart=.*|ExecStart=/usr/bin/true|' "${tmp_worker_service}"
 
   if ! systemd-analyze verify \
     "${tmp_api_service}" \
