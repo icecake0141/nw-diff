@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt -r requirements-dev.txt
+          python -m pip install -r requirements.txt -r requirements-dev.txt -r requirements-v2.txt
 
       - name: Security audit (pip-audit)
         run: pip-audit -r requirements.txt -r requirements-dev.txt
@@ -75,7 +75,7 @@ jobs:
           python scripts/generate-v2-contract.py --output .artifacts/v2_contract_current.json
 
       - name: Summarize v2 contract snapshot diff
-        if: always()
+        if: always() && hashFiles('.artifacts/v2_contract_current.json') != ''
         run: |
           python scripts/diff-v2-contract.py \
             --baseline docs/contract/v2.json \
@@ -106,14 +106,14 @@ jobs:
           ./scripts/check-v2-contract.sh
 
       - name: V2 readiness check
-        if: always()
+        if: always() && hashFiles('.artifacts/v2_readiness.json') != ''
         run: |
           python scripts/check-v2-readiness.py \
             --input-file .artifacts/v2_readiness.json \
             --summary-path "${GITHUB_STEP_SUMMARY}"
 
       - name: V2 locks check
-        if: always()
+        if: always() && hashFiles('.artifacts/v2_locks.json') != ''
         run: |
           python scripts/check-v2-locks.py \
             --input-file .artifacts/v2_locks.json \
@@ -121,7 +121,7 @@ jobs:
             --summary-path "${GITHUB_STEP_SUMMARY}"
 
       - name: Evaluate v2 cutover decision
-        if: always()
+        if: always() && hashFiles('.artifacts/v2_readiness.json') != '' && hashFiles('.artifacts/v2_contract_diff.json') != '' && hashFiles('.artifacts/deploy_template_validation.json') != ''
         env:
           V2_CUTOVER_MAX_QUEUED: "0"
           V2_CUTOVER_MAX_RUNNING: "5"
@@ -136,7 +136,7 @@ jobs:
             --json-output .artifacts/v2_cutover_eval.json
 
       - name: Render v2 cutover notification
-        if: always()
+        if: always() && hashFiles('.artifacts/v2_cutover_eval.json') != ''
         run: |
           python scripts/render-v2-cutover-message.py \
             --input .artifacts/v2_cutover_eval.json \

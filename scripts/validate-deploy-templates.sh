@@ -35,16 +35,41 @@ validate_nginx() {
     return
   fi
 
-  if ! nginx -t -g "pid /tmp/nginx.pid; error_log /tmp/nginx-error.log; events{} http{ include ${ROOT_DIR}/docs/deploy/nginx-v2.conf.example; }"; then
+  local tmp_v2_conf
+  local tmp_cutover_conf
+  tmp_v2_conf="$(mktemp /tmp/nw-diff-nginx-v2-XXXXXX.conf)"
+  tmp_cutover_conf="$(mktemp /tmp/nw-diff-nginx-cutover-XXXXXX.conf)"
+  cat >"${tmp_v2_conf}" <<EOF
+pid /tmp/nginx.pid;
+error_log /tmp/nginx-error.log;
+events {}
+http {
+  include ${ROOT_DIR}/docs/deploy/nginx-v2.conf.example;
+}
+EOF
+
+  cat >"${tmp_cutover_conf}" <<EOF
+pid /tmp/nginx.pid;
+error_log /tmp/nginx-error.log;
+events {}
+http {
+  include ${ROOT_DIR}/docs/deploy/nginx-v1-v2-cutover.conf.example;
+}
+EOF
+
+  if ! nginx -t -c "${tmp_v2_conf}"; then
+    rm -f "${tmp_v2_conf}" "${tmp_cutover_conf}"
     ERRORS+=("nginx-v2.conf.example failed syntax check")
     HAS_ERROR=1
     return 1
   fi
-  if ! nginx -t -g "pid /tmp/nginx.pid; error_log /tmp/nginx-error.log; events{} http{ include ${ROOT_DIR}/docs/deploy/nginx-v1-v2-cutover.conf.example; }"; then
+  if ! nginx -t -c "${tmp_cutover_conf}"; then
+    rm -f "${tmp_v2_conf}" "${tmp_cutover_conf}"
     ERRORS+=("nginx-v1-v2-cutover.conf.example failed syntax check")
     HAS_ERROR=1
     return 1
   fi
+  rm -f "${tmp_v2_conf}" "${tmp_cutover_conf}"
   CHECKS+=("nginx templates validated")
   echo "OK: nginx templates validated"
 }
@@ -55,13 +80,22 @@ validate_systemd() {
     return
   fi
 
+  local tmp_api_service
+  local tmp_worker_service
+  tmp_api_service="$(mktemp /tmp/nw-diff-v2-api-XXXXXX.service)"
+  tmp_worker_service="$(mktemp /tmp/nw-diff-v2-worker-XXXXXX.service)"
+  cp "${ROOT_DIR}/docs/deploy/nw-diff-v2-api.service.example" "${tmp_api_service}"
+  cp "${ROOT_DIR}/docs/deploy/nw-diff-v2-worker.service.example" "${tmp_worker_service}"
+
   if ! systemd-analyze verify \
-    "${ROOT_DIR}/docs/deploy/nw-diff-v2-api.service.example" \
-    "${ROOT_DIR}/docs/deploy/nw-diff-v2-worker.service.example"; then
+    "${tmp_api_service}" \
+    "${tmp_worker_service}"; then
+    rm -f "${tmp_api_service}" "${tmp_worker_service}"
     ERRORS+=("systemd unit templates failed validation")
     HAS_ERROR=1
     return 1
   fi
+  rm -f "${tmp_api_service}" "${tmp_worker_service}"
   CHECKS+=("systemd unit templates validated")
   echo "OK: systemd unit templates validated"
 }
