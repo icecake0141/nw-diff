@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NW-Diff v2</title>
+  <style>
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, #f6f8fb 0%, #ebf0f7 100%);
+      color: #1f2937;
+      margin: 0;
+      padding: 24px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border: 1px solid #d9e2ef;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+    }
+    h1 { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; border-bottom: 1px solid #e5e7eb; padding: 8px; }
+    .mini-table th, .mini-table td { padding: 6px; font-size: 12px; }
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1f2937;
+      background: #dbeafe;
+    }
+    .status-running { background: #fde68a; }
+    .status-completed { background: #bbf7d0; }
+    .status-failed { background: #fecaca; }
+    .status-cancelled { background: #e5e7eb; }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: #0a5bdc;
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #2563eb; }
+    button.warn { background: #d97706; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .task-box { font-family: Menlo, Monaco, monospace; white-space: pre-wrap; font-size: 12px; }
+    input[type="text"] {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 8px;
+      width: 240px;
+    }
+    select {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 8px;
+      width: 180px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>NW-Diff v2 Control Panel</h1>
+      <p>Hosts loaded: <strong>{{ hosts|length }}</strong></p>
+      <div class="row">
+        <button id="captureAllOrigin">Capture All Origin</button>
+        <button id="captureAllDest" class="secondary">Capture All Dest</button>
+        <button class="secondary" onclick="openLogsPage()">Logs</button>
+        <button class="secondary" onclick="loadWorkerStatus()">Worker Status</button>
+        <button class="secondary" onclick="loadReadinessStatus()">Readiness</button>
+        <button class="secondary" onclick="loadContractStatus()">Contract Check</button>
+      </div>
+      <div id="workerStatus" class="task-box" style="margin-top:8px;"></div>
+      <div id="readinessStatus" class="task-box" style="margin-top:8px;"></div>
+      <div id="contractStatus" class="task-box" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Lock Status</h2>
+      <div class="row">
+        <input id="lockReleaseHosts" type="text" placeholder="host1,host2" style="width:240px;">
+        <button class="warn" onclick="releaseLocks()">Release Hosts</button>
+        <button class="secondary" onclick="loadLockStatus()">Reload Locks</button>
+        <button class="warn" onclick="cleanupLocks()">Cleanup Stale Locks</button>
+      </div>
+      <div id="lockStatus" class="task-box" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Hosts</h2>
+      <table>
+        <thead>
+          <tr><th>Host</th><th>IP</th><th>Model</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for h in hosts %}
+          <tr>
+            <td>{{ h.host }}</td>
+            <td>{{ h.ip }}</td>
+            <td>{{ h.model }}</td>
+            <td>
+              <div class="row">
+                <button onclick="captureSingle('{{ h.host }}', 'origin')">Origin</button>
+                <button class="secondary" onclick="captureSingle('{{ h.host }}', 'dest')">Dest</button>
+                <button class="secondary" onclick="openHostDetail('{{ h.host }}')">Detail</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Host Diff Summary</h2>
+      <div class="row" style="margin-bottom:8px;">
+        <input id="summaryHostSearch" type="text" placeholder="host contains..." style="width:220px;">
+        <input id="summaryLimit" type="text" value="50" style="width:80px;">
+        <label style="font-size:12px; display:flex; align-items:center; gap:4px;">
+          <input id="summaryPrioritizeFailed" type="checkbox" checked />
+          failed first
+        </label>
+        <button onclick="loadHostSummary()">Reload Summary</button>
+      </div>
+      <div id="hostSummaryView" class="task-box"></div>
+      <div id="hostSummaryTableWrap"></div>
+    </div>
+
+    <div class="card">
+      <h2>Task Inspector</h2>
+      <div class="row">
+        <input id="taskId" type="text" placeholder="Task ID">
+        <button class="warn" onclick="checkTask()">Check</button>
+        <button class="secondary" onclick="openStream()">Open Stream</button>
+        <button class="warn" onclick="cancelTask()">Cancel Task</button>
+        <button class="secondary" onclick="startLiveStream()">Live Stream</button>
+        <button onclick="stopLiveStream()">Stop Live</button>
+        <button onclick="loadRecentTasks()">Recent Tasks</button>
+      </div>
+      <div class="row" style="margin-top: 8px;">
+        <select id="statusFilter">
+          <option value="">All Statuses</option>
+          <option value="queued">Queued</option>
+          <option value="running">Running</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <input id="hostSearch" type="text" placeholder="host contains..." style="width:180px;" />
+        <label style="font-size:12px; display:flex; align-items:center; gap:4px;">
+          <input id="runningOnly" type="checkbox" />
+          running only
+        </label>
+        <input id="refreshSec" type="text" value="5" style="width:80px;" />
+        <button onclick="startAutoRefresh()">Start Auto Refresh</button>
+        <button class="warn" onclick="stopAutoRefresh()">Stop Auto Refresh</button>
+        <input id="tailLines" type="text" value="20" style="width:80px;" />
+      </div>
+      <div id="taskQuickSummary" class="task-box" style="margin-top:8px;"></div>
+      <div id="taskView" class="task-box"></div>
+      <div id="taskListView" class="task-box"></div>
+      <div id="taskTableWrap"></div>
+      <div id="streamView" class="task-box"></div>
+    </div>
+
+    <div class="card">
+      <h2>Export</h2>
+      <div class="row">
+        <input id="exportHost" type="text" placeholder="hostname">
+        <button onclick="openExportJson()">JSON</button>
+        <button onclick="loadExportDiffJson()">Diff JSON</button>
+        <button class="secondary" onclick="openExportHtml()">HTML</button>
+      </div>
+      <div id="exportDiffView" class="task-box" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Compare</h2>
+      <div class="row" style="margin-bottom:8px;">
+        <input id="diffHost" type="text" placeholder="hostname">
+        <select id="diffView">
+          <option value="inline">inline</option>
+          <option value="sidebyside">sidebyside</option>
+        </select>
+        <button onclick="runHostDiff()">Host Diff (origin vs dest)</button>
+      </div>
+      <div class="row" style="margin-bottom:8px;">
+        <input id="cmpHost1" type="text" placeholder="host1">
+        <input id="cmpHost2" type="text" placeholder="host2">
+        <select id="cmpBase">
+          <option value="origin">origin</option>
+          <option value="dest">dest</option>
+        </select>
+        <input id="cmpCommand" type="text" placeholder="show version">
+        <select id="cmpView">
+          <option value="sidebyside">sidebyside</option>
+          <option value="inline">inline</option>
+        </select>
+        <button class="secondary" onclick="runFileCompare()">Compare Files</button>
+      </div>
+      <div id="compareView" class="task-box"></div>
+      <div id="compareSummary" class="task-box" style="margin-top:8px;"></div>
+      <div id="compareHtml" style="overflow:auto; max-height:360px; border-top:1px solid #e5e7eb; margin-top:8px; padding-top:8px;"></div>
+    </div>
+  </div>
+
+  <script>
+    let streamSource = null;
+    let refreshTimer = null;
+    let taskPageOffset = 0;
+    const taskPageSize = 10;
+
+    async function api(path, method = 'GET', body = null) {
+      const options = { method, headers: {} };
+      if (body) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+      }
+      const res = await fetch(path, options);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+      return data;
+    }
+
+    async function captureSingle(host, base) {
+      try {
+        const data = await api('/api/v2/captures', 'POST', { mode: 'single', base, hosts: [host] });
+        document.getElementById('taskId').value = data.task_id;
+        await checkTask();
+      } catch (err) {
+        alert('Capture failed: ' + err.message);
+      }
+    }
+
+    async function captureAll(base) {
+      try {
+        const data = await api('/api/v2/captures', 'POST', { mode: 'batch', base, hosts: [] });
+        document.getElementById('taskId').value = data.task_id;
+        await checkTask();
+      } catch (err) {
+        alert('Capture-all failed: ' + err.message);
+      }
+    }
+
+    async function checkTask() {
+      const taskId = document.getElementById('taskId').value.trim();
+      if (!taskId) return;
+      try {
+        const data = await api('/api/v2/tasks/' + taskId);
+        document.getElementById('taskQuickSummary').textContent = [
+          'task=' + data.task_id,
+          'status=' + data.status,
+          'mode=' + data.mode,
+          'base=' + data.base,
+          'hosts=' + (data.hosts || []).join(','),
+          'cancel_requested=' + Boolean(data.cancel_requested)
+        ].join(' | ');
+        document.getElementById('taskView').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById('taskQuickSummary').textContent = '';
+        document.getElementById('taskView').textContent = err.message;
+      }
+    }
+
+    async function loadWorkerStatus() {
+      try {
+        const data = await api('/api/v2/system/worker');
+        document.getElementById('workerStatus').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById('workerStatus').textContent = err.message;
+      }
+    }
+
+    async function loadContractStatus() {
+      try {
+        const data = await api('/api/v2/system/contract');
+        document.getElementById('contractStatus').textContent = JSON.stringify(
+          {
+            status: data.status,
+            required_count: data.required_count,
+            actual_count: data.actual_count,
+            missing: data.missing.length,
+            extra: data.extra.length
+          },
+          null,
+          2
+        );
+      } catch (err) {
+        document.getElementById('contractStatus').textContent = err.message;
+      }
+    }
+
+    async function loadReadinessStatus() {
+      try {
+        const data = await api('/api/v2/system/readiness');
+        document.getElementById('readinessStatus').textContent = JSON.stringify(
+          {
+            status: data.status,
+            counts: data.counts,
+            checks: data.checks
+          },
+          null,
+          2
+        );
+      } catch (err) {
+        document.getElementById('readinessStatus').textContent = err.message;
+      }
+    }
+
+    async function loadLockStatus() {
+      try {
+        const data = await api('/api/v2/system/locks');
+        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById('lockStatus').textContent = err.message;
+      }
+    }
+
+    async function cleanupLocks() {
+      try {
+        const data = await api('/api/v2/system/locks/cleanup', 'POST');
+        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+        await loadWorkerStatus();
+        await loadReadinessStatus();
+      } catch (err) {
+        alert('Lock cleanup failed: ' + err.message);
+      }
+    }
+
+    async function releaseLocks() {
+      const raw = document.getElementById('lockReleaseHosts').value.trim();
+      const hosts = raw
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+      try {
+        const data = await api('/api/v2/system/locks/release', 'POST', { hosts });
+        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+        await loadWorkerStatus();
+        await loadReadinessStatus();
+      } catch (err) {
+        alert('Lock release failed: ' + err.message);
+      }
+    }
+
+    async function loadRecentTasks() {
+      try {
+        const status = document.getElementById('statusFilter').value;
+        const runningOnly = document.getElementById('runningOnly').checked;
+        const hostSearch = document.getElementById('hostSearch').value.trim();
+        const parts = ['limit=' + taskPageSize, 'offset=' + taskPageOffset];
+        if (status) parts.push('status_filter=' + encodeURIComponent(status));
+        if (runningOnly) parts.push('running_only=true');
+        if (hostSearch) parts.push('host_contains=' + encodeURIComponent(hostSearch));
+        const data = await api('/api/v2/tasks?' + parts.join('&'));
+        document.getElementById('taskListView').textContent = JSON.stringify(data, null, 2);
+        renderTaskTable(data);
+      } catch (err) {
+        document.getElementById('taskListView').textContent = err.message;
+        document.getElementById('taskTableWrap').innerHTML = '';
+      }
+    }
+
+    async function loadHostSummary() {
+      const hostSearch = document.getElementById('summaryHostSearch').value.trim();
+      const limitValue = Number(document.getElementById('summaryLimit').value || '50');
+      const prioritizeFailed = document.getElementById('summaryPrioritizeFailed').checked;
+      const limit = Number.isFinite(limitValue) && limitValue > 0 ? Math.floor(limitValue) : 50;
+      const parts = ['limit=' + limit];
+      if (hostSearch) parts.push('host_contains=' + encodeURIComponent(hostSearch));
+      if (!prioritizeFailed) parts.push('prioritize_failed=false');
+      try {
+        const data = await api('/api/v2/hosts/summary?' + parts.join('&'));
+        document.getElementById('hostSummaryView').textContent = JSON.stringify(
+          { count: data.count, total_hosts: data.total_hosts },
+          null,
+          2
+        );
+        renderHostSummaryTable(data.rows || []);
+      } catch (err) {
+        document.getElementById('hostSummaryView').textContent = err.message;
+        document.getElementById('hostSummaryTableWrap').innerHTML = '';
+      }
+    }
+
+    function renderHostSummaryTable(rows) {
+      const wrap = document.getElementById('hostSummaryTableWrap');
+      if (!Array.isArray(rows) || rows.length === 0) {
+        wrap.innerHTML = '<p>No summary data</p>';
+        return;
+      }
+      const body = rows.map((r) => [
+        '<tr>',
+        '<td>' + escapeHtml(r.host) + '</td>',
+        '<td>' + escapeHtml(r.ip) + '</td>',
+        '<td>' + escapeHtml(r.model) + '</td>',
+        '<td>' + escapeHtml(r.total) + '</td>',
+        '<td>' + escapeHtml(r.changed) + '</td>',
+        '<td>' + escapeHtml(r.identical) + '</td>',
+        '<td>' + escapeHtml(r.unavailable) + '</td>',
+        '<td>' + escapeHtml(r.not_found) + '</td>',
+        '<td>' + escapeHtml(r.last_task_status) + '</td>',
+        '<td>' + escapeHtml(r.last_capture_at) + '</td>',
+        '<td><button class="secondary" onclick="openHostDetail(\\'' + escapeJs(r.host) + '\\')">Detail</button></td>',
+        '</tr>'
+      ].join('')).join('');
+      wrap.innerHTML = [
+        '<table class="mini-table">',
+        '<thead><tr><th>Host</th><th>IP</th><th>Model</th><th>Total</th><th>Changed</th><th>Identical</th><th>Unavailable</th><th>Not Found</th><th>Last Task</th><th>Last Capture</th><th>Action</th></tr></thead>',
+        '<tbody>',
+        body,
+        '</tbody>',
+        '</table>'
+      ].join('');
+    }
+
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      const sec = Number(document.getElementById('refreshSec').value || '5');
+      const interval = Number.isFinite(sec) && sec > 0 ? sec : 5;
+      loadRecentTasks();
+      refreshTimer = setInterval(loadRecentTasks, interval * 1000);
+    }
+
+    function stopAutoRefresh() {
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+      }
+    }
+
+    function nextTaskPage() {
+      taskPageOffset += taskPageSize;
+      loadRecentTasks();
+    }
+
+    function prevTaskPage() {
+      taskPageOffset = Math.max(0, taskPageOffset - taskPageSize);
+      loadRecentTasks();
+    }
+
+    function renderTaskTable(tasks) {
+      const wrap = document.getElementById('taskTableWrap');
+      if (!Array.isArray(tasks) || tasks.length === 0) {
+        wrap.innerHTML = '<p>No tasks</p>';
+        return;
+      }
+      const rows = tasks.map((t) => {
+        const statusClass = 'status-' + String(t.status || '').toLowerCase();
+        const hosts = (t.hosts || []).join(', ');
+        return [
+          '<tr>',
+          '<td><code>' + escapeHtml(t.task_id) + '</code></td>',
+          '<td><span class="status-pill ' + statusClass + '">' + escapeHtml(t.status) + '</span></td>',
+          '<td>' + escapeHtml(t.mode) + '</td>',
+          '<td>' + escapeHtml(t.base) + '</td>',
+          '<td>' + escapeHtml(hosts) + '</td>',
+          '<td>',
+          '<button onclick="selectTask(\\'' + escapeJs(t.task_id) + '\\')">Select</button> ',
+          '<button class="warn" onclick="quickCancel(\\'' + escapeJs(t.task_id) + '\\')">Cancel</button> ',
+          '<button class="secondary" onclick="quickRetry(\\'' + escapeJs(t.task_id) + '\\')">Retry</button> ',
+          '<button class="secondary" onclick="quickLive(\\'' + escapeJs(t.task_id) + '\\')">Live</button>',
+          '</td>',
+          '</tr>'
+        ].join('');
+      }).join('');
+      wrap.innerHTML = [
+        '<div class="row" style="margin-bottom: 6px;">',
+        '<button onclick="prevTaskPage()">Prev</button>',
+        '<button class="secondary" onclick="nextTaskPage()">Next</button>',
+        '<small>offset=' + taskPageOffset + ', limit=' + taskPageSize + '</small>',
+        '</div>',
+        '<table class="mini-table">',
+        '<thead><tr><th>Task</th><th>Status</th><th>Mode</th><th>Base</th><th>Hosts</th><th>Actions</th></tr></thead>',
+        '<tbody>',
+        rows,
+        '</tbody></table>'
+      ].join('');
+    }
+
+    function selectTask(taskId) {
+      document.getElementById('taskId').value = taskId;
+      checkTask();
+    }
+
+    function quickCancel(taskId) {
+      document.getElementById('taskId').value = taskId;
+      cancelTask();
+    }
+
+    function quickLive(taskId) {
+      document.getElementById('taskId').value = taskId;
+      startLiveStream();
+    }
+
+    async function quickRetry(taskId) {
+      document.getElementById('taskId').value = taskId;
+      try {
+        const data = await api('/api/v2/tasks/' + taskId + '/retry', 'POST');
+        document.getElementById('taskId').value = data.task_id;
+        await checkTask();
+        await loadRecentTasks();
+      } catch (err) {
+        alert('Retry failed: ' + err.message);
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function escapeJs(value) {
+      return String(value ?? '').replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+    }
+
+    function openStream() {
+      const taskId = document.getElementById('taskId').value.trim();
+      if (!taskId) return;
+      const tail = Number(document.getElementById('tailLines').value || '0');
+      const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 0;
+      window.open('/api/v2/tasks/' + taskId + '/stream?tail_lines=' + safeTail, '_blank');
+    }
+
+    async function cancelTask() {
+      const taskId = document.getElementById('taskId').value.trim();
+      if (!taskId) return;
+      try {
+        const data = await api('/api/v2/tasks/' + taskId + '/cancel', 'POST');
+        document.getElementById('taskView').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        alert('Cancel failed: ' + err.message);
+      }
+    }
+
+    function startLiveStream() {
+      const taskId = document.getElementById('taskId').value.trim();
+      if (!taskId) return;
+      stopLiveStream();
+      const streamView = document.getElementById('streamView');
+      streamView.textContent = '';
+      const tail = Number(document.getElementById('tailLines').value || '0');
+      const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 0;
+      streamSource = new EventSource('/api/v2/tasks/' + taskId + '/stream?tail_lines=' + safeTail);
+      streamSource.onmessage = function(event) {
+        streamView.textContent += event.data + '\n';
+      };
+      streamSource.addEventListener('status', function(event) {
+        streamView.textContent += '[status] ' + event.data + '\n';
+        stopLiveStream();
+      });
+      streamSource.onerror = function() {
+        streamView.textContent += '[stream error]\n';
+        stopLiveStream();
+      };
+    }
+
+    function stopLiveStream() {
+      if (streamSource) {
+        streamSource.close();
+        streamSource = null;
+      }
+    }
+
+    function openExportJson() {
+      const host = document.getElementById('exportHost').value.trim();
+      if (!host) return;
+      window.open('/api/v2/exports/' + host, '_blank');
+    }
+
+    function openExportHtml() {
+      const host = document.getElementById('exportHost').value.trim();
+      if (!host) return;
+      window.open('/api/v2/exports/' + host + '/html', '_blank');
+    }
+
+    async function loadExportDiffJson() {
+      const host = document.getElementById('exportHost').value.trim();
+      if (!host) return;
+      const box = document.getElementById('exportDiffView');
+      try {
+        const data = await api('/api/v2/exports/' + encodeURIComponent(host) + '/diff-json');
+        box.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        box.textContent = err.message;
+      }
+    }
+
+    function openHostDetail(host) {
+      if (!host) return;
+      window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');
+    }
+
+    function openLogsPage() {
+      window.open('/v2/logs', '_blank');
+    }
+
+    async function runHostDiff() {
+      const host = document.getElementById('diffHost').value.trim();
+      if (!host) return;
+      const view = document.getElementById('diffView').value;
+      const viewBox = document.getElementById('compareView');
+      const htmlBox = document.getElementById('compareHtml');
+      try {
+        const data = await api('/api/v2/diff/' + encodeURIComponent(host) + '?view=' + encodeURIComponent(view));
+        viewBox.textContent = JSON.stringify(data.summary, null, 2);
+        document.getElementById('compareSummary').textContent = [
+          'host=' + data.hostname,
+          'view=' + data.view,
+          'total=' + data.summary.total,
+          'changed=' + data.summary.changed,
+          'identical=' + data.summary.identical,
+          'unavailable=' + data.summary.unavailable
+        ].join(' | ');
+        const blocks = (data.commands || []).map((item) => {
+          return [
+            '<h4>' + escapeHtml(item.command) + '</h4>',
+            '<p>origin=' + escapeHtml(item.origin_status) + ', dest=' + escapeHtml(item.dest_status) + ', diff=' + escapeHtml(item.diff_status) + '</p>',
+            item.diff_html || ''
+          ].join('');
+        });
+        htmlBox.innerHTML = blocks.join('<hr>');
+      } catch (err) {
+        document.getElementById('compareSummary').textContent = '';
+        viewBox.textContent = err.message;
+        htmlBox.innerHTML = '';
+      }
+    }
+
+    async function runFileCompare() {
+      const host1 = document.getElementById('cmpHost1').value.trim();
+      const host2 = document.getElementById('cmpHost2').value.trim();
+      const base = document.getElementById('cmpBase').value;
+      const command = document.getElementById('cmpCommand').value.trim();
+      const view = document.getElementById('cmpView').value;
+      if (!host1 || !host2 || !command) return;
+      const viewBox = document.getElementById('compareView');
+      const htmlBox = document.getElementById('compareHtml');
+      try {
+        const data = await api('/api/v2/compare/files', 'POST', { host1, host2, base, command, view });
+        viewBox.textContent = JSON.stringify({
+          host1: data.host1,
+          host2: data.host2,
+          base: data.base,
+          command: data.command,
+          status: data.status
+        }, null, 2);
+        document.getElementById('compareSummary').textContent = [
+          'host1=' + data.host1,
+          'host2=' + data.host2,
+          'base=' + data.base,
+          'command=' + data.command,
+          'status=' + data.status
+        ].join(' | ');
+        htmlBox.innerHTML = data.diff_html || '';
+      } catch (err) {
+        document.getElementById('compareSummary').textContent = '';
+        viewBox.textContent = err.message;
+        htmlBox.innerHTML = '';
+      }
+    }
+
+    document.getElementById('captureAllOrigin').addEventListener('click', () => captureAll('origin'));
+    document.getElementById('captureAllDest').addEventListener('click', () => captureAll('dest'));
+    document.getElementById('statusFilter').addEventListener('change', () => { taskPageOffset = 0; loadRecentTasks(); });
+    document.getElementById('runningOnly').addEventListener('change', () => { taskPageOffset = 0; loadRecentTasks(); });
+    document.getElementById('hostSearch').addEventListener('input', () => { taskPageOffset = 0; loadRecentTasks(); });
+    document.getElementById('summaryHostSearch').addEventListener('input', loadHostSummary);
+    document.getElementById('summaryPrioritizeFailed').addEventListener('change', loadHostSummary);
+    loadWorkerStatus();
+    loadReadinessStatus();
+    loadLockStatus();
+    loadContractStatus();
+    loadHostSummary();
+  </script>
+</body>
+</html>

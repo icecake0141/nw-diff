@@ -91,7 +91,7 @@ def test_basic_auth_plain_password_wrong_password(monkeypatch) -> None:
 
 def test_basic_auth_hashed_password_success(monkeypatch) -> None:
     """Test Basic auth succeeds with correct hashed password credentials."""
-    password_hash = generate_password_hash("securepass")
+    password_hash = generate_password_hash("securepass", method="pbkdf2:sha256")
     monkeypatch.setenv("NW_DIFF_API_TOKEN", "test_token")
     monkeypatch.setenv("NW_DIFF_BASIC_USER", "admin")
     monkeypatch.setenv("NW_DIFF_BASIC_PASSWORD_HASH", password_hash)
@@ -108,7 +108,7 @@ def test_basic_auth_hashed_password_success(monkeypatch) -> None:
 
 def test_basic_auth_hashed_password_wrong_password(monkeypatch) -> None:
     """Test Basic auth fails with wrong password against hash."""
-    password_hash = generate_password_hash("securepass")
+    password_hash = generate_password_hash("securepass", method="pbkdf2:sha256")
     monkeypatch.setenv("NW_DIFF_API_TOKEN", "test_token")
     monkeypatch.setenv("NW_DIFF_BASIC_USER", "admin")
     monkeypatch.setenv("NW_DIFF_BASIC_PASSWORD_HASH", password_hash)
@@ -124,7 +124,7 @@ def test_basic_auth_hashed_password_wrong_password(monkeypatch) -> None:
 
 def test_basic_auth_prefers_hash_over_plain(monkeypatch) -> None:
     """Test that hashed password is used exclusively when configured."""
-    password_hash = generate_password_hash("hashpass")
+    password_hash = generate_password_hash("hashpass", method="pbkdf2:sha256")
     monkeypatch.setenv("NW_DIFF_API_TOKEN", "test_token")
     monkeypatch.setenv("NW_DIFF_BASIC_USER", "admin")
     monkeypatch.setenv("NW_DIFF_BASIC_PASSWORD_HASH", password_hash)

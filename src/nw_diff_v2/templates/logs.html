@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NW-Diff v2 Logs</title>
+  <style>
+    body {
+      font-family: Menlo, Monaco, monospace;
+      background: #f8fafc;
+      color: #0f172a;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #d9e2ef;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input, select {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 8px;
+    }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: #0a5bdc;
+      color: #fff;
+      cursor: pointer;
+    }
+    pre {
+      background: #0b1220;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      overflow: auto;
+      max-height: 70vh;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="row">
+      <a href="/v2">Back to v2</a>
+      <select id="source">
+        <option value="app">app</option>
+        <option value="task">task</option>
+      </select>
+      <input id="taskId" type="text" placeholder="task id (for task source)" style="width:280px;">
+      <input id="level" type="text" placeholder="INFO / ERROR (app source)">
+      <input id="contains" type="text" placeholder="contains text">
+      <input id="limit" type="text" value="500" style="width:90px;">
+      <select id="tail"><option value="true">tail</option><option value="false">head</option></select>
+      <button onclick="loadLogs()">Load</button>
+    </div>
+  </div>
+  <div class="card">
+    <div id="meta"></div>
+    <pre id="logText"></pre>
+  </div>
+  <script>
+    async function loadLogs() {
+      const source = document.getElementById('source').value;
+      const taskId = document.getElementById('taskId').value.trim();
+      const level = document.getElementById('level').value.trim();
+      const contains = document.getElementById('contains').value.trim();
+      const limit = document.getElementById('limit').value.trim() || '500';
+      const tail = document.getElementById('tail').value;
+      const params = new URLSearchParams({ source, limit, tail });
+      if (source === 'task' && taskId) params.set('task_id', taskId);
+      if (source === 'app' && level) params.set('level', level);
+      if (contains) params.set('contains', contains);
+      const meta = document.getElementById('meta');
+      const logText = document.getElementById('logText');
+      try {
+        const res = await fetch('/api/v2/logs?' + params.toString());
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+        meta.textContent = JSON.stringify({ source: data.source, count: data.count, path: data.path, task_id: data.task_id || null }, null, 2);
+        logText.textContent = (data.lines || []).join('\n');
+      } catch (err) {
+        meta.textContent = 'error';
+        logText.textContent = String(err.message || err);
+      }
+    }
+    loadLogs();
+  </script>
+</body>
+</html>

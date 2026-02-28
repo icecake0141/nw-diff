@@ -21,7 +21,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 from flask import (
     Flask,
@@ -414,7 +414,9 @@ def _perform_capture_device(
             try:
                 connection.disconnect()
             except Exception as exc:  # pylint: disable=broad-exception-caught
-                logger.warning("Failed to disconnect from %s cleanly: %s", hostname, exc)
+                logger.warning(
+                    "Failed to disconnect from %s cleanly: %s", hostname, exc
+                )
 
 
 def _perform_capture_all(
@@ -593,7 +595,9 @@ def capture(base, hostname):
     acquired, conflicts = _reserve_capture_hosts({hostname})
     if not acquired:
         conflict_hosts = ", ".join(sorted(conflicts))
-        logger.warning("Capture rejected due to active capture on host(s): %s", conflict_hosts)
+        logger.warning(
+            "Capture rejected due to active capture on host(s): %s", conflict_hosts
+        )
         flash(
             f"Capture rejected. Already running for host(s): {conflict_hosts}",
             "warning",
@@ -648,7 +652,8 @@ def capture_all(base):
     if not acquired:
         conflict_hosts = ", ".join(sorted(conflicts))
         logger.warning(
-            "Batch capture rejected due to active capture on host(s): %s", conflict_hosts
+            "Batch capture rejected due to active capture on host(s): %s",
+            conflict_hosts,
         )
         flash(
             f"Batch capture rejected. Already running for host(s): {conflict_hosts}",
@@ -705,7 +710,7 @@ def capture_all(base):
 
 def _start_task_thread(
     task_state: TaskState,
-    target: Callable[..., CaptureResult | CaptureAllResult],
+    target: Callable[..., Union[CaptureResult, CaptureAllResult]],
     *args,
 ) -> None:
     def _run() -> None:
@@ -732,7 +737,9 @@ def _start_task_thread(
                 if result.error and task_state.status == "running":
                     task_state.status = "failed"
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            logger.error("Unexpected error in capture task %s: %s", task_state.task_id, exc)
+            logger.error(
+                "Unexpected error in capture task %s: %s", task_state.task_id, exc
+            )
             task_state.status = "failed"
             task_state.error = str(exc)
         finally:
@@ -782,7 +789,9 @@ def capture_stream(base, hostname):
         return jsonify({"error": "Invalid hostname"}), 400
 
     try:
-        task_state = _create_task_state(base, hostname, batch=False, reserved_hosts={hostname})
+        task_state = _create_task_state(
+            base, hostname, batch=False, reserved_hosts={hostname}
+        )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 409
     _start_task_thread(task_state, _perform_capture_device, base, hostname)
@@ -1231,7 +1240,10 @@ def export_diff(hostname):
                 html_parts.append(cmd_header)
                 html_parts.append("<div class='card-body'>")
                 html_parts.append(
-                    f"<p class='text-danger'>Error reading files: {html.escape(str(exc))}</p>"
+                    (
+                        "<p class='text-danger'>Error reading files: "
+                        f"{html.escape(str(exc))}</p>"
+                    )
                 )
                 html_parts.append("</div></div>")
         else:

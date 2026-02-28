@@ -51,6 +51,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt -r requirements-v2.txt
+
       - name: Set up environment variables
         run: |
           # Generate secure tokens for testing
@@ -74,7 +85,13 @@ jobs:
       - name: Install dependencies for certificate and auth setup
         run: |
           sudo apt-get update
-          sudo apt-get install -y apache2-utils openssl
+          sudo apt-get install -y apache2-utils openssl nginx systemd
+
+      - name: Validate deploy templates
+        env:
+          SUMMARY_PATH: ${{ github.step_summary }}
+          JSON_OUTPUT: .artifacts/deploy_template_validation.json
+        run: ./scripts/validate-deploy-templates.sh --strict
 
       - name: Generate TLS certificates and .htpasswd
         run: |
@@ -157,6 +174,69 @@ jobs:
         run: |
           # Run the integration test script
           ./scripts/test-integration.sh
+
+      - name: Generate candidate v2 contract snapshot
+        if: always()
+        run: |
+          mkdir -p .artifacts
+          python scripts/generate-v2-contract.py --output .artifacts/v2_contract_current.json
+
+      - name: Summarize v2 contract snapshot diff
+        if: always() && hashFiles('.artifacts/v2_contract_current.json') != ''
+        run: |
+          python scripts/diff-v2-contract.py \
+            --baseline docs/contract/v2.json \
+            --candidate .artifacts/v2_contract_current.json \
+            --summary-path "${GITHUB_STEP_SUMMARY}" \
+            --json-output .artifacts/v2_contract_diff.json
+
+      - name: Verify v2 contract snapshot is up to date
+        if: always() && hashFiles('.artifacts/v2_contract_current.json') != ''
+        run: |
+          python scripts/diff-v2-contract.py \
+            --baseline docs/contract/v2.json \
+            --candidate .artifacts/v2_contract_current.json \
+            --json-output .artifacts/v2_contract_diff_verify.json \
+            --fail-on-diff
+
+      - name: V2 API contract smoke check
+        if: always()
+        env:
+          DEVICE_PASSWORD: ci_contract_password
+          NW_DIFF_ENV: development
+          PYTHON_BIN: python
+          CONTRACT_OUTPUT: .artifacts/v2_contract.json
+          HEALTH_OUTPUT: .artifacts/v2_health.json
+          READINESS_OUTPUT: .artifacts/v2_readiness.json
+          LOCKS_OUTPUT: .artifacts/v2_locks.json
+          LOG_OUTPUT: .artifacts/v2_contract.log
+        run: |
+          mkdir -p .artifacts
+          ./scripts/check-v2-contract.sh
+
+      - name: Run v2 post-check bundle
+        if: always()
+        env:
+          PYTHON_BIN: python
+          SUMMARY_PATH: ${{ github.step_summary }}
+          CONTRACT_OUTPUT: .artifacts/v2_contract.json
+          HEALTH_OUTPUT: .artifacts/v2_health.json
+          READINESS_OUTPUT: .artifacts/v2_readiness.json
+          LOCKS_OUTPUT: .artifacts/v2_locks.json
+          LOG_OUTPUT: .artifacts/v2_contract.log
+          V2_CUTOVER_MAX_QUEUED: "0"
+          V2_CUTOVER_MAX_RUNNING: "5"
+          V2_CUTOVER_MAX_FAILED: "0"
+          V2_CUTOVER_MAX_LOCKED: "0"
+        run: ./scripts/run-v2-ci-postchecks.sh
+
+      - name: Upload v2 contract artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-v2-contract-check
+          path: .artifacts/*
+          if-no-files-found: warn
 
       - name: Test HTTPS endpoint with curl (verbose)
         if: always()
