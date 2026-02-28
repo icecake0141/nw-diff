@@ -1240,7 +1240,10 @@ def export_diff(hostname):
                 html_parts.append(cmd_header)
                 html_parts.append("<div class='card-body'>")
                 html_parts.append(
-                    f"<p class='text-danger'>Error reading files: {html.escape(str(exc))}</p>"
+                    (
+                        "<p class='text-danger'>Error reading files: "
+                        f"{html.escape(str(exc))}</p>"
+                    )
                 )
                 html_parts.append("</div></div>")
         else:

@@ -8,16 +8,19 @@ from nw_diff_v2.config import settings
 
 
 def task_log_dir() -> Path:
+    """Return task log directory and ensure it exists."""
     path = Path(settings.artifact_root) / "task_logs"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def task_log_path(task_id: str) -> Path:
+    """Return file path for a task log."""
     return task_log_dir() / f"{task_id}.log"
 
 
 def append_task_log(task_id: str, line: str) -> None:
+    """Append one line to task log."""
     path = task_log_path(task_id)
     with path.open("a", encoding="utf-8") as log_file:
         log_file.write(f"{line}\n")

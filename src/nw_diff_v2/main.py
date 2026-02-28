@@ -14,6 +14,7 @@ from nw_diff_v2.api.logs import router as logs_router
 from nw_diff_v2.api.system import router as system_router
 from nw_diff_v2.api.tasks import router as tasks_router
 from nw_diff_v2.api.ui import router as ui_router
+from nw_diff_v2.config import settings
 from nw_diff_v2.domain.services.lock_service import cleanup_stale_locks, release_hosts
 from nw_diff_v2.domain.services.task_worker import TaskWorkerManager
 from nw_diff_v2.infra.repositories.task_repo import (
@@ -27,8 +28,6 @@ _worker_manager = TaskWorkerManager()
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Validate runtime configuration at startup."""
-    from nw_diff_v2.config import settings
-
     settings.validate_runtime()
     init_db()
     cleanup_stale_locks()

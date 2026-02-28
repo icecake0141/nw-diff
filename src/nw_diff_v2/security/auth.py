@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+# pylint: disable=too-many-return-statements
+
 import base64
 import binascii
 import hmac
@@ -17,7 +19,10 @@ def _is_development() -> bool:
     return settings.env.lower() in {"dev", "development", "local", "test"}
 
 
-def _verify_basic_auth(authorization: str) -> bool:
+def _verify_basic_auth(
+    authorization: str,
+) -> bool:
+    """Validate HTTP Basic credentials against configured settings."""
     if not authorization.startswith("Basic ") or len(authorization) < 7:
         return False
     try:

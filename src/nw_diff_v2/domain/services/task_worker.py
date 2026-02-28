@@ -58,6 +58,7 @@ class TaskWorkerManager:
         self._stop_event = threading.Event()
 
     def start(self) -> None:
+        """Start background worker threads once."""
         if self._threads:
             return
 
@@ -72,6 +73,7 @@ class TaskWorkerManager:
             self._threads.append(thread)
 
     def stop(self, timeout: float = 2.0) -> None:
+        """Signal workers to stop and wait for thread join."""
         self._stop_event.set()
         deadline = time.time() + max(0.1, timeout)
         for thread in self._threads:
@@ -80,6 +82,8 @@ class TaskWorkerManager:
         self._threads.clear()
 
     def _worker_loop(self, *, worker_name: str) -> None:
+        """Poll queue and execute one task at a time."""
+        _ = worker_name
         while not self._stop_event.is_set():
             processed = process_one_queued_task()
             if processed:

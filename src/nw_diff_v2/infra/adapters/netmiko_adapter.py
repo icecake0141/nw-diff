@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
-class NetmikoAdapter:
+class NetmikoAdapter:  # pylint: disable=too-few-public-methods
     """Thin adapter around Netmiko for easier service-level mocking."""
 
     def capture_commands(
@@ -18,6 +18,7 @@ class NetmikoAdapter:
         password: str,
         commands: list[str],
     ) -> dict[str, str]:
+        """Run commands on a device and return command-output mapping."""
         # pylint: disable=import-outside-toplevel
         from netmiko import ConnectHandler
 
@@ -39,5 +40,5 @@ class NetmikoAdapter:
             if connection is not None:
                 try:
                     connection.disconnect()
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+# pylint: disable=too-many-positional-arguments
+
 import re
 from pathlib import Path
 

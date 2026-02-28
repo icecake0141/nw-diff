@@ -53,6 +53,7 @@ def init_db() -> None:
 
 
 def create_task(task_id: str, mode: str, base: str, hosts: list[str]) -> None:
+    """Create a new queued capture task."""
     init_db()
     now = time.time()
     with _connect() as conn:
@@ -83,6 +84,7 @@ def update_task(
     error: Optional[str] = None,
     result: Optional[dict[str, Any]] = None,
 ) -> None:
+    """Update mutable task fields."""
     init_db()
     fields: list[str] = []
     values: list[Any] = []
@@ -116,6 +118,7 @@ def update_task(
 
 
 def get_task(task_id: str) -> Optional[dict[str, Any]]:
+    """Fetch one task by id."""
     init_db()
     with _connect() as conn:
         conn.row_factory = sqlite3.Row
@@ -131,6 +134,7 @@ def get_task(task_id: str) -> Optional[dict[str, Any]]:
 
 
 def request_cancel(task_id: str) -> bool:
+    """Mark queued/running task as cancel requested."""
     init_db()
     with _connect() as conn:
         cur = conn.execute(
@@ -151,6 +155,7 @@ def request_cancel(task_id: str) -> bool:
 
 
 def is_cancel_requested(task_id: str) -> bool:
+    """Return whether cancellation has been requested for task."""
     init_db()
     with _connect() as conn:
         row = conn.execute(

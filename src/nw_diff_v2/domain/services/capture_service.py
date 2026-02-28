@@ -36,6 +36,7 @@ logger = logging.getLogger("nw-diff-v2")
 
 
 def _commands_for_model(model: str) -> list[str]:
+    """Return the command profile for a device model."""
     return list(COMMAND_PROFILES.get(model.lower(), DEFAULT_COMMANDS))
 
 
@@ -46,6 +47,7 @@ def run_capture_task(
     hosts: list[dict[str, Any]],
     reserved_hosts: set[str],
 ) -> None:
+    """Execute capture for queued hosts and persist task progress/results."""
     adapter = NetmikoAdapter()
     started = time.time()
     logger.info(
@@ -165,3 +167,4 @@ def launch_capture_task(
         task_id,
         f"Task queued for {len(hosts)} host(s) on base={base.value}",
     )
+    _ = reserved_hosts

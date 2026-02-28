@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import signal
 import threading
-import time
 
 from nw_diff_v2.config import settings
 from nw_diff_v2.domain.services.lock_service import cleanup_stale_locks, release_hosts

@@ -89,7 +89,7 @@ def _collect_v2_route_set(request: Request) -> set[tuple[str, tuple[str, ...]]]:
 def worker_status(_: None = Depends(require_auth)) -> dict:
     """Return queue/worker-oriented status counters."""
     counts = count_tasks_by_status()
-    locks = list_locks()
+    lock_rows = list_locks()
     return {
         "queued": counts.get("queued", 0),
         "running": counts.get("running", 0),
@@ -97,7 +97,7 @@ def worker_status(_: None = Depends(require_auth)) -> dict:
         "failed": counts.get("failed", 0),
         "cancelled": counts.get("cancelled", 0),
         "total": sum(counts.values()),
-        "locked_hosts": len(locks),
+        "locked_hosts": len(lock_rows),
     }
 
 
@@ -118,10 +118,10 @@ def readiness(request: Request, _: None = Depends(require_auth)) -> dict:
     """Operational readiness combining queue load and contract sanity."""
     init_db()
     counts = count_tasks_by_status()
-    locks = list_locks()
+    lock_rows = list_locks()
     queued = int(counts.get("queued", 0))
     running = int(counts.get("running", 0))
-    locked = int(len(locks))
+    locked = int(len(lock_rows))
 
     actual = _collect_v2_route_set(request)
     missing = sorted(
@@ -189,7 +189,7 @@ def locks(_: None = Depends(require_auth)) -> dict:
         host = str(row["host"])
         acquired_at = float(row["acquired_at"])
         age_seconds = max(0.0, now - acquired_at)
-        is_stale = timeout > 0 and age_seconds > timeout
+        is_stale = 0.0 < timeout < age_seconds
         items.append(
             {
                 "host": host,
