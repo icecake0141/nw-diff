@@ -35,31 +35,35 @@ locks_path = Path(os.environ.get("LOCKS_OUTPUT", ".artifacts/v2_locks.json"))
 log_path = Path(os.environ.get("LOG_OUTPUT", ".artifacts/v2_contract.log"))
 summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
 
-contract = json.loads(contract_path.read_text(encoding="utf-8"))
-health = {}
-if health_path.exists():
+def _safe_load(path: Path) -> tuple[dict, str]:
+    if not path.exists():
+        return {}, "not_found"
     try:
-        health = json.loads(health_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        health = {}
-readiness = {}
-if readiness_path.exists():
-    try:
-        readiness = json.loads(readiness_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        readiness = {}
-locks = {}
-if locks_path.exists():
-    try:
-        locks = json.loads(locks_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        locks = {}
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {}, f"invalid_json: {exc}"
+    if not isinstance(payload, dict):
+        return {}, f"invalid_type: {type(payload).__name__}"
+    return payload, ""
+
+
+contract, contract_error = _safe_load(contract_path)
+health, health_error = _safe_load(health_path)
+readiness, readiness_error = _safe_load(readiness_path)
+locks, locks_error = _safe_load(locks_path)
 
 status = str(contract.get("status", "unknown"))
 required_count = int(contract.get("required_count", 0))
 actual_count = int(contract.get("actual_count", 0))
 missing = contract.get("missing", [])
 extra = contract.get("extra", [])
+
+if contract_error:
+    status = "unavailable"
+    required_count = 0
+    actual_count = 0
+    missing = []
+    extra = []
 
 lines = [
     "## V2 Contract Check",
@@ -70,6 +74,8 @@ lines = [
     f"- missing: {len(missing)}",
     f"- extra: {len(extra)}",
 ]
+if contract_error:
+    lines.append(f"- contract_file_error: `{contract_error}`")
 
 if health:
     lines.extend(
@@ -107,6 +113,13 @@ if locks:
             f"- timeout_seconds: {locks.get('timeout_seconds', 0)}",
         ]
     )
+
+if health_error and health_error != "not_found":
+    lines.append(f"- health_file_error: `{health_error}`")
+if readiness_error and readiness_error != "not_found":
+    lines.append(f"- readiness_file_error: `{readiness_error}`")
+if locks_error and locks_error != "not_found":
+    lines.append(f"- locks_file_error: `{locks_error}`")
 
 if missing:
     lines.append("")
