@@ -67,18 +67,20 @@ validate_nginx() {
 
   cat >"${tmp_v2_conf}" <<EOF
 pid /tmp/nginx.pid;
-error_log /tmp/nginx-error.log;
+error_log /tmp/nginx-error.log notice;
 events {}
 http {
+  access_log /tmp/nginx-access.log;
   include ${tmp_v2_template};
 }
 EOF
 
   cat >"${tmp_cutover_conf}" <<EOF
 pid /tmp/nginx.pid;
-error_log /tmp/nginx-error.log;
+error_log /tmp/nginx-error.log notice;
 events {}
 http {
+  access_log /tmp/nginx-access.log;
   include ${tmp_cutover_template};
 }
 EOF
