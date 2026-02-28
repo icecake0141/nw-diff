@@ -105,64 +105,21 @@ jobs:
           mkdir -p .artifacts
           ./scripts/check-v2-contract.sh
 
-      - name: V2 readiness check
-        if: always() && hashFiles('.artifacts/v2_readiness.json') != ''
-        run: |
-          python scripts/check-v2-readiness.py \
-            --input-file .artifacts/v2_readiness.json \
-            --allow-missing \
-            --summary-path "${GITHUB_STEP_SUMMARY}"
-
-      - name: V2 locks check
-        if: always() && hashFiles('.artifacts/v2_locks.json') != ''
-        run: |
-          python scripts/check-v2-locks.py \
-            --input-file .artifacts/v2_locks.json \
-            --max-locks 100 \
-            --allow-missing \
-            --summary-path "${GITHUB_STEP_SUMMARY}"
-
-      - name: Evaluate v2 cutover decision
-        if: always() && hashFiles('.artifacts/v2_readiness.json') != '' && hashFiles('.artifacts/v2_contract_diff.json') != '' && hashFiles('.artifacts/deploy_template_validation.json') != ''
-        env:
-          V2_CUTOVER_MAX_QUEUED: "0"
-          V2_CUTOVER_MAX_RUNNING: "5"
-          V2_CUTOVER_MAX_FAILED: "0"
-          V2_CUTOVER_MAX_LOCKED: "0"
-        run: |
-          python scripts/evaluate-v2-cutover.py \
-            --readiness-file .artifacts/v2_readiness.json \
-            --contract-diff-file .artifacts/v2_contract_diff.json \
-            --deploy-validation-file .artifacts/deploy_template_validation.json \
-            --allow-missing \
-            --summary-path "${GITHUB_STEP_SUMMARY}" \
-            --json-output .artifacts/v2_cutover_eval.json
-
-      - name: Render v2 cutover notification
-        if: always() && hashFiles('.artifacts/v2_cutover_eval.json') != ''
-        run: |
-          python scripts/render-v2-cutover-message.py \
-            --input .artifacts/v2_cutover_eval.json \
-            --format markdown \
-            --output .artifacts/v2_cutover_message.md \
-            --allow-missing \
-            --summary-path "${GITHUB_STEP_SUMMARY}"
-          python scripts/render-v2-cutover-message.py \
-            --input .artifacts/v2_cutover_eval.json \
-            --format text \
-            --allow-missing \
-            --output .artifacts/v2_cutover_message.txt
-
-      - name: Summarize v2 contract check
+      - name: Run v2 post-check bundle
         if: always()
         env:
           PYTHON_BIN: python
+          SUMMARY_PATH: ${{ github.step_summary }}
           CONTRACT_OUTPUT: .artifacts/v2_contract.json
           HEALTH_OUTPUT: .artifacts/v2_health.json
           READINESS_OUTPUT: .artifacts/v2_readiness.json
           LOCKS_OUTPUT: .artifacts/v2_locks.json
           LOG_OUTPUT: .artifacts/v2_contract.log
-        run: ./scripts/summarize-v2-contract.sh
+          V2_CUTOVER_MAX_QUEUED: "0"
+          V2_CUTOVER_MAX_RUNNING: "5"
+          V2_CUTOVER_MAX_FAILED: "0"
+          V2_CUTOVER_MAX_LOCKED: "0"
+        run: ./scripts/run-v2-ci-postchecks.sh
 
       - name: Upload v2 contract artifacts
         if: always()
