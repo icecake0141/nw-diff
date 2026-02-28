@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-# pylint: disable=too-many-return-statements
-
 import base64
 import binascii
 import hmac
@@ -19,30 +17,38 @@ def _is_development() -> bool:
     return settings.env.lower() in {"dev", "development", "local", "test"}
 
 
-def _verify_basic_auth(
-    authorization: str,
-) -> bool:
-    """Validate HTTP Basic credentials against configured settings."""
+def _decode_basic_credentials(authorization: str) -> Optional[tuple[str, str]]:
+    """Decode Basic auth header into username/password pair."""
     if not authorization.startswith("Basic ") or len(authorization) < 7:
-        return False
+        return None
+    encoded = authorization[6:]
     try:
-        encoded = authorization[6:]
         decoded = base64.b64decode(encoded).decode("utf-8")
     except (binascii.Error, UnicodeDecodeError):
-        return False
+        return None
     if ":" not in decoded:
+        return None
+    username, password = decoded.split(":", 1)
+    return username, password
+
+
+def _verify_basic_auth(authorization: str) -> bool:
+    """Validate HTTP Basic credentials against configured settings."""
+    decoded = _decode_basic_credentials(authorization)
+    if decoded is None:
         return False
 
-    username, password = decoded.split(":", 1)
+    username, password = decoded
     expected_user = settings.nw_diff_basic_user
     if not expected_user or not hmac.compare_digest(username, expected_user):
         return False
 
     if settings.nw_diff_basic_password_hash:
         return check_password_hash(settings.nw_diff_basic_password_hash, password)
-    if settings.nw_diff_basic_password:
-        return hmac.compare_digest(password, settings.nw_diff_basic_password)
-    return False
+    plain_password = settings.nw_diff_basic_password
+    if not plain_password:
+        return False
+    return hmac.compare_digest(password, plain_password)
 
 
 def require_auth(authorization: Optional[str] = Header(default=None)) -> None:
