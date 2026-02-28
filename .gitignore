@@ -5,6 +5,9 @@ diff/
 backup/
 logs/
 !logs/.gitkeep
+.artifacts/
+artifacts_v2/
+nw_diff_v2.db
 
 # Docker-related files
 docker/.htpasswd
