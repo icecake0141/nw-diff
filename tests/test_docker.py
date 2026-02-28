@@ -25,6 +25,20 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def _docker_build_available() -> bool:
+    """Return True when docker daemon is reachable for build tests."""
+    docker_exists = (
+        subprocess.run(["which", "docker"], capture_output=True, check=False).returncode
+        == 0
+    )
+    if not docker_exists:
+        return False
+    return (
+        subprocess.run(["docker", "info"], capture_output=True, check=False).returncode
+        == 0
+    )
+
+
 def test_dockerfile_exists() -> None:
     """Verify Dockerfile exists in repository root."""
     dockerfile = PROJECT_ROOT / "Dockerfile"
@@ -284,9 +298,8 @@ def test_docker_compose_has_networks() -> None:
 
 
 @pytest.mark.skipif(
-    subprocess.run(["which", "docker"], capture_output=True, check=False).returncode
-    != 0,
-    reason="Docker not available",
+    not _docker_build_available(),
+    reason="Docker daemon not available or not accessible",
 )
 def test_dockerfile_builds_successfully() -> None:
     """Test that Dockerfile builds successfully.
