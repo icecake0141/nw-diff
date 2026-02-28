@@ -19,6 +19,13 @@ export V2_CONTRACT_ALLOW_STALE_LOCKS="${V2_CONTRACT_ALLOW_STALE_LOCKS:-false}"
 export DEVICE_PASSWORD="${DEVICE_PASSWORD:-contract_check_password}"
 export NW_DIFF_ENV="${NW_DIFF_ENV:-development}"
 
+CURL_AUTH_ARGS=()
+if [[ -n "${NW_DIFF_API_TOKEN:-}" ]]; then
+  CURL_AUTH_ARGS+=(-H "Authorization: Bearer ${NW_DIFF_API_TOKEN}")
+elif [[ -n "${NW_DIFF_BASIC_USER:-}" && -n "${NW_DIFF_BASIC_PASSWORD:-}" ]]; then
+  CURL_AUTH_ARGS+=(-u "${NW_DIFF_BASIC_USER}:${NW_DIFF_BASIC_PASSWORD}")
+fi
+
 cleanup() {
   if [[ -n "${APP_PID:-}" ]] && kill -0 "${APP_PID}" 2>/dev/null; then
     kill "${APP_PID}" || true
@@ -31,23 +38,23 @@ trap cleanup EXIT
 APP_PID=$!
 
 for _ in $(seq 1 40); do
-  if curl -fsS "${BASE_URL}/api/v2/system/health" >"${HEALTH_OUTPUT}" 2>/dev/null; then
+  if curl -fsS "${CURL_AUTH_ARGS[@]}" "${BASE_URL}/api/v2/system/health" >"${HEALTH_OUTPUT}" 2>/dev/null; then
     break
   fi
   sleep 0.25
 done
 
-if ! curl -fsS "${BASE_URL}/api/v2/system/contract" >"${CONTRACT_OUTPUT}"; then
+if ! curl -fsS "${CURL_AUTH_ARGS[@]}" "${BASE_URL}/api/v2/system/contract" >"${CONTRACT_OUTPUT}"; then
   echo "Failed to fetch contract endpoint"
   cat "${LOG_OUTPUT}" || true
   exit 1
 fi
-if ! curl -fsS "${BASE_URL}/api/v2/system/readiness" >"${READINESS_OUTPUT}"; then
+if ! curl -fsS "${CURL_AUTH_ARGS[@]}" "${BASE_URL}/api/v2/system/readiness" >"${READINESS_OUTPUT}"; then
   echo "Failed to fetch readiness endpoint"
   cat "${LOG_OUTPUT}" || true
   exit 1
 fi
-if ! curl -fsS "${BASE_URL}/api/v2/system/locks" >"${LOCKS_OUTPUT}"; then
+if ! curl -fsS "${CURL_AUTH_ARGS[@]}" "${BASE_URL}/api/v2/system/locks" >"${LOCKS_OUTPUT}"; then
   echo "Failed to fetch locks endpoint"
   cat "${LOG_OUTPUT}" || true
   exit 1
