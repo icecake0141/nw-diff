@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NW-Diff v2 Host Detail</title>
+  <style>
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: #f3f6fb;
+      color: #1f2937;
+      margin: 0;
+      padding: 20px;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border: 1px solid #d9e2ef;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: #0a5bdc;
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #2563eb; }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #e5e7eb;
+    }
+    .changed { background: #fde68a; }
+    .identical { background: #bfdbfe; }
+    .task-box { font-family: Menlo, Monaco, monospace; white-space: pre-wrap; font-size: 12px; }
+    input, select {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 8px;
+    }
+    details {
+      border-top: 1px solid #e5e7eb;
+      padding-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Host Detail: {{ hostname }}</h1>
+      <div class="row">
+        <a href="/v2">Back to v2</a>
+        <select id="view">
+          <option value="inline">inline</option>
+          <option value="sidebyside">sidebyside</option>
+        </select>
+        <select id="statusFilter">
+          <option value="">all</option>
+          <option value="changed">changed</option>
+          <option value="identical">identical</option>
+          <option value="unavailable">unavailable</option>
+          <option value="not_found">not_found</option>
+        </select>
+        <input id="commandContains" type="text" placeholder="command contains..." style="width:220px;">
+        <button onclick="loadDetail()">Reload</button>
+        <button class="secondary" onclick="expandAll()">Expand All</button>
+        <button class="secondary" onclick="collapseAll()">Collapse All</button>
+      </div>
+      <div id="summary" class="task-box" style="margin-top:8px;"></div>
+    </div>
+    <div id="results"></div>
+  </div>
+  <script>
+    const hostname = {{ hostname|tojson }};
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    async function loadDetail() {
+      const view = document.getElementById('view').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+      const commandContains = document.getElementById('commandContains').value.trim();
+      const summaryBox = document.getElementById('summary');
+      const resultWrap = document.getElementById('results');
+      try {
+        const params = new URLSearchParams({ view });
+        if (statusFilter) params.set('status_filter', statusFilter);
+        if (commandContains) params.set('command_contains', commandContains);
+        const res = await fetch('/api/v2/hosts/' + encodeURIComponent(hostname) + '/detail?' + params.toString());
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+        summaryBox.textContent = JSON.stringify(data.summary, null, 2);
+        const cards = (data.command_results || []).map((item) => {
+          const statusClass = item.diff_status === 'changes detected'
+            ? 'changed'
+            : (item.diff_status === 'identical' ? 'identical' : '');
+          return [
+            '<div class="card">',
+            '<h3>' + escapeHtml(item.command) + '</h3>',
+            '<p><span class="status ' + statusClass + '">' + escapeHtml(item.diff_status) + '</span></p>',
+            '<p>origin: ' + escapeHtml(item.origin_status) + ' / mtime: ' + escapeHtml(item.origin_mtime) + '</p>',
+            '<p>dest: ' + escapeHtml(item.dest_status) + ' / mtime: ' + escapeHtml(item.dest_mtime) + '</p>',
+            '<details class="diff-details">',
+            '<summary>Show Diff</summary>',
+            '<div style="overflow:auto; max-height:360px; padding-top:8px;">',
+            item.diff_html || '',
+            '</div>',
+            '</details>',
+            '</div>'
+          ].join('');
+        });
+        resultWrap.innerHTML = cards.join('');
+      } catch (err) {
+        summaryBox.textContent = err.message;
+        resultWrap.innerHTML = '';
+      }
+    }
+
+    function expandAll() {
+      document.querySelectorAll('.diff-details').forEach((el) => { el.open = true; });
+    }
+
+    function collapseAll() {
+      document.querySelectorAll('.diff-details').forEach((el) => { el.open = false; });
+    }
+
+    document.getElementById('view').addEventListener('change', loadDetail);
+    document.getElementById('statusFilter').addEventListener('change', loadDetail);
+    document.getElementById('commandContains').addEventListener('input', loadDetail);
+    loadDetail();
+  </script>
+</body>
+</html>
