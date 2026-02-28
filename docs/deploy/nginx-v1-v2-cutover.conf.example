@@ -1,0 +1,76 @@
+# Nginx reverse proxy example for staged v1 -> v2 cutover
+#
+# Strategy:
+# - Keep v1 as current backend.
+# - Expose v2 API/UI under /api/v2 and /v2.
+# - Switch default "/" backend by changing one line (marked CUTOVER_SWITCH).
+
+upstream nw_diff_v1 {
+    server 127.0.0.1:5000;
+}
+
+upstream nw_diff_v2 {
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 80;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name _;
+
+    ssl_certificate /etc/nginx/certs/cert.pem;
+    ssl_certificate_key /etc/nginx/certs/key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    # Optional browser auth layer
+    # auth_basic "NW-Diff Access";
+    # auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location = /health {
+        return 200 "OK\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Keep v2 endpoints explicit during migration
+    location /api/v2/ {
+        proxy_pass http://nw_diff_v2;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /v2 {
+        proxy_pass http://nw_diff_v2;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Legacy v1 endpoints during migration window
+    location ~ ^/(api/|capture|capture_all|export|logs) {
+        proxy_pass http://nw_diff_v1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # CUTOVER_SWITCH:
+    #   Before cutover: proxy_pass http://nw_diff_v1;
+    #   After cutover:  proxy_pass http://nw_diff_v2;
+    location / {
+        proxy_pass http://nw_diff_v1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

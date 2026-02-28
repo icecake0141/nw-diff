@@ -1,0 +1,58 @@
+# Nginx reverse proxy example for NW-Diff v2 (single-backend mode)
+
+upstream nw_diff_v2 {
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 80;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name _;
+
+    ssl_certificate /etc/nginx/certs/cert.pem;
+    ssl_certificate_key /etc/nginx/certs/key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    # Optional browser auth layer
+    # auth_basic "NW-Diff Access";
+    # auth_basic_user_file /etc/nginx/.htpasswd;
+
+    # Liveness endpoint
+    location = /health {
+        return 200 "OK\n";
+        add_header Content-Type text/plain;
+    }
+
+    # v2 web UI
+    location /v2 {
+        proxy_pass http://nw_diff_v2;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # v2 APIs
+    location /api/v2/ {
+        proxy_pass http://nw_diff_v2;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Optional fallback route to v2 root
+    location / {
+        proxy_pass http://nw_diff_v2;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

@@ -1,0 +1,18 @@
+[Unit]
+Description=NW-Diff v2 Worker
+After=network.target
+
+[Service]
+Type=simple
+User=nw-diff
+Group=nw-diff
+WorkingDirectory=/opt/nw-diff
+EnvironmentFile=/opt/nw-diff/.env
+ExecStart=/opt/nw-diff/.venv/bin/python -m nw_diff_v2.worker
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
