@@ -8,6 +8,8 @@ Review required for correctness, security, and licensing.
 
 from __future__ import annotations
 
+# pylint: disable=missing-function-docstring,unused-argument,wrong-import-position,import-outside-toplevel,use-implicit-booleaness-not-comparison
+
 import base64
 from pathlib import Path
 import sys
