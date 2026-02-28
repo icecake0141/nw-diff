@@ -51,14 +51,18 @@ validate_nginx() {
 
   # Validate syntax without requiring real TLS cert/key files on CI runners.
   sed -i \
+    -e 's/listen 80;/listen 18080;/' \
     -e 's/listen 443 ssl http2;/listen 443;/' \
+    -e 's/listen 443;/listen 18443;/' \
     -e '/^[[:space:]]*ssl_certificate[[:space:]]/d' \
     -e '/^[[:space:]]*ssl_certificate_key[[:space:]]/d' \
     -e '/^[[:space:]]*ssl_protocols[[:space:]]/d' \
     -e '/^[[:space:]]*ssl_prefer_server_ciphers[[:space:]]/d' \
     "${tmp_v2_template}"
   sed -i \
+    -e 's/listen 80;/listen 18080;/' \
     -e 's/listen 443 ssl http2;/listen 443;/' \
+    -e 's/listen 443;/listen 18443;/' \
     -e '/^[[:space:]]*ssl_certificate[[:space:]]/d' \
     -e '/^[[:space:]]*ssl_certificate_key[[:space:]]/d' \
     -e '/^[[:space:]]*ssl_protocols[[:space:]]/d' \
