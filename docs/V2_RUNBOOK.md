@@ -19,6 +19,18 @@ Operational procedures for running and troubleshooting NW-Diff v2.
    - v2-only: `docs/deploy/nginx-v2.conf.example`
    - staged cutover: `docs/deploy/nginx-v1-v2-cutover.conf.example`
 
+## Authentication Policy
+
+1. API endpoints under `/api/v2/*` require authentication.
+2. Preferred mode in CI/operations:
+   - Bearer token via `NW_DIFF_API_TOKEN`
+   - Example header: `Authorization: Bearer <token>`
+3. Optional mode:
+   - Basic auth via `NW_DIFF_BASIC_USER` and `NW_DIFF_BASIC_PASSWORD` or hash variant.
+4. Development bypass:
+   - only when `NW_DIFF_ENV` is development-like and `NW_DIFF_API_TOKEN` is unset.
+   - Never rely on this behavior in staging/production.
+
 ## Core Health Checks
 
 1. `GET /api/v2/system/health`
@@ -48,6 +60,9 @@ Operational procedures for running and troubleshooting NW-Diff v2.
    - `python scripts/diff-v2-contract.py --baseline docs/contract/v2.json --candidate .artifacts/v2_contract_current.json --fail-on-diff`
 3. Smoke check endpoint contract:
    - `./scripts/check-v2-contract.sh`
+   - Uses auth automatically:
+     - bearer when `NW_DIFF_API_TOKEN` is set
+     - basic auth when `NW_DIFF_BASIC_USER` and `NW_DIFF_BASIC_PASSWORD` are set
 4. Full preflight gate:
    - `./scripts/run-v2-preflight.sh`
    - Runs contract + readiness + locks + deploy template validation + cutover + message in one pass.
@@ -69,6 +84,15 @@ Operational procedures for running and troubleshooting NW-Diff v2.
      - `docs/env/v2-cutover-production.env.example`
 6. Notification message rendering:
    - `python scripts/render-v2-cutover-message.py --input .artifacts/v2_cutover_eval.json --format markdown --output .artifacts/v2_cutover_message.md`
+
+## CI Behavior Notes
+
+1. Deploy template validation in CI is syntax-only:
+   - nginx template checks do not require real cert files or privileged ports.
+   - systemd unit checks do not require real venv executables.
+2. v2 cutover/readiness helper steps are resilient to missing artifacts:
+   - `--allow-missing` is used in CI follow-up steps to avoid cascade failures.
+3. `scripts/summarize-v2-contract.sh` tolerates malformed/missing artifact JSON and writes summary diagnostics instead of failing the job.
 
 ## Incident Triage
 
