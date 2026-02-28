@@ -219,11 +219,11 @@ def locks_cleanup(_: None = Depends(require_auth)) -> dict:
 
 
 @router.post("/locks/release")
-def locks_release(
-    request: LockReleaseRequest, _: None = Depends(require_auth)
-) -> dict:
+def locks_release(request: LockReleaseRequest, _: None = Depends(require_auth)) -> dict:
     """Force-release specified hosts from lock table."""
-    normalized = sorted({str(host).strip() for host in request.hosts if str(host).strip()})
+    normalized = sorted(
+        {str(host).strip() for host in request.hosts if str(host).strip()}
+    )
     if not normalized:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -251,7 +251,9 @@ def locks_release(
 def routes(request: Request, _: None = Depends(require_auth)) -> dict:
     """Return current v2 route surface for compatibility checks."""
     items: list[dict] = []
-    for path, methods in sorted(_collect_v2_route_set(request), key=lambda row: (row[0], ",".join(row[1]))):
+    for path, methods in sorted(
+        _collect_v2_route_set(request), key=lambda row: (row[0], ",".join(row[1]))
+    ):
         items.append(
             {
                 "path": path,
@@ -266,12 +268,20 @@ def routes(request: Request, _: None = Depends(require_auth)) -> dict:
 def contract(request: Request, _: None = Depends(require_auth)) -> dict:
     """Check required v2 API contract against actual registered routes."""
     actual = _collect_v2_route_set(request)
-    missing = sorted(_REQUIRED_ROUTE_CONTRACT.difference(actual), key=lambda row: (row[0], ",".join(row[1])))
-    extra = sorted(actual.difference(_REQUIRED_ROUTE_CONTRACT), key=lambda row: (row[0], ",".join(row[1])))
+    missing = sorted(
+        _REQUIRED_ROUTE_CONTRACT.difference(actual),
+        key=lambda row: (row[0], ",".join(row[1])),
+    )
+    extra = sorted(
+        actual.difference(_REQUIRED_ROUTE_CONTRACT),
+        key=lambda row: (row[0], ",".join(row[1])),
+    )
     return {
         "status": "ok" if not missing else "missing",
         "required_count": len(_REQUIRED_ROUTE_CONTRACT),
         "actual_count": len(actual),
-        "missing": [{"path": path, "methods": list(methods)} for path, methods in missing],
+        "missing": [
+            {"path": path, "methods": list(methods)} for path, methods in missing
+        ],
         "extra": [{"path": path, "methods": list(methods)} for path, methods in extra],
     }

@@ -47,7 +47,9 @@ def list_command_keys(base: str, host: str) -> set[str]:
     return result
 
 
-def read_output_by_key(base: str, host: str, command_key: str) -> tuple[str, Optional[str]]:
+def read_output_by_key(
+    base: str, host: str, command_key: str
+) -> tuple[str, Optional[str]]:
     """Read output by stored command key and return (status, content)."""
     safe_host = _sanitize(host)
     safe_key = _sanitize(command_key)

@@ -21,4 +21,3 @@ def append_task_log(task_id: str, line: str) -> None:
     path = task_log_path(task_id)
     with path.open("a", encoding="utf-8") as log_file:
         log_file.write(f"{line}\n")
-

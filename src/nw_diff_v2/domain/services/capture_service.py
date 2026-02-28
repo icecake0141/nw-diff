@@ -86,7 +86,9 @@ def run_capture_task(
                 )
                 files = []
                 for command, output in outputs.items():
-                    append_task_log(task_id, f"Captured command '{command}' on {hostname}")
+                    append_task_log(
+                        task_id, f"Captured command '{command}' on {hostname}"
+                    )
                     files.append(write_output(base.value, hostname, command, output))
 
                 results["hosts"].append(
@@ -98,7 +100,9 @@ def run_capture_task(
                     }
                 )
                 results["success_count"] += 1
-                logger.info("capture_host_completed task_id=%s host=%s", task_id, hostname)
+                logger.info(
+                    "capture_host_completed task_id=%s host=%s", task_id, hostname
+                )
                 append_task_log(task_id, f"Host capture completed: {hostname}")
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 logger.warning(
@@ -124,7 +128,9 @@ def run_capture_task(
             finished_at=time.time(),
             result=results,
         )
-        logger.info("capture_task_finished task_id=%s status=%s", task_id, final_status.value)
+        logger.info(
+            "capture_task_finished task_id=%s status=%s", task_id, final_status.value
+        )
         append_task_log(task_id, f"Task completed with status={final_status.value}")
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.exception("capture_task_failed task_id=%s error=%s", task_id, exc)

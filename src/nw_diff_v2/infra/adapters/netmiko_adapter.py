@@ -41,4 +41,3 @@ class NetmikoAdapter:
                     connection.disconnect()
                 except Exception:
                     pass
-

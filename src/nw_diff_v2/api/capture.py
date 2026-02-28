@@ -64,7 +64,7 @@ def start_capture(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="All target hosts are currently locked",
                 )
-            acquired, _ = try_lock_hosts(target_hosts)
+            acquired, _retry_conflicts = try_lock_hosts(target_hosts)
         if not acquired:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

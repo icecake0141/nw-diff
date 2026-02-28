@@ -21,7 +21,12 @@ from nw_diff_v2.domain.models import (
 from nw_diff_v2.domain.services.capture_service import launch_capture_task
 from nw_diff_v2.domain.services.lock_service import release_hosts, try_lock_hosts
 from nw_diff_v2.infra.repositories.host_repo import load_hosts
-from nw_diff_v2.infra.repositories.task_repo import create_task, get_task, list_tasks, request_cancel
+from nw_diff_v2.infra.repositories.task_repo import (
+    create_task,
+    get_task,
+    list_tasks,
+    request_cancel,
+)
 from nw_diff_v2.infra.storage.task_logs import task_log_path
 from nw_diff_v2.config import settings
 from nw_diff_v2.security.auth import require_auth
@@ -48,7 +53,11 @@ def task_list(
     running_only: bool = False,
 ) -> list[CaptureTaskSummary]:
     """List recent tasks with optional status filter."""
-    status_value = "running" if running_only else (status_filter.lower() if status_filter else None)
+    status_value = (
+        "running"
+        if running_only
+        else (status_filter.lower() if status_filter else None)
+    )
     host_value = host_contains.strip() if host_contains else None
     tasks = list_tasks(
         limit=limit,
@@ -78,7 +87,9 @@ def task_status(task_id: str, _: None = Depends(require_auth)) -> CaptureTaskDet
     _ensure_valid_task_id(task_id)
     task = get_task(task_id)
     if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND
+        )
     return CaptureTaskDetail(
         task_id=task["task_id"],
         status=task["status"],
@@ -102,14 +113,18 @@ def task_cancel(task_id: str, _: None = Depends(require_auth)) -> CaptureTaskDet
     if not updated:
         task = get_task(task_id)
         if task is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND
+            )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Task is already {task['status']}",
         )
     task = get_task(task_id)
     if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND
+        )
     return CaptureTaskDetail(
         task_id=task["task_id"],
         status=task["status"],
@@ -131,7 +146,9 @@ def task_retry(task_id: str, _: None = Depends(require_auth)) -> CaptureTaskResp
     _ensure_valid_task_id(task_id)
     task = get_task(task_id)
     if task is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND
+        )
     if task["status"] in {"queued", "running"}:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -191,7 +208,9 @@ def task_stream(
     """Stream task log via server-sent events."""
     _ensure_valid_task_id(task_id)
     if get_task(task_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND
+        )
 
     log_path = task_log_path(task_id)
     log_path.touch(exist_ok=True)

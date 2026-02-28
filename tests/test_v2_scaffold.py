@@ -235,7 +235,6 @@ def test_v2_settings_validate_runtime_requires_api_token_in_production() -> None
         env="production",
         device_password="test_password",
         nw_diff_api_token=None,
-        _env_file=None,
     )
     with pytest.raises(RuntimeError, match="NW_DIFF_API_TOKEN is required"):
         cfg.validate_runtime()
@@ -246,7 +245,6 @@ def test_v2_settings_validate_runtime_allows_no_api_token_in_development() -> No
         env="development",
         device_password="test_password",
         nw_diff_api_token=None,
-        _env_file=None,
     )
     cfg.validate_runtime()
 
@@ -282,7 +280,9 @@ def test_v2_capture_api_creates_task_and_status_endpoint(
     monkeypatch.setattr(settings, "device_password", "test_password")
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         task_repo.update_task(
             task_id,
             status=CaptureTaskStatus.COMPLETED,
@@ -292,7 +292,9 @@ def test_v2_capture_api_creates_task_and_status_endpoint(
         )
         release_hosts(reserved_hosts)
 
-    monkeypatch.setattr("nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task)
+    monkeypatch.setattr(
+        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+    )
 
     with TestClient(app) as client:
         response = client.post(
@@ -325,7 +327,9 @@ def test_v2_task_stream_endpoint(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "device_password", "test_password")
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         from nw_diff_v2.infra.storage.task_logs import append_task_log
 
         append_task_log(task_id, "line1")
@@ -339,7 +343,9 @@ def test_v2_task_stream_endpoint(tmp_path: Path, monkeypatch) -> None:
         )
         release_hosts(reserved_hosts)
 
-    monkeypatch.setattr("nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task)
+    monkeypatch.setattr(
+        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+    )
 
     with TestClient(app) as client:
         response = client.post(
@@ -413,7 +419,9 @@ def test_v2_batch_skip_locked_policy(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
     monkeypatch.setattr(settings, "batch_conflict_policy", "skip_locked")
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         task_repo.update_task(
             task_id,
             status=CaptureTaskStatus.COMPLETED,
@@ -423,7 +431,9 @@ def test_v2_batch_skip_locked_policy(tmp_path: Path, monkeypatch) -> None:
         )
         release_hosts(reserved_hosts)
 
-    monkeypatch.setattr("nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task)
+    monkeypatch.setattr(
+        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+    )
 
     acquired, _ = try_lock_hosts({"router1"})
     assert acquired is True
@@ -446,7 +456,9 @@ def test_v2_batch_skip_locked_policy(tmp_path: Path, monkeypatch) -> None:
         release_hosts({"router1"})
 
 
-def test_v2_capture_allows_parallel_on_different_host(tmp_path: Path, monkeypatch) -> None:
+def test_v2_capture_allows_parallel_on_different_host(
+    tmp_path: Path, monkeypatch
+) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
         (
@@ -463,7 +475,9 @@ def test_v2_capture_allows_parallel_on_different_host(tmp_path: Path, monkeypatc
     monkeypatch.setattr(settings, "device_password", "test_password")
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         task_repo.update_task(
             task_id,
             status=CaptureTaskStatus.COMPLETED,
@@ -473,7 +487,9 @@ def test_v2_capture_allows_parallel_on_different_host(tmp_path: Path, monkeypatc
         )
         release_hosts(reserved_hosts)
 
-    monkeypatch.setattr("nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task)
+    monkeypatch.setattr(
+        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+    )
 
     acquired, _ = try_lock_hosts({"router1"})
     assert acquired is True
@@ -551,7 +567,9 @@ def test_v2_export_diff_json_endpoint(tmp_path: Path, monkeypatch) -> None:
         assert response.status_code == 200
         payload = response.json()
         assert payload["hostname"] == "router1"
-        statuses = {item["command_key"]: item["diff_status"] for item in payload["commands"]}
+        statuses = {
+            item["command_key"]: item["diff_status"] for item in payload["commands"]
+        }
         assert statuses["show_version"] == "identical"
         assert statuses["show_running-config"] == "changes detected"
 
@@ -668,8 +686,12 @@ def test_v2_diff_host_endpoint(tmp_path: Path, monkeypatch) -> None:
     dest_dir.mkdir(parents=True, exist_ok=True)
     (origin_dir / "router1-show_version.txt").write_text("abc\n", encoding="utf-8")
     (dest_dir / "router1-show_version.txt").write_text("abc\n", encoding="utf-8")
-    (origin_dir / "router1-show_running-config.txt").write_text("line1\n", encoding="utf-8")
-    (dest_dir / "router1-show_running-config.txt").write_text("line2\n", encoding="utf-8")
+    (origin_dir / "router1-show_running-config.txt").write_text(
+        "line1\n", encoding="utf-8"
+    )
+    (dest_dir / "router1-show_running-config.txt").write_text(
+        "line2\n", encoding="utf-8"
+    )
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -749,11 +771,12 @@ def test_v2_host_detail_endpoint_filters(tmp_path: Path, monkeypatch) -> None:
         assert changed.status_code == 200
         changed_payload = changed.json()
         assert changed_payload["summary"]["total"] == 1
-        assert changed_payload["command_results"][0]["command_key"] == "show_running-config"
-
-        contains = client.get(
-            "/api/v2/hosts/router1/detail?command_contains=version"
+        assert (
+            changed_payload["command_results"][0]["command_key"]
+            == "show_running-config"
         )
+
+        contains = client.get("/api/v2/hosts/router1/detail?command_contains=version")
         assert contains.status_code == 200
         contains_payload = contains.json()
         assert contains_payload["summary"]["total"] == 1
@@ -957,7 +980,9 @@ def test_v2_task_list_endpoint(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "device_password", "test_password")
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         task_repo.update_task(
             task_id,
             status=CaptureTaskStatus.COMPLETED,
@@ -967,7 +992,9 @@ def test_v2_task_list_endpoint(tmp_path: Path, monkeypatch) -> None:
         )
         release_hosts(reserved_hosts)
 
-    monkeypatch.setattr("nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task)
+    monkeypatch.setattr(
+        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+    )
 
     with TestClient(app) as client:
         create_response = client.post(
@@ -1316,12 +1343,16 @@ def test_v2_system_readiness_endpoint_ok_and_degraded(
         degraded_payload = degraded_resp.json()
         assert degraded_payload["status"] == "degraded"
         queue_check = next(
-            check for check in degraded_payload["checks"] if check["name"] == "queue_depth"
+            check
+            for check in degraded_payload["checks"]
+            if check["name"] == "queue_depth"
         )
         assert queue_check["ok"] is False
 
 
-def test_v2_system_readiness_degraded_by_lock_depth(tmp_path: Path, monkeypatch) -> None:
+def test_v2_system_readiness_degraded_by_lock_depth(
+    tmp_path: Path, monkeypatch
+) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
         (
@@ -1369,7 +1400,9 @@ def test_v2_task_cancel_endpoint_sets_flag(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "device_password", "test_password")
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
 
-    def _noop_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _noop_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         # keep task in queued state to test cancellation flag update
         del task_id, base, hosts, reserved_hosts
 
@@ -1481,7 +1514,9 @@ def test_v2_task_retry_creates_new_task(tmp_path: Path, monkeypatch) -> None:
         error="x",
     )
 
-    def _noop_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _noop_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         del task_id, base, hosts, reserved_hosts
 
     monkeypatch.setattr(
@@ -1545,7 +1580,9 @@ def test_v2_end_to_end_capture_diff_export_retry_flow(
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
     monkeypatch.setattr(settings, "task_worker_enabled", False)
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         host = hosts[0]["host"]
         output = (
             "show version output (origin)\n"
@@ -1562,8 +1599,12 @@ def test_v2_end_to_end_capture_diff_export_retry_flow(
         )
         release_hosts(reserved_hosts)
 
-    monkeypatch.setattr("nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task)
-    monkeypatch.setattr("nw_diff_v2.api.tasks.launch_capture_task", _fake_launch_capture_task)
+    monkeypatch.setattr(
+        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+    )
+    monkeypatch.setattr(
+        "nw_diff_v2.api.tasks.launch_capture_task", _fake_launch_capture_task
+    )
 
     with TestClient(app) as client:
         origin_resp = client.post(
@@ -1624,7 +1665,9 @@ def test_v2_task_list_status_filter(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
     release_hosts({"router1", "router2"})
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         status = (
             CaptureTaskStatus.COMPLETED
             if hosts[0]["host"] == "router1"
@@ -1736,7 +1779,9 @@ def test_v2_batch_mode_can_target_subset(tmp_path: Path, monkeypatch) -> None:
 
     captured_hosts: list[list[str]] = []
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         captured_hosts.append(sorted([h["host"] for h in hosts]))
         task_repo.update_task(
             task_id,
@@ -1786,7 +1831,9 @@ def test_v2_task_list_supports_offset(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "device_password", "test_password")
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
 
-    def _fake_launch_capture_task(*, task_id, base, hosts, reserved_hosts):  # noqa: ANN001
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
         task_repo.update_task(
             task_id,
             status=CaptureTaskStatus.COMPLETED,

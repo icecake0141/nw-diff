@@ -20,7 +20,12 @@ def _write_eval(path: Path, *, go: bool, reasons: list[str]) -> None:
         "readiness_status": "ok" if go else "degraded",
         "deploy_validation_status": "ok" if go else "failed",
         "has_contract_diff": not go,
-        "counts": {"queued": 0, "running": 0, "failed": 0 if go else 1, "locked_hosts": 0},
+        "counts": {
+            "queued": 0,
+            "running": 0,
+            "failed": 0 if go else 1,
+            "locked_hosts": 0,
+        },
         "limits": {"max_queued": 0, "max_running": 5, "max_failed": 0, "max_locked": 0},
         "reasons": reasons,
     }

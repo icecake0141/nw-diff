@@ -54,7 +54,9 @@ def host_detail(
             detail=ERR_INVALID_VIEW,
         )
 
-    command_keys = sorted(list_command_keys("origin", hostname) | list_command_keys("dest", hostname))
+    command_keys = sorted(
+        list_command_keys("origin", hostname) | list_command_keys("dest", hostname)
+    )
     if not command_keys:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -118,7 +120,11 @@ def host_detail(
 
     results = all_results
     if safe_status:
-        results = [item for item in results if _result_category(str(item["diff_status"])) == safe_status]
+        results = [
+            item
+            for item in results
+            if _result_category(str(item["diff_status"])) == safe_status
+        ]
     if safe_command_contains:
         results = [
             item
@@ -127,10 +133,24 @@ def host_detail(
             or safe_command_contains in str(item["command_key"]).lower()
         ]
 
-    changed = sum(1 for item in results if _result_category(str(item["diff_status"])) == "changed")
-    identical = sum(1 for item in results if _result_category(str(item["diff_status"])) == "identical")
-    unavailable = sum(1 for item in results if _result_category(str(item["diff_status"])) == "unavailable")
-    not_found = sum(1 for item in results if _result_category(str(item["diff_status"])) == "not_found")
+    changed = sum(
+        1 for item in results if _result_category(str(item["diff_status"])) == "changed"
+    )
+    identical = sum(
+        1
+        for item in results
+        if _result_category(str(item["diff_status"])) == "identical"
+    )
+    unavailable = sum(
+        1
+        for item in results
+        if _result_category(str(item["diff_status"])) == "unavailable"
+    )
+    not_found = sum(
+        1
+        for item in results
+        if _result_category(str(item["diff_status"])) == "not_found"
+    )
 
     return {
         "hostname": hostname,
@@ -166,14 +186,18 @@ def host_summary(
         hostname = host.host
         if query and query not in hostname.lower():
             continue
-        command_keys = sorted(list_command_keys("origin", hostname) | list_command_keys("dest", hostname))
+        command_keys = sorted(
+            list_command_keys("origin", hostname) | list_command_keys("dest", hostname)
+        )
         changed = 0
         identical = 0
         unavailable = 0
         not_found = 0
 
         for command_key in command_keys:
-            origin_status, origin_data = read_output_by_key("origin", hostname, command_key)
+            origin_status, origin_data = read_output_by_key(
+                "origin", hostname, command_key
+            )
             dest_status, dest_data = read_output_by_key("dest", hostname, command_key)
             if origin_status == "available" and dest_status == "available":
                 diff_status = compute_diff_status(origin_data or "", dest_data or "")
@@ -229,14 +253,20 @@ def host_summary(
     def _failed_priority(row: dict) -> int:
         if not prioritize_failed:
             return 1
-        return 0 if str(row.get("last_task_status", "")) in {"failed", "cancelled"} else 1
+        return (
+            0 if str(row.get("last_task_status", "")) in {"failed", "cancelled"} else 1
+        )
 
     rows.sort(
         key=lambda row: (
             _failed_priority(row),
             -int(row["changed"]),
             -int(row["unavailable"]),
-            -(float(row["last_capture_at"]) if row["last_capture_at"] is not None else -1.0),
+            -(
+                float(row["last_capture_at"])
+                if row["last_capture_at"] is not None
+                else -1.0
+            ),
             str(row["host"]),
         )
     )

@@ -201,7 +201,9 @@ def test_evaluate_v2_cutover_no_go_by_locked_hosts(tmp_path: Path) -> None:
     assert result.returncode == 1
     payload = json.loads(result.stdout)
     assert payload["go"] is False
-    assert any("locked_hosts=2 exceeds max_locked=0" in reason for reason in payload["reasons"])
+    assert any(
+        "locked_hosts=2 exceeds max_locked=0" in reason for reason in payload["reasons"]
+    )
 
 
 def test_evaluate_v2_cutover_summary_includes_locked(tmp_path: Path) -> None:

@@ -36,7 +36,9 @@ def get_logs(
     if source_value == "app":
         log_path = Path(settings.app_log_path)
         if log_path.exists():
-            all_lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+            all_lines = log_path.read_text(
+                encoding="utf-8", errors="replace"
+            ).splitlines()
             selected = all_lines[-safe_limit:] if tail else all_lines[:safe_limit]
             level_filter = level.upper().strip()
             if level_filter:

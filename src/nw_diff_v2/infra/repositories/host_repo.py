@@ -70,9 +70,7 @@ def load_hosts(csv_path: str) -> list[HostRecord]:
                 continue
 
             rows.append(
-                HostRecord(
-                    host=host, ip=ip, username=username, port=port, model=model
-                )
+                HostRecord(host=host, ip=ip, username=username, port=port, model=model)
             )
 
     return rows

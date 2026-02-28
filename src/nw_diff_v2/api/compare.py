@@ -29,7 +29,9 @@ def compare_files(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERR_INVALID_HOSTNAME,
         )
-    if not request.command or any(token in request.command for token in ("..", "/", "\\")):
+    if not request.command or any(
+        token in request.command for token in ("..", "/", "\\")
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid command",
@@ -74,7 +76,9 @@ def compare_files(
 
 
 @router.get("/diff/{hostname}")
-def diff_host(hostname: str, _: None = Depends(require_auth), view: str = "inline") -> dict:
+def diff_host(
+    hostname: str, _: None = Depends(require_auth), view: str = "inline"
+) -> dict:
     """Compare origin/dest outputs for all commands of one host."""
     if not validate_hostname(hostname):
         raise HTTPException(
@@ -88,7 +92,9 @@ def diff_host(hostname: str, _: None = Depends(require_auth), view: str = "inlin
             detail=ERR_INVALID_VIEW,
         )
 
-    command_keys = sorted(list_command_keys("origin", hostname) | list_command_keys("dest", hostname))
+    command_keys = sorted(
+        list_command_keys("origin", hostname) | list_command_keys("dest", hostname)
+    )
     if not command_keys:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -103,10 +109,14 @@ def diff_host(hostname: str, _: None = Depends(require_auth), view: str = "inlin
         diff_html = ""
         if origin_status == "available" and dest_status == "available":
             if safe_view == "sidebyside":
-                diff_html = generate_side_by_side_html(origin_data or "", dest_data or "")
+                diff_html = generate_side_by_side_html(
+                    origin_data or "", dest_data or ""
+                )
                 diff_status = compute_diff_status(origin_data or "", dest_data or "")
             else:
-                diff_status, diff_html = compute_diff(origin_data or "", dest_data or "", "inline")
+                diff_status, diff_html = compute_diff(
+                    origin_data or "", dest_data or "", "inline"
+                )
         commands.append(
             {
                 "command_key": command_key,

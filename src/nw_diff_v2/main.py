@@ -16,7 +16,10 @@ from nw_diff_v2.api.tasks import router as tasks_router
 from nw_diff_v2.api.ui import router as ui_router
 from nw_diff_v2.domain.services.lock_service import cleanup_stale_locks, release_hosts
 from nw_diff_v2.domain.services.task_worker import TaskWorkerManager
-from nw_diff_v2.infra.repositories.task_repo import init_db, recover_orphaned_running_tasks
+from nw_diff_v2.infra.repositories.task_repo import (
+    init_db,
+    recover_orphaned_running_tasks,
+)
 
 _worker_manager = TaskWorkerManager()
 

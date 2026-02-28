@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
@@ -34,9 +35,11 @@ def export_host_json(hostname: str, _: None = Depends(require_auth)) -> dict:
 
     root = Path(settings.artifact_root)
     if not root.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No artifacts")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No artifacts"
+        )
 
-    result = {"hostname": hostname, "bases": {"origin": [], "dest": []}}
+    result: dict[str, Any] = {"hostname": hostname, "bases": {"origin": [], "dest": []}}
     for base in ("origin", "dest"):
         base_dir = root / base
         if not base_dir.exists():
@@ -76,7 +79,9 @@ def export_host_diff_json(hostname: str, _: None = Depends(require_auth)) -> dic
             detail="Hostname not found in hosts configuration",
         )
 
-    command_keys = sorted(list_command_keys("origin", hostname) | list_command_keys("dest", hostname))
+    command_keys = sorted(
+        list_command_keys("origin", hostname) | list_command_keys("dest", hostname)
+    )
     if not command_keys:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

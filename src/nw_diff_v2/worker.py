@@ -10,7 +10,10 @@ import time
 from nw_diff_v2.config import settings
 from nw_diff_v2.domain.services.lock_service import cleanup_stale_locks, release_hosts
 from nw_diff_v2.domain.services.task_worker import process_one_queued_task
-from nw_diff_v2.infra.repositories.task_repo import init_db, recover_orphaned_running_tasks
+from nw_diff_v2.infra.repositories.task_repo import (
+    init_db,
+    recover_orphaned_running_tasks,
+)
 
 logger = logging.getLogger("nw-diff-v2-worker")
 
