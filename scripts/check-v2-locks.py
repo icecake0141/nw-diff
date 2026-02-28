@@ -9,9 +9,12 @@ from pathlib import Path
 from urllib.request import urlopen
 
 
-def _load_payload(*, input_file: str, url: str) -> dict:
+def _load_payload(*, input_file: str, url: str) -> dict | None:
     if input_file:
-        return json.loads(Path(input_file).read_text(encoding="utf-8"))
+        path = Path(input_file)
+        if not path.exists():
+            return None
+        return json.loads(path.read_text(encoding="utf-8"))
     with urlopen(url, timeout=10) as resp:  # nosec B310
         return json.loads(resp.read().decode("utf-8"))
 
@@ -40,6 +43,11 @@ def main() -> int:
         help="Exit 0 even when stale lock rows are present",
     )
     parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="Exit 0 when input file/url payload is unavailable",
+    )
+    parser.add_argument(
         "--summary-path",
         default="",
         help="Optional markdown output path",
@@ -47,6 +55,20 @@ def main() -> int:
     args = parser.parse_args()
 
     payload = _load_payload(input_file=args.input_file, url=args.url)
+    if payload is None:
+        print("lock payload unavailable")
+        if args.summary_path:
+            out = Path(args.summary_path)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            lines = [
+                "## V2 Locks",
+                "",
+                "- status: **missing_input**",
+                f"- input_file: `{args.input_file}`",
+            ]
+            with out.open("a", encoding="utf-8") as fp:
+                fp.write("\n".join(lines) + "\n")
+        return 0 if args.allow_missing else 1
     locks = payload.get("locks", [])
     count = int(payload.get("count", len(locks)))
     stale_count = sum(1 for row in locks if bool(row.get("is_stale", False)))

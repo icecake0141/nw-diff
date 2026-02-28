@@ -9,8 +9,11 @@ import os
 from pathlib import Path
 
 
-def _load_json(path: str) -> dict:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+def _load_json(path: str) -> dict | None:
+    file_path = Path(path)
+    if not file_path.exists():
+        return None
+    return json.loads(file_path.read_text(encoding="utf-8"))
 
 
 def _env_int(name: str, default: int) -> int:
@@ -41,6 +44,11 @@ def main() -> int:
     parser.add_argument("--summary-path", default="")
     parser.add_argument("--json-output", default="")
     parser.add_argument("--allow-no-go", action="store_true")
+    parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="Exit 0 when required input JSON files are unavailable",
+    )
     args = parser.parse_args()
 
     max_queued = (
@@ -66,6 +74,51 @@ def main() -> int:
 
     readiness = _load_json(args.readiness_file)
     contract_diff = _load_json(args.contract_diff_file)
+    if readiness is None or contract_diff is None:
+        missing_files: list[str] = []
+        if readiness is None:
+            missing_files.append(args.readiness_file)
+        if contract_diff is None:
+            missing_files.append(args.contract_diff_file)
+        payload = {
+            "go": False,
+            "readiness_status": "missing_input",
+            "has_contract_diff": False,
+            "deploy_validation_status": "skipped",
+            "counts": {"queued": 0, "running": 0, "failed": 0, "locked_hosts": 0},
+            "limits": {
+                "max_queued": max_queued,
+                "max_running": max_running,
+                "max_failed": max_failed,
+                "max_locked": max_locked,
+            },
+            "reasons": [
+                f"missing input file: {path}" for path in missing_files
+            ],
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+        if args.summary_path:
+            out = Path(args.summary_path)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            with out.open("a", encoding="utf-8") as fp:
+                fp.write(
+                    "## V2 Cutover Evaluation\n\n- decision: **NO-GO**\n"
+                    "- readiness_status: missing_input\n"
+                    "### Reasons\n"
+                    + "\n".join(
+                        [f"- missing input file: {path}" for path in missing_files]
+                    )
+                    + "\n"
+                )
+        if args.json_output:
+            out = Path(args.json_output)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+                + "\n",
+                encoding="utf-8",
+            )
+        return 0 if args.allow_missing else 1
     deploy_validation = (
         _load_json(args.deploy_validation_file)
         if args.deploy_validation_file

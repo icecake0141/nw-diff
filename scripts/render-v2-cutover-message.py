@@ -8,8 +8,11 @@ import json
 from pathlib import Path
 
 
-def _load(path: str) -> dict:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+def _load(path: str) -> dict | None:
+    file_path = Path(path)
+    if not file_path.exists():
+        return None
+    return json.loads(file_path.read_text(encoding="utf-8"))
 
 
 def _render_markdown(payload: dict) -> str:
@@ -64,9 +67,33 @@ def main() -> int:
         default="",
         help="Optional path to append markdown summary",
     )
+    parser.add_argument(
+        "--allow-missing",
+        action="store_true",
+        help="Exit 0 when input JSON is unavailable",
+    )
     args = parser.parse_args()
 
     payload = _load(args.input)
+    if payload is None:
+        message = (
+            "## V2 Cutover Notification\n\n"
+            "- decision: **NO-GO**\n"
+            f"- missing input file: `{args.input}`\n"
+            if args.format == "markdown"
+            else f"[NW-Diff v2] Cutover decision: NO-GO | missing input file: {args.input}"
+        )
+        print(message)
+        if args.output:
+            out = Path(args.output)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(message, encoding="utf-8")
+        if args.summary_path and args.format == "markdown":
+            summary = Path(args.summary_path)
+            summary.parent.mkdir(parents=True, exist_ok=True)
+            with summary.open("a", encoding="utf-8") as fp:
+                fp.write(message + ("" if message.endswith("\n") else "\n"))
+        return 0 if args.allow_missing else 1
     message = _render_markdown(payload) if args.format == "markdown" else _render_text(payload)
     print(message)
 

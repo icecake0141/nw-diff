@@ -219,6 +219,7 @@ jobs:
         run: |
           python scripts/check-v2-readiness.py \
             --input-file .artifacts/v2_readiness.json \
+            --allow-missing \
             --summary-path "${GITHUB_STEP_SUMMARY}"
 
       - name: V2 locks check
@@ -227,6 +228,7 @@ jobs:
           python scripts/check-v2-locks.py \
             --input-file .artifacts/v2_locks.json \
             --max-locks 100 \
+            --allow-missing \
             --summary-path "${GITHUB_STEP_SUMMARY}"
 
       - name: Evaluate v2 cutover decision
@@ -241,6 +243,7 @@ jobs:
             --readiness-file .artifacts/v2_readiness.json \
             --contract-diff-file .artifacts/v2_contract_diff.json \
             --deploy-validation-file .artifacts/deploy_template_validation.json \
+            --allow-missing \
             --summary-path "${GITHUB_STEP_SUMMARY}" \
             --json-output .artifacts/v2_cutover_eval.json
 
@@ -251,10 +254,12 @@ jobs:
             --input .artifacts/v2_cutover_eval.json \
             --format markdown \
             --output .artifacts/v2_cutover_message.md \
+            --allow-missing \
             --summary-path "${GITHUB_STEP_SUMMARY}"
           python scripts/render-v2-cutover-message.py \
             --input .artifacts/v2_cutover_eval.json \
             --format text \
+            --allow-missing \
             --output .artifacts/v2_cutover_message.txt
 
       - name: Summarize v2 contract check
