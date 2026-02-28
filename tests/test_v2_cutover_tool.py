@@ -8,6 +8,8 @@ Review required for correctness, security, and licensing.
 
 from __future__ import annotations
 
+# pylint: disable=missing-function-docstring
+
 import json
 from pathlib import Path
 import subprocess
@@ -101,14 +103,12 @@ def test_evaluate_v2_cutover_uses_env_thresholds(tmp_path: Path) -> None:
     )
     _write_json(contract_diff, {"has_diff": False})
 
-    env = dict(
-        **{
-            "V2_CUTOVER_MAX_QUEUED": "2",
-            "V2_CUTOVER_MAX_RUNNING": "1",
-            "V2_CUTOVER_MAX_FAILED": "0",
-            "V2_CUTOVER_MAX_LOCKED": "1",
-        }
-    )
+    env = {
+        "V2_CUTOVER_MAX_QUEUED": "2",
+        "V2_CUTOVER_MAX_RUNNING": "1",
+        "V2_CUTOVER_MAX_FAILED": "0",
+        "V2_CUTOVER_MAX_LOCKED": "1",
+    }
     result = subprocess.run(
         [
             sys.executable,

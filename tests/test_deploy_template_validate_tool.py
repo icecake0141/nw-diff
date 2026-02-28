@@ -8,6 +8,8 @@ Review required for correctness, security, and licensing.
 
 from __future__ import annotations
 
+# pylint: disable=missing-function-docstring
+
 import json
 from pathlib import Path
 import subprocess

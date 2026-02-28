@@ -14,6 +14,8 @@ Review required for correctness, security, and licensing.
 
 from __future__ import annotations
 
+# pylint: disable=protected-access
+
 import importlib
 import logging
 import os
@@ -581,9 +583,7 @@ def test_capture_stream_rejects_same_host_concurrent_run(
     )
     monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
 
-    acquired, _ = app._reserve_capture_hosts(
-        {"router1"}
-    )  # pylint: disable=protected-access
+    acquired, _ = app._reserve_capture_hosts({"router1"})
     assert acquired is True
     try:
         with app.app.test_client() as client:
@@ -593,7 +593,7 @@ def test_capture_stream_rejects_same_host_concurrent_run(
         assert json_data is not None
         assert "already running" in json_data["error"].lower()
     finally:
-        app._release_capture_hosts({"router1"})  # pylint: disable=protected-access
+        app._release_capture_hosts({"router1"})
 
 
 def test_debug_mode_disabled_by_default(monkeypatch) -> None:
