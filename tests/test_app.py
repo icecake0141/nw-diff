@@ -581,7 +581,9 @@ def test_capture_stream_rejects_same_host_concurrent_run(
     )
     monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
 
-    acquired, _ = app._reserve_capture_hosts({"router1"})  # pylint: disable=protected-access
+    acquired, _ = app._reserve_capture_hosts(
+        {"router1"}
+    )  # pylint: disable=protected-access
     assert acquired is True
     try:
         with app.app.test_client() as client:
