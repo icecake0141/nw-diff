@@ -990,3 +990,182 @@ Run pre-commit hooks to ensure code quality:
 ```bash
 pre-commit run --all-files
 ```
+
+### V2 Reimplementation Scaffold
+
+This repository now includes a parallel scaffold under `src/nw_diff_v2/` to support
+a clean-slate reimplementation with FastAPI.
+
+Current scaffold features:
+- Minimal web UI: `GET /v2`
+  - task inspect / cancel / live stream controls
+  - recent task auto refresh with status filter
+  - host-name search and running-only toggle for task list
+  - recent tasks table with row-level select/cancel/live actions
+  - host detail page: `GET /v2/hosts/{hostname}`
+  - logs page: `GET /v2/logs`
+- Typed settings with environment-based auth policy
+- `hosts.csv` row validation (invalid rows are skipped)
+- Host-level capture locks (same-host concurrency is rejected)
+- Host locks are persisted in SQLite (cross-process safe on shared DB file)
+- stale host locks auto-expire via `host_lock_timeout_seconds`
+- Background queue worker (DB-backed queued task execution)
+- `mode=single` strictly requires exactly one host
+- `mode=batch` captures all hosts when `hosts=[]`, or only the provided subset
+- Initial API endpoints:
+  - `POST /api/v2/captures`
+  - `GET /api/v2/tasks/{task_id}`
+  - `GET /api/v2/tasks?limit=50&offset=0&status_filter=completed&host_contains=router&running_only=true`
+  - `POST /api/v2/tasks/{task_id}/cancel`
+  - `POST /api/v2/tasks/{task_id}/retry`
+  - `GET /api/v2/tasks/{task_id}/stream?tail_lines=20`
+    - supports `Last-Event-ID` resume and heartbeat keepalive
+  - `POST /api/v2/compare/files`
+  - `GET /api/v2/diff/{hostname}?view=inline|sidebyside`
+  - `GET /api/v2/hosts/{hostname}/detail?view=inline|sidebyside&status_filter=changed|identical|unavailable|not_found&command_contains=...`
+  - `GET /api/v2/hosts/summary?limit=50&host_contains=router&prioritize_failed=true`
+  - `GET /api/v2/logs?source=app|task&limit=1000&contains=...`
+  - `GET /api/v2/exports/{hostname}`
+  - `GET /api/v2/exports/{hostname}/diff-json`
+  - `GET /api/v2/exports/{hostname}/html`
+  - `GET /api/v2/system/worker`
+  - `GET /api/v2/system/health`
+  - `GET /api/v2/system/readiness`
+  - `GET /api/v2/system/locks`
+  - `POST /api/v2/system/locks/cleanup`
+  - `POST /api/v2/system/locks/release`
+  - `GET /api/v2/system/routes`
+  - `GET /api/v2/system/contract`
+
+Run locally:
+```bash
+export DEVICE_PASSWORD=example
+export NW_DIFF_ENV=development
+uvicorn nw_diff_v2.main:app --reload --app-dir src
+```
+
+Run standalone worker (optional split deployment):
+```bash
+export DEVICE_PASSWORD=example
+export NW_DIFF_ENV=development
+python -m nw_diff_v2.worker
+```
+
+Run v2 contract smoke check (local/CI):
+```bash
+PYTHON_BIN=.venv/bin/python DEVICE_PASSWORD=example NW_DIFF_ENV=development ./scripts/check-v2-contract.sh
+```
+Run full preflight gate (contract/readiness/locks/cutover/message):
+```bash
+PYTHON_BIN=.venv/bin/python DEVICE_PASSWORD=example NW_DIFF_ENV=development ./scripts/run-v2-preflight.sh
+```
+Notes:
+- preflight includes deploy template validation and writes `DEPLOY_VALIDATION_FILE` JSON.
+- set `DEPLOY_VALIDATION_STRICT=true` to fail on missing `nginx`/`systemd-analyze`.
+
+Optional outputs:
+```bash
+CONTRACT_OUTPUT=.artifacts/v2_contract.json HEALTH_OUTPUT=.artifacts/v2_health.json READINESS_OUTPUT=.artifacts/v2_readiness.json LOCKS_OUTPUT=.artifacts/v2_locks.json CONTRACT_CURRENT_OUTPUT=.artifacts/v2_contract_current.json DEPLOY_VALIDATION_FILE=.artifacts/deploy_template_validation.json LOG_OUTPUT=.artifacts/v2_contract.log
+```
+
+Run readiness checker (non-zero on degraded):
+```bash
+.venv/bin/python scripts/check-v2-readiness.py --url http://127.0.0.1:18080/api/v2/system/readiness
+```
+Run lock checker (non-zero on stale/overflow):
+```bash
+.venv/bin/python scripts/check-v2-locks.py --url http://127.0.0.1:18080/api/v2/system/locks --max-locks 100
+```
+
+Evaluate cutover GO/NO-GO:
+```bash
+.venv/bin/python scripts/evaluate-v2-cutover.py --readiness-file .artifacts/v2_readiness.json --contract-diff-file .artifacts/v2_contract_diff.json --deploy-validation-file .artifacts/deploy_template_validation.json
+```
+Explicit thresholds example:
+```bash
+.venv/bin/python scripts/evaluate-v2-cutover.py --readiness-file .artifacts/v2_readiness.json --contract-diff-file .artifacts/v2_contract_diff.json --deploy-validation-file .artifacts/deploy_template_validation.json --max-queued 0 --max-running 5 --max-failed 0 --max-locked 0
+```
+Render cutover message:
+```bash
+.venv/bin/python scripts/render-v2-cutover-message.py --input .artifacts/v2_cutover_eval.json --format markdown --output .artifacts/v2_cutover_message.md
+```
+
+Cutover threshold env vars:
+```bash
+V2_CUTOVER_MAX_QUEUED=0
+V2_CUTOVER_MAX_RUNNING=5
+V2_CUTOVER_MAX_FAILED=0
+V2_CUTOVER_MAX_LOCKED=0
+```
+Examples:
+- staging: `docs/env/v2-cutover-staging.env.example`
+- production: `docs/env/v2-cutover-production.env.example`
+
+Generate/update contract snapshot file:
+```bash
+.venv/bin/python scripts/generate-v2-contract.py --output docs/contract/v2.json
+```
+
+Diff baseline vs current generated snapshot:
+```bash
+.venv/bin/python scripts/generate-v2-contract.py --output .artifacts/v2_contract_current.json
+.venv/bin/python scripts/diff-v2-contract.py --baseline docs/contract/v2.json --candidate .artifacts/v2_contract_current.json --fail-on-diff
+```
+
+Write machine-readable diff JSON:
+```bash
+.venv/bin/python scripts/diff-v2-contract.py --baseline docs/contract/v2.json --candidate .artifacts/v2_contract_current.json --json-output .artifacts/v2_contract_diff.json
+```
+
+CI note:
+- `.github/workflows/ci.yml` and `.github/workflows/integration.yml` both run the v2 contract smoke check and upload its artifacts.
+- Both workflows also append a contract summary to GitHub Job Summary via `scripts/summarize-v2-contract.sh`.
+- Both workflows verify `docs/contract/v2.json` is up to date via `scripts/diff-v2-contract.py`.
+- Both workflows evaluate cutover decision via `scripts/evaluate-v2-cutover.py`.
+- Operations runbook: `docs/V2_RUNBOOK.md`.
+- Cutover checklist: `docs/V2_CUTOVER_CHECKLIST.md`.
+- systemd templates: `docs/deploy/nw-diff-v2-api.service.example`, `docs/deploy/nw-diff-v2-worker.service.example`.
+- nginx templates: `docs/deploy/nginx-v2.conf.example`, `docs/deploy/nginx-v1-v2-cutover.conf.example`.
+
+Validate deploy templates:
+```bash
+./scripts/validate-deploy-templates.sh
+```
+With summary output:
+```bash
+SUMMARY_PATH=/tmp/deploy_template_summary.md ./scripts/validate-deploy-templates.sh
+```
+With JSON output:
+```bash
+JSON_OUTPUT=/tmp/deploy_template_validation.json ./scripts/validate-deploy-templates.sh
+```
+
+Notes:
+- v2 keeps SQLite-only task persistence (`sqlite:///...`) by design.
+- Queue worker controls:
+  - `task_worker_enabled` (default: `true`)
+  - `task_worker_threads` (default: `1`)
+  - `task_worker_poll_seconds` (default: `0.5`)
+- Readiness thresholds:
+  - `readiness_max_queued` (default: `100`)
+  - `readiness_max_running` (default: `20`)
+  - `readiness_max_locked` (default: `100`)
+- On startup, orphaned `running` tasks are auto-recovered to `failed`.
+- If `NW_DIFF_API_TOKEN` is set, Bearer token auth is enforced and Basic auth
+  fallback is available via `NW_DIFF_BASIC_USER` + password/hash env vars.
+- In v2, omitting `NW_DIFF_API_TOKEN` is allowed only for development-like envs
+  (`development`/`dev`/`local`/`test`). Non-development envs fail fast at startup.
+- Batch conflict policy is configurable via `batch_conflict_policy`:
+  - `all_or_nothing` (default): any lock conflict returns `409`
+  - `skip_locked`: start capture for unlocked hosts and report conflicts
+- Host lock behavior:
+  - Same host cannot run concurrent captures (`409` on conflict)
+  - Different hosts can run in parallel
+  - Stale locks auto-expire via `host_lock_timeout_seconds`
+  - API/worker startup also performs stale lock cleanup
+- `hosts.csv` rows are validated before use (safe hostname/user/model chars,
+  valid IP, valid port range, and field length limits).
+- Task cancel API only accepts `queued`/`running`; completed tasks return `409`.
+- Migration notes: see `docs/V2_MIGRATION.md`.
+- Current implementation snapshot: `docs/V2_IMPLEMENTATION_STATUS.md`.
+- Commit split plan: `docs/V2_COMMIT_SPLIT_PLAN.md`.

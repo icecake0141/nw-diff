@@ -1,0 +1,271 @@
+{
+  "actual_routes": [
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/captures"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/compare/files"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/diff/{hostname}"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/exports/{hostname}"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/exports/{hostname}/diff-json"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/exports/{hostname}/html"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/hosts/summary"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/hosts/{hostname}/detail"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/logs"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/contract"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/health"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/locks"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/system/locks/cleanup"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/system/locks/release"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/readiness"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/routes"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/worker"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/tasks"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/tasks/{task_id}"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/tasks/{task_id}/cancel"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/tasks/{task_id}/retry"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/tasks/{task_id}/stream"
+    }
+  ],
+  "required_routes": [
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/captures"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/compare/files"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/diff/{hostname}"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/exports/{hostname}"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/exports/{hostname}/diff-json"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/exports/{hostname}/html"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/hosts/summary"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/hosts/{hostname}/detail"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/logs"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/contract"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/health"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/locks"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/system/locks/cleanup"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/system/locks/release"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/readiness"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/routes"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/system/worker"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/tasks"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/tasks/{task_id}"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/tasks/{task_id}/cancel"
+    },
+    {
+      "methods": [
+        "POST"
+      ],
+      "path": "/api/v2/tasks/{task_id}/retry"
+    },
+    {
+      "methods": [
+        "GET"
+      ],
+      "path": "/api/v2/tasks/{task_id}/stream"
+    }
+  ],
+  "schema_version": 1
+}
