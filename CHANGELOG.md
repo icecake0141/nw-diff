@@ -42,3 +42,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added rate limiting for general and API endpoints
 - Non-root user execution in Docker containers
 - Secure credential management via environment variables and external files
+
+## 日本語訳
+
+# 変更履歴
+
+このファイルには、このプロジェクトの主な変更点を記録します。
+
+形式は [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) に基づき、
+このプロジェクトは [Semantic Versioning](https://semver.org/spec/v2.0.0.html) に準拠します。
+
+## [Unreleased]
+
+### 追加
+- 本番運用を想定した Dockerfile による Docker デプロイ対応
+- アプリケーションとリバースプロキシを連携させる Docker Compose 設定
+- nginx リバースプロキシによる HTTPS/TLS 終端
+- リバースプロキシ層での Basic 認証サポート
+- 自己署名 TLS 証明書生成用ヘルパースクリプト（`scripts/mk-certs.sh`）
+- Basic 認証情報管理用ヘルパースクリプト（`scripts/mk-htpasswd.sh`）
+- README.md に Docker デプロイの包括的ドキュメントを追加
+- Docker デプロイと構成検証の統合テスト
+- `.env.example` による環境変数設定
+- ログ、設定、差分を永続化する Docker ボリューム
+- nginx 設定でのセキュリティヘッダーとレート制限
+- コンテナオーケストレーション向けヘルスチェックエンドポイント
+- 画像サイズ最適化のためのマルチステージ Docker ビルド
+- セキュリティ向上のため Docker コンテナを非 root ユーザーで実行
+- コミット分割前にワークツリーの混在差分を棚卸しする `scripts/report-local-diff.sh`
+- readiness/locks/cutover/summary をまとめた共通 CI 後処理バンドル `scripts/run-v2-ci-postchecks.sh`
+- 欠損/不正なアーティファクト入力に対する v2 契約サマリーツールのテスト
+
+### 変更
+- Docker 生成ファイル（証明書、htpasswd）を除外するよう `.gitignore` を更新
+- `.pylint_cache/` を無視するよう `.gitignore` を更新
+- 保護された v2 エンドポイント向け認証ヘッダー送信に対応するため `scripts/check-v2-contract.sh` を強化
+- 不正な JSON アーティファクトを許容するよう `scripts/summarize-v2-contract.sh` を強化
+- 挙動を維持しつつ lint 抑制を減らすため v2 認証パーサーをリファクタリング
+- v2 認証と CI フォールバック挙動をランブックに追記
+- `ci.yml` と `integration.yml` の重複した CI 後処理ロジックを統合
+
+### セキュリティ
+- HTTP から HTTPS へのリダイレクトにより HTTPS をデフォルトで強制
+- 全エンドポイント向けの設定可能な Basic 認証を追加
+- セキュリティヘッダー（X-Frame-Options、X-Content-Type-Options、X-XSS-Protection）を実装
+- 一般エンドポイントと API エンドポイントにレート制限を追加
+- Docker コンテナを非 root ユーザーで実行
+- 環境変数および外部ファイルによる安全な認証情報管理
