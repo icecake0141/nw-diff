@@ -9,7 +9,7 @@
 #
 # This file was created or modified with the assistance of an AI (Large Language Model).
 # Review required for correctness, security, and licensing.
-black==25.11.0
+black==26.1.0
 httpx==0.28.1
 mypy==1.19.1
 pip-audit==2.10.0
