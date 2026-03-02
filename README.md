@@ -1433,7 +1433,7 @@ DEFAULT_COMMANDS = ("show version",)
 
 1. **リポジトリのクローン:**
    ```bash
-   git clone https://github.com/yourusername/nw-diff.git
+   git clone https://github.com/icecake0141/nw-diff.git
    ```
 2. **プロジェクトディレクトリに移動:**
    ```bash
