@@ -58,9 +58,11 @@ COPY --chown=nwdiff:nwdiff templates/ ./templates/
 COPY --chown=nwdiff:nwdiff run_app.py .
 COPY --chown=nwdiff:nwdiff hosts.csv.sample ./hosts.csv.sample
 
-# Create necessary directories with correct permissions
-RUN mkdir -p logs dest origin diff backup && \
-    chown -R nwdiff:nwdiff logs dest origin diff backup
+# Create necessary directories with correct permissions.
+# Pre-creating v2 runtime paths lets Docker initialize named volumes
+# with writable ownership for the non-root runtime user.
+RUN mkdir -p logs dest origin diff backup data artifacts_v2 && \
+    chown -R nwdiff:nwdiff logs dest origin diff backup data artifacts_v2
 
 # Switch to non-root user
 USER nwdiff
