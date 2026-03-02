@@ -24,6 +24,7 @@ NW-Diff is a Flask-based web application designed to retrieve, compare, and disp
 - [Features](#features)
 - [Customizing Network Device Commands](#customizing-network-device-commands)
 - [Installation](#installation)
+- [Startup Guide Map](#startup-guide-map)
 - [Usage](#usage)
 - [Docker Deployment](#docker-deployment)
 - [Development](#development)
@@ -374,6 +375,16 @@ This section covers the basic installation process for end users who want to run
 | `FLASK_RUN_HOST` | Optional | Host to bind to (default: `127.0.0.1`) |
 | `FLASK_RUN_PORT` | Optional | Port to bind to (default: `5000`) |
 | `APP_DEBUG` | Optional | Enable debug mode (`true`/`false`, default: `false`) - **Never use in production** |
+
+## Startup Guide Map
+
+To reduce startup confusion, startup instructions are split by scenario:
+
+- [Startup Guide Overview](docs/startup/STARTUP_OVERVIEW.md)
+- [Quick Test Startup](docs/startup/STARTUP_QUICK_TEST.md)
+- [Environment-Specific Startup](docs/startup/STARTUP_ENVIRONMENTS.md)
+- [Docker Startup](docs/startup/STARTUP_DOCKER.md)
+- [Startup Troubleshooting](docs/startup/STARTUP_TROUBLESHOOTING.md)
 
 ## Usage
 
@@ -1507,6 +1518,16 @@ DEFAULT_COMMANDS = ("show version",)
      ```bash
      docker run -v /secure/path/hosts.csv:/app/hosts.csv -e HOSTS_CSV=/app/hosts.csv ...
      ```
+
+## 起動ガイド一覧
+
+起動時の迷いを減らすため、起動手順を用途別に分離しました:
+
+- [Startup Guide Overview](docs/startup/STARTUP_OVERVIEW.md)
+- [Quick Test Startup](docs/startup/STARTUP_QUICK_TEST.md)
+- [Environment-Specific Startup](docs/startup/STARTUP_ENVIRONMENTS.md)
+- [Docker Startup](docs/startup/STARTUP_DOCKER.md)
+- [Startup Troubleshooting](docs/startup/STARTUP_TROUBLESHOOTING.md)
 
 ## 使用方法
 
