@@ -17,7 +17,26 @@ Review required for correctness, security, and licensing.
 [![CI](https://github.com/icecake0141/nw-diff/workflows/CI/badge.svg)](https://github.com/icecake0141/nw-diff/actions/workflows/ci.yml)
 [![Integration Tests](https://github.com/icecake0141/nw-diff/workflows/Integration%20Tests/badge.svg)](https://github.com/icecake0141/nw-diff/actions/workflows/integration.yml)
 
-NW-Diff is a Flask-based web application designed to retrieve, compare, and display configuration or status data collected from network devices. It leverages Netmiko to connect to devices and capture data defined in a CSV file. Using diff-match-patch, the application computes differences between two sets of data and presents the results in both inline and side-by-side views. Diff HTML files are generated and stored in a dedicated "diff" directory for subsequent review.
+NW-Diff is a network configuration/status capture and diff tool for network devices.
+It now includes both:
+- a legacy Flask-based v1 implementation (`src/nw_diff`)
+- a FastAPI-based v2 implementation (`src/nw_diff_v2`)
+
+As of March 2, 2026, the repository default container runtime is v2.
+
+## Current Default Runtime (v2)
+
+- `docker-compose.yml` starts v2 API/UI with `uvicorn nw_diff_v2.main:app`.
+- `docker/nginx.conf` proxies:
+  - `/api/v2/*` to v2 API
+  - `/v2` to v2 UI
+  - `/` redirects to `/v2`
+- Core health checks:
+  - `GET /health` (nginx liveness)
+  - `GET /api/v2/system/health`
+  - `GET /api/v2/system/readiness`
+
+Legacy v1 (`/api/*`, `/capture/*`, `/logs`, `/export/*`) sections below are retained as reference and are not the default docker route.
 
 ## Table of Contents
 
@@ -267,10 +286,10 @@ After modifying `devices.py`:
    ```bash
    # If running locally
    # Stop the current process (Ctrl+C) and restart
-   python run_app.py
+   uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 
    # If running with Docker
-   docker-compose restart
+   docker compose restart
    ```
 
 ### Troubleshooting
@@ -316,9 +335,9 @@ This section covers the basic installation process for end users who want to run
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements.txt -r requirements-v2.txt
    ```
-   This installs Flask, Netmiko, diff-match-patch, and other required packages.
+   This installs both legacy v1 and default v2 runtime dependencies.
 
 4. **Create the device inventory file:**
    ```bash
@@ -355,12 +374,13 @@ This section covers the basic installation process for end users who want to run
 
 8. **Run the application:**
    ```bash
-   python run_app.py
+   export NW_DIFF_ENV=development
+   uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
    ```
-   The application will start on `http://127.0.0.1:5000` by default.
+   The v2 UI/API will start on `http://127.0.0.1:5000`.
 
 9. **Access the application:**
-   Open your web browser and navigate to [http://localhost:5000](http://localhost:5000)
+   Open your web browser and navigate to [http://localhost:5000/v2](http://localhost:5000/v2)
 
 ### Environment Variables Reference
 
@@ -370,10 +390,12 @@ This section covers the basic installation process for end users who want to run
 | `NW_DIFF_API_TOKEN` | Recommended | Secure token for protecting sensitive API endpoints (capture, logs, export) |
 | `NW_DIFF_BASIC_USER` | Optional | Username for HTTP Basic Authentication |
 | `NW_DIFF_BASIC_PASSWORD` | Optional | Password for HTTP Basic Authentication |
+| `NW_DIFF_ENV` | Recommended | Runtime environment (`development`, `production`, etc.) |
 | `HOSTS_CSV` | Optional | Custom path to hosts inventory file (default: `hosts.csv`) |
-| `FLASK_RUN_HOST` | Optional | Host to bind to (default: `127.0.0.1`) |
-| `FLASK_RUN_PORT` | Optional | Port to bind to (default: `5000`) |
-| `APP_DEBUG` | Optional | Enable debug mode (`true`/`false`, default: `false`) - **Never use in production** |
+| `DB_URL` | Optional | v2 SQLite DB URL (default: `sqlite:///./nw_diff_v2.db`) |
+| `ARTIFACT_ROOT` | Optional | v2 artifact output directory (default: `./artifacts_v2`) |
+| `TASK_WORKER_ENABLED` | Optional | Enable in-process queue worker (default: `true`) |
+| `TASK_WORKER_THREADS` | Optional | Number of worker threads (default: `1`) |
 
 ## Usage
 
@@ -381,104 +403,67 @@ This section covers the basic installation process for end users who want to run
 
 The application supports two primary running modes:
 
-1. **Local Development Mode**: Binds to `127.0.0.1:5000` (localhost only) for single-user development and testing. This is the secure default.
-2. **Container/Production Mode**: Binds to `0.0.0.0:5000` to allow access from the container network or reverse proxy (nginx). Required for Docker deployments.
+1. **Local Development Mode**: Start v2 directly via uvicorn on `127.0.0.1:5000`.
+2. **Container/Production Mode**: Start via `docker compose`, with nginx reverse proxy and v2 routed under `/api/v2/*` and `/v2`.
 
-The application includes **ProxyFix middleware** to correctly handle `X-Forwarded-*` headers from reverse proxies (nginx, etc.), ensuring proper URL generation, HTTPS detection, and client IP logging when deployed behind a proxy.
+v2 FastAPI runtime honors reverse-proxy headers and is designed for nginx fronting in containerized deployment.
 
 ### Running in Production Mode (Default)
 
-By default, the application runs with Flask debug mode **disabled** for security and binds to **127.0.0.1** (localhost only):
+For default local runtime:
 
 1. **Run the Application:**
    ```bash
-   python run_app.py
-   ```
-   Or directly from the source:
-   ```bash
-   PYTHONPATH=src python -m nw_diff.app
+   export DEVICE_PASSWORD=your_device_password
+   export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+   export NW_DIFF_ENV=development
+   uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
    ```
 2. **Access the Application:**
-   Open your browser and navigate to [http://localhost:5000](http://localhost:5000).
+   Open your browser and navigate to [http://localhost:5000/v2](http://localhost:5000/v2).
 
 ### Running in Development Mode
 
-For local development, you can enable debug mode by setting the `APP_DEBUG` environment variable:
+For containerized runtime (repository default):
 
-1. **Run with Debug Mode:**
+1. **Prepare environment file and credentials:**
    ```bash
-   export APP_DEBUG=true
-   python run_app.py
+   cp .env.example .env
+   # edit .env and set DEVICE_PASSWORD, NW_DIFF_API_TOKEN
+   ./docker/nginx/init-certs-and-htpasswd.sh
    ```
-   Or run it inline:
+2. **Start stack:**
    ```bash
-   APP_DEBUG=true python run_app.py
+   docker compose up -d --build
    ```
-2. **Access the Application:**
-   Open your browser and navigate to [http://localhost:5000](http://localhost:5000).
-
-**Note:** Debug mode should **never** be enabled in production environments as it can expose sensitive information and create security vulnerabilities.
-
-### Customizing Bind Host and Port
-
-You can customize the bind host and port using environment variables:
-
-- `FLASK_RUN_HOST`: Host to bind to (default: `127.0.0.1` for local dev)
-- `FLASK_RUN_PORT`: Port to bind to (default: `5000`)
-
-**Examples:**
-
-```bash
-# Bind to all interfaces (useful for container environments)
-FLASK_RUN_HOST=0.0.0.0 python run_app.py
-
-# Use a different port
-FLASK_RUN_PORT=8080 python run_app.py
-
-# Combine multiple settings
-FLASK_RUN_HOST=0.0.0.0 FLASK_RUN_PORT=8080 APP_DEBUG=false python run_app.py
-```
-
-**Security Note:** When running locally without a reverse proxy, use the default `127.0.0.1` to prevent unauthorized network access. Only use `0.0.0.0` in container environments or when behind a properly configured reverse proxy with authentication.
+3. **Access application and health endpoints:**
+   - `https://localhost/v2`
+   - `https://localhost/api/v2/system/health`
+   - `https://localhost/api/v2/system/readiness`
 
 ### Interacting with Endpoints
 
 #### Public Endpoints (No Authentication Required)
-- **View Host List:** `/` (homepage)
-- **View Detailed Device Info:** `/host/<hostname>`
-- **Compare Files:** `/compare_files`
+- **View v2 UI:** `/v2`
+- **View host details:** `/v2/hosts/<hostname>`
+- **View logs page:** `/v2/logs`
 
 #### Protected Endpoints (Require Authentication)
-The following endpoints require authentication when `NW_DIFF_API_TOKEN` is set. Both Bearer token and Basic authentication are supported:
-- **Capture Data:**
-  - For origin data: `/capture/origin/<hostname>`
-  - For destination data: `/capture/dest/<hostname>`
-  - For all devices: `/capture_all/origin` or `/capture_all/dest`
-- **View Logs:**
-  - Web UI: `/logs`
-  - API: `/api/logs`
-- **Export Data:**
-  - HTML export: `/export/<hostname>`
-  - JSON API: `/api/export/<hostname>`
+The v2 API requires auth in production-like environments.
+- **Capture/task flow:**
+  - `POST /api/v2/captures`
+  - `GET /api/v2/tasks/{task_id}`
+  - `POST /api/v2/tasks/{task_id}/cancel`
+  - `POST /api/v2/tasks/{task_id}/retry`
+- **System endpoints:**
+  - `GET /api/v2/system/health`
+  - `GET /api/v2/system/readiness`
+  - `GET /api/v2/system/locks`
 
 **Example using curl with Bearer token:**
 ```bash
-curl -H "Authorization: Bearer your_token_here" http://localhost:5000/api/logs
+curl -H "Authorization: Bearer your_token_here" http://localhost:5000/api/v2/system/health
 ```
-
-**Example using curl with Basic authentication:**
-```bash
-curl -u username:password http://localhost:5000/api/logs
-```
-
-**Example using browser:**
-When accessing protected endpoints in a browser, you'll be prompted for username and password if Basic Authentication is configured. The browser will automatically encode credentials as Basic auth headers.
-
-**Note:** If `NW_DIFF_API_TOKEN` is not set, these endpoints will work without authentication (not recommended for production).
-
-### Review Diff Results
-
-The computed diff HTML files are stored in the `diff` directory for offline viewing.
 
 ## Docker Deployment
 
@@ -486,11 +471,9 @@ NW-Diff supports containerized deployment with HTTPS (TLS termination) and optio
 
 **Architecture Overview:**
 - **nginx**: Acts as a reverse proxy with TLS termination, sets `X-Forwarded-*` headers
-- **Flask app**: Runs with ProxyFix middleware to correctly interpret forwarded headers
-- **Container binding**: Flask binds to `0.0.0.0:5000` inside the container (set via `FLASK_RUN_HOST`)
-- **Network isolation**: Only nginx is exposed to the host; Flask app is accessible only within the Docker network
-
-The ProxyFix middleware ensures that the Flask app correctly detects the original request protocol (HTTPS), host, and client IP when running behind the nginx reverse proxy.
+- **v2 app**: Runs as `uvicorn nw_diff_v2.main:app`
+- **Container binding**: v2 app binds to `0.0.0.0:5000` inside the container
+- **Network isolation**: Only nginx is exposed to the host; v2 app is accessible only within the Docker network
 
 ### Prerequisites
 
@@ -550,21 +533,22 @@ The ProxyFix middleware ensures that the Flask app correctly detects the origina
 
 5. **Start the application stack:**
    ```bash
-   docker-compose up -d
+   docker compose up -d --build
    ```
 
 6. **Access the application:**
-   - HTTPS: `https://localhost/` (you'll need to accept the self-signed certificate warning)
+   - HTTPS UI: `https://localhost/v2` (accept self-signed certificate warning in dev)
+   - API health: `https://localhost/api/v2/system/health`
    - You'll be prompted for Basic Auth credentials
 
 7. **View logs:**
    ```bash
-   docker-compose logs -f
+   docker compose logs -f
    ```
 
 8. **Stop the application:**
    ```bash
-   docker-compose down
+   docker compose down
    ```
 
 ### Configuration
@@ -578,15 +562,17 @@ Set these in your `.env` file:
 - `NW_DIFF_BASIC_USER`: (Optional) Username for HTTP Basic Authentication
 - `NW_DIFF_BASIC_PASSWORD_HASH`: (Optional) Hashed password for Basic Authentication (generate with `python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('password'))"`)
 - `NW_DIFF_BASIC_PASSWORD`: (Optional) Plain password for Basic Authentication (development only - use hashed password in production)
-- `APP_DEBUG`: Set to `false` in production (default)
+- `NW_DIFF_ENV`: Runtime mode (`development`, `production`, etc.)
 - `HOSTS_CSV`: Optional custom path to hosts inventory file
+- `DB_URL`: Optional SQLite path for v2 task/lock DB
+- `ARTIFACT_ROOT`: Optional artifact output path for v2
 
 **Authentication Modes:**
 - If `NW_DIFF_API_TOKEN` is not set: No authentication required (legacy mode)
 - If `NW_DIFF_API_TOKEN` is set:
   - API clients can use Bearer token: `Authorization: Bearer <token>`
   - Browser users can use Basic auth: `Authorization: Basic <base64(user:pass)>`
-  - Both methods are accepted for protected endpoints (capture, logs, export)
+  - Both methods are accepted for protected v2 endpoints under `/api/v2/*`
 
 #### TLS/SSL Certificates
 
@@ -633,10 +619,8 @@ Then restart: `docker-compose restart nginx`
 
 Docker volumes are used for persistent storage:
 - `nw-diff-logs`: Application logs
-- `nw-diff-dest`: Destination configuration snapshots
-- `nw-diff-origin`: Origin configuration snapshots
-- `nw-diff-diff`: Generated diff files
-- `nw-diff-backup`: Configuration backups
+- `nw-diff-v2-db`: v2 SQLite DB files
+- `nw-diff-v2-artifacts`: v2 generated artifacts
 
 To backup or migrate data:
 ```bash
@@ -1181,6 +1165,9 @@ Notes:
 - Commit split plan: `docs/V2_COMMIT_SPLIT_PLAN.md`.
 
 ## Japanese Translation
+
+Note: The Japanese section below may include legacy v1 examples.
+For current v2-first operational instructions, use `docs/README_ja.md`.
 
 # NW-Diff プロジェクト
 

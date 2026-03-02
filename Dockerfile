@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-ca-certificates
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements.txt requirements-v2.txt ./
 
 # Install Python packages
 # Note: In CI environments with SSL interception, you may need to build with:
@@ -35,9 +35,9 @@ RUN if [ -n "$SKIP_PIP_SSL_VERIFY" ]; then \
             --trusted-host pypi.org \
             --trusted-host files.pythonhosted.org \
             --trusted-host pypi.python.org \
-            -r requirements.txt; \
+            -r requirements.txt -r requirements-v2.txt; \
     else \
-        pip install --no-cache-dir --user -r requirements.txt; \
+        pip install --no-cache-dir --user -r requirements.txt -r requirements-v2.txt; \
     fi
 
 # Production stage
