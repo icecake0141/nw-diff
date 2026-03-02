@@ -3,7 +3,26 @@
 [![CI](https://github.com/icecake0141/nw-diff/workflows/CI/badge.svg)](https://github.com/icecake0141/nw-diff/actions/workflows/ci.yml)
 [![Integration Tests](https://github.com/icecake0141/nw-diff/workflows/Integration%20Tests/badge.svg)](https://github.com/icecake0141/nw-diff/actions/workflows/integration.yml)
 
-NW-Diff は、ネットワークデバイスから収集された設定またはステータスデータを取得、比較、表示するために設計された Flask ベースのウェブアプリケーションです。Netmiko を利用してデバイスに接続し、CSV ファイルに定義されたデータをキャプチャします。diff-match-patch を使用して、2 つのデータセット間の差分を計算し、インライン表示およびサイドバイサイド表示で結果を提示します。差分 HTML ファイルは生成され、専用の "diff" ディレクトリに保存され、後で確認できます。
+NW-Diff は、ネットワークデバイス向けの設定/状態取得および差分比較ツールです。
+現在は以下の 2 系統を同梱しています:
+- 旧実装: Flask ベース v1（`src/nw_diff`）
+- 現行実装: FastAPI ベース v2（`src/nw_diff_v2`）
+
+2026-03-02 時点で、リポジトリのコンテナ標準起動は v2 です。
+
+## 現在の標準ランタイム（v2）
+
+- `docker-compose.yml` は `uvicorn nw_diff_v2.main:app` で v2 API/UI を起動します。
+- `docker/nginx.conf` は次を v2 にルーティングします:
+  - `/api/v2/*`（v2 API）
+  - `/v2`（v2 UI）
+  - `/` は `/v2` へリダイレクト
+- 主なヘルス確認:
+  - `GET /health`（nginx の生存確認）
+  - `GET /api/v2/system/health`
+  - `GET /api/v2/system/readiness`
+
+以下にある v1（`/api/*`, `/capture/*`, `/logs`, `/export/*`）の説明は参考情報であり、docker 標準ルートではありません。
 
 ## 機能
 
@@ -236,10 +255,10 @@ DEFAULT_COMMANDS = ("show version",)
    ```bash
    # ローカルで実行している場合
    # 現在のプロセスを停止（Ctrl+C）して再起動
-   python run_app.py
+   uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 
    # Docker で実行している場合
-   docker-compose restart
+   docker compose restart
    ```
 
 ### トラブルシューティング
@@ -259,70 +278,37 @@ DEFAULT_COMMANDS = ("show version",)
 - 一部のコマンドには、有効化モードまたは特定のユーザーロールが必要な場合があります
 
 ## インストール
-
-1. **リポジトリのクローン:**
+1. **リポジトリを取得:**
    ```bash
-   git clone https://github.com/yourusername/nw-diff.git
-   ```
-2. **プロジェクトディレクトリに移動:**
-   ```bash
+   git clone https://github.com/icecake0141/nw-diff.git
    cd nw-diff
    ```
-
-3. **依存関係のインストール:**
-   Python がインストールされていることを確認し、必要なパッケージをインストールします:
+2. **仮想環境を作成（推奨）:**
    ```bash
-   pip install -r requirements.txt
+   python3 -m venv .venv
+   source .venv/bin/activate
    ```
-   必要なパッケージには Flask、Netmiko、diff-match-patch が含まれます。
-
-4. **環境変数の設定:**
-   - デバイス接続に必要なパスワードを設定するため、`DEVICE_PASSWORD` 環境変数を設定します:
-     ```bash
-     export DEVICE_PASSWORD=your_device_password
-     ```
-   - **機密性の高い API エンドポイント（キャプチャ、ログ、エクスポート）を保護するため、`NW_DIFF_API_TOKEN` 環境変数を設定します**:
-     ```bash
-     export NW_DIFF_API_TOKEN=your_secure_random_token
-     ```
-     安全なトークンを生成するには:
-     ```bash
-     python -c "import secrets; print(secrets.token_urlsafe(32))"
-     ```
-
-     **重要:** `NW_DIFF_API_TOKEN` が設定されていない場合、機密性の高いエンドポイントは認証なしでアクセス可能になります（本番環境では推奨されません）。
-
-   - **（オプション）ブラウザベースの保護されたエンドポイントへのアクセスに HTTP Basic 認証を設定します**:
-     ```bash
-     export NW_DIFF_BASIC_USER=your_username
-     ```
-
-     **本番環境**では、ハッシュ化されたパスワードを使用します（推奨）:
-     ```bash
-     # Python を使用してパスワードハッシュを生成
-     python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('your_password'))"
-     export NW_DIFF_BASIC_PASSWORD_HASH='<generated_hash>'
-     ```
-
-     **開発環境のみ**では、プレーンパスワードを使用できます（本番環境では推奨されません）:
-     ```bash
-     export NW_DIFF_BASIC_PASSWORD=your_plain_password
-     ```
-
-     **注意:** Basic 認証は `NW_DIFF_API_TOKEN` が設定されている場合にのみ適用されます。保護されたエンドポイントには、Bearer トークン（`Authorization: Bearer <token>`）と Basic 認証（`Authorization: Basic <base64(user:pass)>`）の両方が受け入れられます。
-
-   - **（オプション）ホストインベントリファイルのカスタム場所を指定するため、`HOSTS_CSV` 環境変数を設定します**:
-     ```bash
-     export HOSTS_CSV=/path/to/hosts.csv
-     ```
-     設定されていない場合、アプリケーションは現在のディレクトリのデフォルトの `hosts.csv` を使用します。
-
-     **利点:** リポジトリの外にホストインベントリを保存することで、機密データ（IP アドレス、ユーザー名、デバイスモデル）の誤ったコミットを防ぎ、セキュリティが向上します。これは、インベントリをシークレットまたは設定ボリュームとしてマウントできる本番デプロイメントに特に有用です。
-
-     **コンテナの例:**
-     ```bash
-     docker run -v /secure/path/hosts.csv:/app/hosts.csv -e HOSTS_CSV=/app/hosts.csv ...
-     ```
+3. **依存関係をインストール:**
+   ```bash
+   pip install -r requirements.txt -r requirements-v2.txt
+   ```
+4. **hosts.csv を準備:**
+   ```bash
+   cp hosts.csv.sample hosts.csv
+   ```
+5. **必須環境変数を設定:**
+   ```bash
+   export DEVICE_PASSWORD=your_device_password
+   export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+   export NW_DIFF_ENV=development
+   ```
+6. **ローカル起動（v2）:**
+   ```bash
+   uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
+   ```
+7. **アクセス:**
+   - `http://localhost:5000/v2`
+   - `http://localhost:5000/api/v2/system/health`
 
 ## 使用方法
 
@@ -330,104 +316,59 @@ DEFAULT_COMMANDS = ("show version",)
 
 アプリケーションは 2 つの主要な実行モードをサポートしています:
 
-1. **ローカル開発モード**: シングルユーザーの開発とテスト用に `127.0.0.1:5000`（localhost のみ）にバインドします。これが安全なデフォルトです。
-2. **コンテナ/本番モード**: コンテナネットワークまたはリバースプロキシ（nginx）からのアクセスを許可するために `0.0.0.0:5000` にバインドします。Docker デプロイメントに必要です。
+1. **ローカル実行**: `uvicorn` で v2 を `127.0.0.1:5000` に起動します。
+2. **コンテナ実行（標準）**: `docker compose` + nginx で v2 を公開します。
 
-アプリケーションには **ProxyFix ミドルウェア**が含まれており、リバースプロキシ（nginx など）からの `X-Forwarded-*` ヘッダーを正しく処理し、プロキシの背後にデプロイされた場合の適切な URL 生成、HTTPS 検出、クライアント IP ロギングを保証します。
+### ローカルで起動
 
-### 本番モードでの実行（デフォルト）
-
-デフォルトでは、セキュリティのため Flask デバッグモードが**無効**になっており、**127.0.0.1**（localhost のみ）にバインドします:
-
-1. **アプリケーションの起動:**
+1. **起動:**
    ```bash
-   python run_app.py
+   export DEVICE_PASSWORD=your_device_password
+   export NW_DIFF_API_TOKEN=your_secure_random_token
+   export NW_DIFF_ENV=development
+   uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
    ```
-   またはソースから直接:
+2. **確認:**
+   - `http://localhost:5000/v2`
+   - `http://localhost:5000/api/v2/system/readiness`
+
+### コンテナで起動（標準）
+
+1. **事前準備:**
    ```bash
-   PYTHONPATH=src python -m nw_diff.app
+   cp .env.example .env
+   # .env に DEVICE_PASSWORD / NW_DIFF_API_TOKEN を設定
+   ./docker/nginx/init-certs-and-htpasswd.sh
    ```
-2. **アプリケーションへのアクセス:**
-   ブラウザで [http://localhost:5000](http://localhost:5000) にアクセスします。
-
-### 開発モードでの実行
-
-ローカル開発では、`APP_DEBUG` 環境変数を設定してデバッグモードを有効にできます:
-
-1. **デバッグモードで実行:**
+2. **起動:**
    ```bash
-   export APP_DEBUG=true
-   python run_app.py
+   docker compose up -d --build
    ```
-   またはインラインで実行:
-   ```bash
-   APP_DEBUG=true python run_app.py
-   ```
-2. **アプリケーションへのアクセス:**
-   ブラウザで [http://localhost:5000](http://localhost:5000) にアクセスします。
-
-**注意:** デバッグモードは機密情報を公開しセキュリティ脆弱性を生む可能性があるため、本番環境では**決して**有効にしないでください。
-
-### バインドホストとポートのカスタマイズ
-
-環境変数を使用してバインドホストとポートをカスタマイズできます:
-
-- `FLASK_RUN_HOST`: バインドするホスト（デフォルト: ローカル開発用に `127.0.0.1`）
-- `FLASK_RUN_PORT`: バインドするポート（デフォルト: `5000`）
-
-**例:**
-
-```bash
-# すべてのインターフェースにバインド（コンテナ環境で有用）
-FLASK_RUN_HOST=0.0.0.0 python run_app.py
-
-# 異なるポートを使用
-FLASK_RUN_PORT=8080 python run_app.py
-
-# 複数の設定を組み合わせる
-FLASK_RUN_HOST=0.0.0.0 FLASK_RUN_PORT=8080 APP_DEBUG=false python run_app.py
-```
-
-**セキュリティ注意:** リバースプロキシなしでローカルで実行する場合は、不正なネットワークアクセスを防ぐためにデフォルトの `127.0.0.1` を使用してください。コンテナ環境内または適切に設定された認証付きリバースプロキシの背後でのみ `0.0.0.0` を使用してください。
+3. **確認:**
+   - `https://localhost/v2`
+   - `https://localhost/api/v2/system/health`
 
 ### エンドポイントとの連携
 
 #### 公開エンドポイント（認証不要）
-- **ホスト一覧の表示:** `/`（ホームページ）
-- **詳細なデバイス情報の表示:** `/host/<hostname>`
-- **ファイルの比較:** `/compare_files`
+- **v2 UI:** `/v2`
+- **ホスト詳細:** `/v2/hosts/<hostname>`
+- **ログ画面:** `/v2/logs`
 
 #### 保護されたエンドポイント（認証が必要）
-以下のエンドポイントは `NW_DIFF_API_TOKEN` が設定されている場合に認証が必要です。Bearer トークンと Basic 認証の両方がサポートされています:
-- **データキャプチャ:**
-  - 元データ: `/capture/origin/<hostname>`
-  - 宛先データ: `/capture/dest/<hostname>`
-  - 全デバイス: `/capture_all/origin` または `/capture_all/dest`
-- **ログの表示:**
-  - Web UI: `/logs`
-  - API: `/api/logs`
-- **データのエクスポート:**
-  - HTML エクスポート: `/export/<hostname>`
-  - JSON API: `/api/export/<hostname>`
+本番相当環境では v2 API は認証必須です。
+- `POST /api/v2/captures`
+- `GET /api/v2/tasks/{task_id}`
+- `POST /api/v2/tasks/{task_id}/cancel`
+- `POST /api/v2/tasks/{task_id}/retry`
+- `GET /api/v2/system/health`
+- `GET /api/v2/system/readiness`
+- `GET /api/v2/system/locks`
 
-**Bearer トークンを使用した curl の例:**
+**Bearer トークン例:**
 ```bash
-curl -H "Authorization: Bearer your_token_here" http://localhost:5000/api/logs
+curl -H "Authorization: Bearer your_token_here" http://localhost:5000/api/v2/system/health
 ```
-
-**Basic 認証を使用した curl の例:**
-```bash
-curl -u username:password http://localhost:5000/api/logs
-```
-
-**ブラウザを使用した例:**
-ブラウザで保護されたエンドポイントにアクセスする場合、Basic 認証が設定されていれば、ユーザー名とパスワードの入力を求められます。ブラウザは自動的に資格情報を Basic 認証ヘッダーとしてエンコードします。
-
-**注意:** `NW_DIFF_API_TOKEN` が設定されていない場合、これらのエンドポイントは認証なしで動作します（本番環境では推奨されません）。
-
-### 差分結果の確認
-
-計算された差分 HTML ファイルは `diff` ディレクトリに保存され、オフラインで確認できます。
 
 ## Docker デプロイメント
 
@@ -435,11 +376,9 @@ NW-Diff は Docker と docker-compose を介した HTTPS（TLS 終端）およ�
 
 **アーキテクチャ概要:**
 - **nginx**: TLS 終端を伴うリバースプロキシとして機能し、`X-Forwarded-*` ヘッダーを設定します
-- **Flask アプリ**: ProxyFix ミドルウェアを使用して、転送されたヘッダーを正しく解釈します
-- **コンテナバインディング**: Flask はコンテナ内で `0.0.0.0:5000` にバインドします（`FLASK_RUN_HOST` 経由で設定）
-- **ネットワーク分離**: nginx のみがホストに公開され、Flask アプリは Docker ネットワーク内でのみアクセス可能です
-
-ProxyFix ミドルウェアにより、Flask アプリが nginx リバースプロキシの背後で実行されている場合に、元のリクエストプロトコル（HTTPS）、ホスト、クライアント IP を正しく検出できます。
+- **v2 API/UI**: `uvicorn nw_diff_v2.main:app` で FastAPI アプリを実行します
+- **コンテナバインディング**: v2 はコンテナ内で `0.0.0.0:5000` で待受します
+- **ネットワーク分離**: nginx のみがホストに公開され、v2 アプリは Docker ネットワーク内でのみアクセス可能です
 
 ### 前提条件
 
@@ -499,21 +438,22 @@ ProxyFix ミドルウェアにより、Flask アプリが nginx リバースプ�
 
 5. **アプリケーションスタックの起動:**
    ```bash
-   docker-compose up -d
+   docker compose up -d --build
    ```
 
 6. **アプリケーションへのアクセス:**
-   - HTTPS: `https://localhost/`（自己署名証明書の警告を受け入れる必要があります）
+   - HTTPS UI: `https://localhost/v2`（自己署名証明書の警告を受け入れる必要があります）
+   - API ヘルス: `https://localhost/api/v2/system/health`
    - Basic 認証資格情報の入力を求められます
 
 7. **ログの表示:**
    ```bash
-   docker-compose logs -f
+   docker compose logs -f
    ```
 
 8. **アプリケーションの停止:**
    ```bash
-   docker-compose down
+   docker compose down
    ```
 
 ### 設定
@@ -527,15 +467,17 @@ ProxyFix ミドルウェアにより、Flask アプリが nginx リバースプ�
 - `NW_DIFF_BASIC_USER`: （オプション）HTTP Basic 認証用のユーザー名
 - `NW_DIFF_BASIC_PASSWORD_HASH`: （オプション）Basic 認証用のハッシュ化されたパスワード（`python -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('password'))"` で生成）
 - `NW_DIFF_BASIC_PASSWORD`: （オプション）Basic 認証用のプレーンパスワード（開発のみ - 本番環境ではハッシュ化されたパスワードを使用）
-- `APP_DEBUG`: 本番環境では `false` に設定（デフォルト）
+- `NW_DIFF_ENV`: 実行環境（`development` / `production` など）
 - `HOSTS_CSV`: ホストインベントリファイルへのオプションのカスタムパス
+- `DB_URL`: v2 用 SQLite の保存先（任意）
+- `ARTIFACT_ROOT`: v2 生成物の保存先（任意）
 
 **認証モード:**
 - `NW_DIFF_API_TOKEN` が設定されていない場合: 認証不要（レガシーモード）
 - `NW_DIFF_API_TOKEN` が設定されている場合:
   - API クライアントは Bearer トークンを使用可能: `Authorization: Bearer <token>`
   - ブラウザユーザーは Basic 認証を使用可能: `Authorization: Basic <base64(user:pass)>`
-  - 保護されたエンドポイント（キャプチャ、ログ、エクスポート）には両方の方法が受け入れられます
+  - `/api/v2/*` の保護されたエンドポイントに両方の方法が使えます
 
 #### TLS/SSL 証明書
 
@@ -582,10 +524,8 @@ htpasswd docker/.htpasswd <username>
 
 永続ストレージには Docker ボリュームが使用されます:
 - `nw-diff-logs`: アプリケーションログ
-- `nw-diff-dest`: 宛先設定スナップショット
-- `nw-diff-origin`: 元の設定スナップショット
-- `nw-diff-diff`: 生成された差分ファイル
-- `nw-diff-backup`: 設定バックアップ
+- `nw-diff-v2-db`: v2 SQLite DB
+- `nw-diff-v2-artifacts`: v2 生成アーティファクト
 
 データをバックアップまたは移行するには:
 ```bash

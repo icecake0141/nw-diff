@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-ca-certificates
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements.txt requirements-v2.txt ./
 
 # Install Python packages
 # Note: In CI environments with SSL interception, you may need to build with:
@@ -35,9 +35,9 @@ RUN if [ -n "$SKIP_PIP_SSL_VERIFY" ]; then \
             --trusted-host pypi.org \
             --trusted-host files.pythonhosted.org \
             --trusted-host pypi.python.org \
-            -r requirements.txt; \
+            -r requirements.txt -r requirements-v2.txt; \
     else \
-        pip install --no-cache-dir --user -r requirements.txt; \
+        pip install --no-cache-dir --user -r requirements.txt -r requirements-v2.txt; \
     fi
 
 # Production stage
@@ -58,9 +58,11 @@ COPY --chown=nwdiff:nwdiff templates/ ./templates/
 COPY --chown=nwdiff:nwdiff run_app.py .
 COPY --chown=nwdiff:nwdiff hosts.csv.sample ./hosts.csv.sample
 
-# Create necessary directories with correct permissions
-RUN mkdir -p logs dest origin diff backup && \
-    chown -R nwdiff:nwdiff logs dest origin diff backup
+# Create necessary directories with correct permissions.
+# Pre-creating v2 runtime paths lets Docker initialize named volumes
+# with writable ownership for the non-root runtime user.
+RUN mkdir -p logs dest origin diff backup data artifacts_v2 && \
+    chown -R nwdiff:nwdiff logs dest origin diff backup data artifacts_v2
 
 # Switch to non-root user
 USER nwdiff
