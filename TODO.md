@@ -80,8 +80,8 @@
 ### Phase 3: Code and Runtime Deletion
 
 - [x] Remove v1 runtime entrypoint (`run_app.py`).
-- [ ] Remove v1 Flask package (`src/nw_diff/*`) and v1-only templates/assets.
-- [ ] Remove v1-only scripts or references that are no longer used.
+- [x] Remove v1 Flask package (`src/nw_diff/*`) and v1-only templates/assets.
+- [x] Remove v1-only scripts or references that are no longer used.
 
 ### Phase 4: Documentation and Release Notes
 

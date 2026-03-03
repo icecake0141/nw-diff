@@ -54,7 +54,6 @@ COPY --from=builder /root/.local /home/nwdiff/.local
 
 # Copy application code
 COPY --chown=nwdiff:nwdiff src/ ./src/
-COPY --chown=nwdiff:nwdiff templates/ ./templates/
 COPY --chown=nwdiff:nwdiff hosts.csv.sample ./hosts.csv.sample
 
 # Create necessary directories with correct permissions.
