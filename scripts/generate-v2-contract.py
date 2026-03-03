@@ -18,6 +18,7 @@ Generate deterministic v2 API contract snapshot JSON.
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import sys
 from pathlib import Path
@@ -26,13 +27,9 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 SRC_DIR = ROOT_DIR / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from nw_diff_v2.api.system import (
-    _REQUIRED_ROUTE_CONTRACT,
-)  # pylint: disable=wrong-import-position
-from nw_diff_v2.main import app  # pylint: disable=wrong-import-position
-
 
 def _collect_actual_routes() -> list[dict]:
+    app = importlib.import_module("nw_diff_v2.main").app
     items: list[dict] = []
     for route in app.routes:
         path = str(getattr(route, "path", ""))
@@ -49,15 +46,19 @@ def _collect_actual_routes() -> list[dict]:
 
 
 def _collect_required_routes() -> list[dict]:
+    required_route_contract = importlib.import_module(
+        "nw_diff_v2.api.system"
+    )._REQUIRED_ROUTE_CONTRACT
     items = [
         {"path": path, "methods": list(methods)}
-        for path, methods in _REQUIRED_ROUTE_CONTRACT
+        for path, methods in required_route_contract
     ]
     items.sort(key=lambda row: (row["path"], ",".join(row["methods"])))
     return items
 
 
 def main() -> int:
+    """Generate and write the deterministic v2 contract snapshot JSON."""
     parser = argparse.ArgumentParser(description="Generate v2 contract snapshot")
     parser.add_argument(
         "--output",

@@ -25,7 +25,7 @@
 
 ### P2 (Nice to have)
 
-- [ ] Replace low-value lint suppressions with structural fixes where practical.
+- [x] Replace low-value lint suppressions with structural fixes where practical.
 
 ## Operational Readiness (Non-blocking for code migration)
 
