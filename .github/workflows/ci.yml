@@ -82,30 +82,14 @@ jobs:
       - name: Run tests (legacy v1 compatibility)
         run: pytest -m "legacy_v1"
 
-      - name: Generate candidate v2 contract snapshot
-        run: |
-          mkdir -p .artifacts
-          python scripts/generate-v2-contract.py --output .artifacts/v2_contract_current.json
-
-      - name: Summarize v2 contract snapshot diff
-        if: always() && hashFiles('.artifacts/v2_contract_current.json') != ''
-        run: |
-          python scripts/diff-v2-contract.py \
-            --baseline docs/contract/v2.json \
-            --candidate .artifacts/v2_contract_current.json \
-            --summary-path "${GITHUB_STEP_SUMMARY}" \
-            --json-output .artifacts/v2_contract_diff.json
-
-      - name: Verify v2 contract snapshot is up to date
-        run: |
-          python scripts/diff-v2-contract.py \
-            --baseline docs/contract/v2.json \
-            --candidate .artifacts/v2_contract_current.json \
-            --json-output .artifacts/v2_contract_diff_verify.json \
-            --fail-on-diff
-
-      - name: V2 API contract smoke check
+      - name: Run v2 contract + post-check suite
+        if: always()
         env:
+          ARTIFACT_DIR: .artifacts
+          CONTRACT_BASELINE: docs/contract/v2.json
+          CONTRACT_CANDIDATE: .artifacts/v2_contract_current.json
+          CONTRACT_DIFF: .artifacts/v2_contract_diff.json
+          CONTRACT_DIFF_VERIFY: .artifacts/v2_contract_diff_verify.json
           DEVICE_PASSWORD: ci_contract_password
           NW_DIFF_ENV: development
           PYTHON_BIN: python
@@ -114,25 +98,12 @@ jobs:
           READINESS_OUTPUT: .artifacts/v2_readiness.json
           LOCKS_OUTPUT: .artifacts/v2_locks.json
           LOG_OUTPUT: .artifacts/v2_contract.log
-        run: |
-          mkdir -p .artifacts
-          ./scripts/check-v2-contract.sh
-
-      - name: Run v2 post-check bundle
-        if: always()
-        env:
-          PYTHON_BIN: python
           SUMMARY_PATH: ${{ github.step_summary }}
-          CONTRACT_OUTPUT: .artifacts/v2_contract.json
-          HEALTH_OUTPUT: .artifacts/v2_health.json
-          READINESS_OUTPUT: .artifacts/v2_readiness.json
-          LOCKS_OUTPUT: .artifacts/v2_locks.json
-          LOG_OUTPUT: .artifacts/v2_contract.log
           V2_CUTOVER_MAX_QUEUED: "0"
           V2_CUTOVER_MAX_RUNNING: "5"
           V2_CUTOVER_MAX_FAILED: "0"
           V2_CUTOVER_MAX_LOCKED: "0"
-        run: ./scripts/run-v2-ci-postchecks.sh
+        run: ./scripts/run-v2-ci-contract-suite.sh
 
       - name: Upload v2 contract artifacts
         if: always()

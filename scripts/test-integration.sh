@@ -25,6 +25,7 @@ NC='\033[0m' # No Color
 # Test configuration
 HTTPS_URL="${HTTPS_URL:-https://localhost}"
 HTTP_URL="${HTTP_URL:-http://localhost}"
+V2_PROTECTED_PATH="${V2_PROTECTED_PATH:-/api/v2/logs?source=app&limit=10}"
 BASIC_USER="${NW_DIFF_BASIC_USER:-admin}"
 BASIC_PASSWORD="${NW_DIFF_BASIC_PASSWORD:-testpass}"
 API_TOKEN="${NW_DIFF_API_TOKEN:-test_token_12345}"
@@ -149,15 +150,18 @@ test_basic_auth_failure() {
 test_bearer_token_auth() {
     echo
     echo "Test 5: Bearer token authentication on protected endpoint"
-    # Test Bearer token on /api/logs endpoint
+    # Test Bearer token on v2 protected endpoint
     local response=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time 10 \
         -H "Authorization: Bearer $API_TOKEN" \
         -u "$BASIC_USER:$BASIC_PASSWORD" \
-        "$HTTPS_URL/api/logs")
+        "$HTTPS_URL$V2_PROTECTED_PATH")
 
     if [ "$response" = "200" ]; then
         test_pass "Bearer token authentication works on protected endpoint (status: 200)"
         return 0
+    elif [ "$response" = "404" ]; then
+        test_fail "Protected v2 endpoint not found: $V2_PROTECTED_PATH"
+        return 1
     else
         # Could be 401 if token is wrong, or other status
         log_warn "Bearer token auth returned status: $response (expected 200, but may vary based on app state)"
@@ -174,7 +178,7 @@ test_protected_endpoint_without_token() {
     # Should fail if NW_DIFF_API_TOKEN is configured in the app
     local response=$(curl -k -s -o /dev/null -w "%{http_code}" --max-time 10 \
         -u "$BASIC_USER:$BASIC_PASSWORD" \
-        "$HTTPS_URL/api/logs")
+        "$HTTPS_URL$V2_PROTECTED_PATH")
 
     # When NW_DIFF_API_TOKEN is set, the app should require Bearer token
     # So we expect 401 or 403 if only Basic Auth is provided
@@ -182,6 +186,9 @@ test_protected_endpoint_without_token() {
     if [ "$response" = "401" ] || [ "$response" = "403" ]; then
         test_pass "Protected endpoint correctly requires Bearer token (status: $response)"
         return 0
+    elif [ "$response" = "404" ]; then
+        test_fail "Protected v2 endpoint not found: $V2_PROTECTED_PATH"
+        return 1
     elif [ "$response" = "200" ]; then
         log_warn "Protected endpoint returned 200 without Bearer token - verify NW_DIFF_API_TOKEN is set in app"
         test_pass "Protected endpoint is accessible (token enforcement may not be enabled)"
