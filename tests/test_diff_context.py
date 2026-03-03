@@ -22,7 +22,7 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from nw_diff.diff import compute_diff  # noqa: E402
+from nw_diff_v2.domain.services.diff_service import compute_diff  # noqa: E402
 
 
 def test_inline_context_only_includes_adjacent_lines() -> None:
