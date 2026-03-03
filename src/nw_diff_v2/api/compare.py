@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from nw_diff.diff import compute_diff, compute_diff_status, generate_side_by_side_html
+from nw_diff_v2.domain.services.diff_service import (
+    compute_diff,
+    compute_diff_status,
+    generate_side_by_side_html,
+)
 from nw_diff_v2.api.error_messages import ERR_INVALID_HOSTNAME, ERR_INVALID_VIEW
 from nw_diff_v2.domain.models import CompareFilesRequest
 from nw_diff_v2.infra.storage.files import (

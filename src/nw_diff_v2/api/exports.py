@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 
-from nw_diff.diff import compute_diff_status
+from nw_diff_v2.domain.services.diff_service import compute_diff_status
 from nw_diff_v2.api.error_messages import ERR_INVALID_HOSTNAME
 from nw_diff_v2.config import settings
 from nw_diff_v2.infra.repositories.host_repo import load_hosts
