@@ -11,8 +11,9 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    http2 on;
+    # Keep legacy listen-http2 syntax for compatibility with nginx 1.24
+    # used by CI deploy-template validation.
+    listen 443 ssl http2;
     server_name _;
 
     ssl_certificate /etc/nginx/certs/cert.pem;
