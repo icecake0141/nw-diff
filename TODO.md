@@ -14,7 +14,7 @@
 
 ### P1 (Important)
 
-- [ ] Classify v1-specific tests as legacy scope and separate from v2 required gates:
+- [x] Classify v1-specific tests as legacy scope and separate from v2 required gates:
   - `tests/test_app.py`
   - v1 import checks in `tests/test_installation.py`
 - [ ] Align integration checks and wording to v2-first behavior:
