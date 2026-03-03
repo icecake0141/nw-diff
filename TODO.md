@@ -4,7 +4,7 @@
 
 ### P0 (Blocking)
 
-- [ ] Define "v2 migration complete" as code-level acceptance criteria in this repository:
+- [x] Define "v2 migration complete" as code-level acceptance criteria in this repository:
   - v2 route contract (`docs/contract/v2.json`) matches runtime (`GET /api/v2/system/routes`)
   - v2 scaffold tests are required green in CI (`tests/test_v2_scaffold.py`)
   - default startup path remains v2 (`docker-compose.yml`, README quick start)

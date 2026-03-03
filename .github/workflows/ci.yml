@@ -66,6 +66,16 @@ jobs:
       - name: Static analysis (mypy)
         run: mypy src tests
 
+      - name: V2 migration completion gate
+        env:
+          PYTHON_BIN: python
+          ARTIFACT_DIR: .artifacts
+          DEVICE_PASSWORD: ci_contract_password
+          NW_DIFF_ENV: development
+        run: |
+          mkdir -p .artifacts
+          bash ./scripts/check-v2-migration-complete.sh
+
       - name: Run tests
         run: pytest
 
