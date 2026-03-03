@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 """
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+
 Generate deterministic v2 API contract snapshot JSON.
 """
 
@@ -14,7 +26,9 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 SRC_DIR = ROOT_DIR / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from nw_diff_v2.api.system import _REQUIRED_ROUTE_CONTRACT  # pylint: disable=wrong-import-position
+from nw_diff_v2.api.system import (
+    _REQUIRED_ROUTE_CONTRACT,
+)  # pylint: disable=wrong-import-position
 from nw_diff_v2.main import app  # pylint: disable=wrong-import-position
 
 
