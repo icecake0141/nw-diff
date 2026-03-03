@@ -60,7 +60,7 @@
 
 ### Phase 1: Discovery and Scope
 
-- [ ] Inventory all v1 references and dependencies in code/tests/docs:
+- [x] Inventory all v1 references and dependencies in code/tests/docs:
   - `src/nw_diff/*`
   - `run_app.py`
   - `tests/test_app.py`
