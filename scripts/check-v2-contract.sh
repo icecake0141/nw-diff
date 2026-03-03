@@ -19,11 +19,11 @@ export V2_CONTRACT_ALLOW_STALE_LOCKS="${V2_CONTRACT_ALLOW_STALE_LOCKS:-false}"
 export DEVICE_PASSWORD="${DEVICE_PASSWORD:-contract_check_password}"
 export NW_DIFF_ENV="${NW_DIFF_ENV:-development}"
 
-CURL_AUTH_ARGS=()
+CURL_CMD=(curl -fsS)
 if [[ -n "${NW_DIFF_API_TOKEN:-}" ]]; then
-  CURL_AUTH_ARGS+=(-H "Authorization: Bearer ${NW_DIFF_API_TOKEN}")
+  CURL_CMD+=(-H "Authorization: Bearer ${NW_DIFF_API_TOKEN}")
 elif [[ -n "${NW_DIFF_BASIC_USER:-}" && -n "${NW_DIFF_BASIC_PASSWORD:-}" ]]; then
-  CURL_AUTH_ARGS+=(-u "${NW_DIFF_BASIC_USER}:${NW_DIFF_BASIC_PASSWORD}")
+  CURL_CMD+=(-u "${NW_DIFF_BASIC_USER}:${NW_DIFF_BASIC_PASSWORD}")
 fi
 
 cleanup() {
@@ -37,24 +37,32 @@ trap cleanup EXIT
 "${PYTHON_BIN}" -m uvicorn nw_diff_v2.main:app --host "${HOST}" --port "${PORT}" --app-dir src >"${LOG_OUTPUT}" 2>&1 &
 APP_PID=$!
 
+health_ready="false"
 for _ in $(seq 1 40); do
-  if curl -fsS "${CURL_AUTH_ARGS[@]}" "${BASE_URL}/api/v2/system/health" >"${HEALTH_OUTPUT}" 2>/dev/null; then
+  if "${CURL_CMD[@]}" "${BASE_URL}/api/v2/system/health" >"${HEALTH_OUTPUT}" 2>/dev/null; then
+    health_ready="true"
     break
   fi
   sleep 0.25
 done
 
-if ! curl -fsS "${CURL_AUTH_ARGS[@]}" "${BASE_URL}/api/v2/system/contract" >"${CONTRACT_OUTPUT}"; then
+if [[ "${health_ready}" != "true" ]]; then
+  echo "Failed to fetch health endpoint"
+  cat "${LOG_OUTPUT}" || true
+  exit 1
+fi
+
+if ! "${CURL_CMD[@]}" "${BASE_URL}/api/v2/system/contract" >"${CONTRACT_OUTPUT}"; then
   echo "Failed to fetch contract endpoint"
   cat "${LOG_OUTPUT}" || true
   exit 1
 fi
-if ! curl -fsS "${CURL_AUTH_ARGS[@]}" "${BASE_URL}/api/v2/system/readiness" >"${READINESS_OUTPUT}"; then
+if ! "${CURL_CMD[@]}" "${BASE_URL}/api/v2/system/readiness" >"${READINESS_OUTPUT}"; then
   echo "Failed to fetch readiness endpoint"
   cat "${LOG_OUTPUT}" || true
   exit 1
 fi
-if ! curl -fsS "${CURL_AUTH_ARGS[@]}" "${BASE_URL}/api/v2/system/locks" >"${LOCKS_OUTPUT}"; then
+if ! "${CURL_CMD[@]}" "${BASE_URL}/api/v2/system/locks" >"${LOCKS_OUTPUT}"; then
   echo "Failed to fetch locks endpoint"
   cat "${LOG_OUTPUT}" || true
   exit 1
