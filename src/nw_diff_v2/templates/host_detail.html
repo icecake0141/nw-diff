@@ -1,3 +1,16 @@
+<!--
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -62,6 +75,7 @@
           <option value="inline">inline</option>
           <option value="sidebyside">sidebyside</option>
         </select>
+        <button class="secondary" id="diffModeToggle" onclick="toggleDiffMode()">Context View</button>
         <select id="statusFilter">
           <option value="">all</option>
           <option value="changed">changed</option>
@@ -80,6 +94,8 @@
   </div>
   <script>
     const hostname = {{ hostname|tojson }};
+    let diffMode = 'full';
+    const contextLines = 3;
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -97,7 +113,11 @@
       const summaryBox = document.getElementById('summary');
       const resultWrap = document.getElementById('results');
       try {
-        const params = new URLSearchParams({ view });
+        const params = new URLSearchParams({
+          view,
+          diff_mode: diffMode,
+          context_lines: String(contextLines),
+        });
         if (statusFilter) params.set('status_filter', statusFilter);
         if (commandContains) params.set('command_contains', commandContains);
         const res = await fetch('/api/v2/hosts/' + encodeURIComponent(hostname) + '/detail?' + params.toString());
@@ -130,6 +150,21 @@
       }
     }
 
+    function updateDiffModeButton() {
+      const button = document.getElementById('diffModeToggle');
+      if (diffMode === 'context') {
+        button.textContent = 'Full View';
+      } else {
+        button.textContent = 'Context View';
+      }
+    }
+
+    function toggleDiffMode() {
+      diffMode = diffMode === 'full' ? 'context' : 'full';
+      updateDiffModeButton();
+      loadDetail();
+    }
+
     function expandAll() {
       document.querySelectorAll('.diff-details').forEach((el) => { el.open = true; });
     }
@@ -141,6 +176,7 @@
     document.getElementById('view').addEventListener('change', loadDetail);
     document.getElementById('statusFilter').addEventListener('change', loadDetail);
     document.getElementById('commandContains').addEventListener('input', loadDetail);
+    updateDiffModeButton();
     loadDetail();
   </script>
 </body>

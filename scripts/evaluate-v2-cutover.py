@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""Evaluate v2 cutover Go/No-Go from readiness and contract diff outputs."""
+"""
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+
+Evaluate v2 cutover Go/No-Go from readiness and contract diff outputs.
+"""
 
 from __future__ import annotations
 
@@ -92,9 +106,7 @@ def main() -> int:
                 "max_failed": max_failed,
                 "max_locked": max_locked,
             },
-            "reasons": [
-                f"missing input file: {path}" for path in missing_files
-            ],
+            "reasons": [f"missing input file: {path}" for path in missing_files],
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
         if args.summary_path:
@@ -120,9 +132,7 @@ def main() -> int:
             )
         return 0 if args.allow_missing else 1
     deploy_validation = (
-        _load_json(args.deploy_validation_file)
-        if args.deploy_validation_file
-        else {}
+        _load_json(args.deploy_validation_file) if args.deploy_validation_file else {}
     )
 
     reasons: list[str] = []
@@ -133,7 +143,11 @@ def main() -> int:
     failed = int(counts.get("failed", 0))
     locked = int(counts.get("locked_hosts", counts.get("locked", 0)))
     has_contract_diff = bool(contract_diff.get("has_diff", False))
-    deploy_status = str(deploy_validation.get("status", "unknown")) if deploy_validation else "skipped"
+    deploy_status = (
+        str(deploy_validation.get("status", "unknown"))
+        if deploy_validation
+        else "skipped"
+    )
 
     if readiness_status != "ok":
         reasons.append(f"readiness status is {readiness_status}")

@@ -958,6 +958,19 @@ def host_detail(hostname):
         return "Invalid hostname", 400
 
     view = request.args.get("view", "inline")
+    diff_mode = request.args.get("diff_mode", "full").lower()
+    context_lines_raw = request.args.get("context_lines", "3")
+    try:
+        context_lines = int(context_lines_raw)
+    except ValueError:
+        logger.warning("Invalid context_lines for host detail: %s", context_lines_raw)
+        return "Invalid context_lines", 400
+    if context_lines < 0:
+        logger.warning("Invalid context_lines for host detail: %s", context_lines)
+        return "Invalid context_lines", 400
+    if diff_mode not in {"full", "context"}:
+        logger.warning("Invalid diff_mode for host detail: %s", diff_mode)
+        return "Invalid diff_mode", 400
     command_results = []
     commands = get_commands_for_host(hostname)
     for command in commands:
@@ -981,7 +994,13 @@ def host_detail(hostname):
 
         # Compute diff based on file status
         if origin_status == "available" and dest_status == "available":
-            diff_status, diff_html = compute_diff(origin_data, dest_data, view)
+            diff_status, diff_html = compute_diff(
+                origin_data,
+                dest_data,
+                view,
+                diff_mode=diff_mode,
+                context_lines=context_lines,
+            )
             logger.debug(
                 "Computed diff for %s - command: %s, status: %s",
                 hostname,
@@ -1055,6 +1074,7 @@ def host_detail(hostname):
             }
         )
     toggle_view = "sidebyside" if view == "inline" else "inline"
+    toggle_diff_mode = "context" if diff_mode == "full" else "full"
     logger.debug(
         "Rendered host detail for %s with %d command(s)", hostname, len(command_results)
     )
@@ -1064,6 +1084,9 @@ def host_detail(hostname):
         command_results=command_results,
         view=view,
         toggle_view=toggle_view,
+        diff_mode=diff_mode,
+        toggle_diff_mode=toggle_diff_mode,
+        context_lines=context_lines,
     )
 
 

@@ -880,6 +880,36 @@ def test_host_detail_rejects_invalid_hostname(tmp_path: Path, monkeypatch) -> No
         assert b"Invalid hostname" in response.data
 
 
+def test_host_detail_rejects_invalid_diff_mode(tmp_path: Path, monkeypatch) -> None:
+    """Test that host detail rejects invalid diff_mode values."""
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+
+    with app.app.test_client() as client:
+        response = client.get("/host/router1?diff_mode=bad")
+        assert response.status_code == 400
+        assert b"Invalid diff_mode" in response.data
+
+
+def test_host_detail_rejects_invalid_context_lines(tmp_path: Path, monkeypatch) -> None:
+    """Test that host detail rejects invalid context_lines values."""
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        """host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devices, "HOSTS_CSV", str(hosts_csv))
+
+    with app.app.test_client() as client:
+        response = client.get("/host/router1?context_lines=-1")
+        assert response.status_code == 400
+        assert b"Invalid context_lines" in response.data
+
+
 def test_export_diff_rejects_invalid_hostname(tmp_path: Path, monkeypatch) -> None:
     """Test that /export/<hostname> endpoint rejects invalid hostnames."""
     hosts_csv = tmp_path / "hosts.csv"

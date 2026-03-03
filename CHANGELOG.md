@@ -1,3 +1,16 @@
+<!--
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+-->
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -25,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/report-local-diff.sh` to inventory mixed worktree changes before commit split
 - `scripts/run-v2-ci-postchecks.sh` shared CI post-check bundle for readiness/locks/cutover/summary
 - v2 contract summary tool tests for missing/malformed artifact inputs
+- Context-only diff view toggle for host detail (v1/v2) with configurable context lines
 
 ### Changed
 - Updated `.gitignore` to exclude Docker-generated files (certificates, htpasswd)
@@ -72,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - コミット分割前にワークツリーの混在差分を棚卸しする `scripts/report-local-diff.sh`
 - readiness/locks/cutover/summary をまとめた共通 CI 後処理バンドル `scripts/run-v2-ci-postchecks.sh`
 - 欠損/不正なアーティファクト入力に対する v2 契約サマリーツールのテスト
+- ホスト詳細画面（v1/v2）のコンテキスト表示切替と前後行数の調整
 
 ### 変更
 - Docker 生成ファイル（証明書、htpasswd）を除外するよう `.gitignore` を更新

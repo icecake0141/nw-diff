@@ -31,15 +31,88 @@ def compute_diff_status(origin_data, dest_data):
     return "changes detected"
 
 
-def compute_diff(origin_data, dest_data, view="inline"):
+def _build_context_indexes(total_count, diff_indexes, context_lines):
+    if context_lines < 0:
+        raise ValueError("context_lines must be >= 0")
+    keep = set()
+    for index in diff_indexes:
+        start = max(0, index - context_lines)
+        end = min(total_count - 1, index + context_lines)
+        keep.update(range(start, end + 1))
+    return sorted(keep)
+
+
+def _apply_context_to_lines(lines, diff_indexes, context_lines):
+    if not diff_indexes:
+        return lines
+    if not lines:
+        return []
+    keep = _build_context_indexes(len(lines), diff_indexes, context_lines)
+    omission_line = '<div style="color: #999;">...</div>'
+    output = []
+    last_index = None
+    for index in keep:
+        if last_index is None:
+            if index > 0:
+                output.append(omission_line)
+        elif index > last_index + 1:
+            output.append(omission_line)
+        output.append(lines[index])
+        last_index = index
+    if last_index is not None and last_index < len(lines) - 1:
+        output.append(omission_line)
+    return output
+
+
+def _build_omitted_row():
+    omission_cell = "<span style='color: #999;'>...</span>"
+    return {
+        "origin_num": "",
+        "origin_content": omission_cell,
+        "dest_num": "",
+        "dest_content": omission_cell,
+        "type": "omitted",
+    }
+
+
+def _apply_context_to_rows(rows, context_lines):
+    diff_indexes = [index for index, row in enumerate(rows) if row["type"] != "equal"]
+    if not diff_indexes:
+        return rows
+    keep = _build_context_indexes(len(rows), diff_indexes, context_lines)
+    output = []
+    last_index = None
+    for index in keep:
+        if last_index is None:
+            if index > 0:
+                output.append(_build_omitted_row())
+        elif index > last_index + 1:
+            output.append(_build_omitted_row())
+        output.append(rows[index])
+        last_index = index
+    if last_index is not None and last_index < len(rows) - 1:
+        output.append(_build_omitted_row())
+    return output
+
+
+def compute_diff(
+    origin_data, dest_data, view="inline", diff_mode="full", context_lines=3
+):
     """
     Computes diff information using diff_match_patch.
+    diff_mode controls whether the full output is shown ("full") or
+    only diff lines plus surrounding context ("context").
     For inline view:
       - If a line contains any diff tags, the entire line is
         highlighted with a yellow background.
       - Additionally, text within <del> tags gets a red background
         and text within <ins> tags gets a blue background.
     """
+    if diff_mode not in {"full", "context"}:
+        raise ValueError("Invalid diff_mode")
+    if context_lines < 0:
+        raise ValueError("context_lines must be >= 0")
+
     dmp = diff_match_patch()
     diffs = dmp.diff_main(origin_data, dest_data)
     dmp.diff_cleanupSemantic(diffs)
@@ -47,14 +120,24 @@ def compute_diff(origin_data, dest_data, view="inline"):
     if all(op == 0 for op, text in diffs):
         status = "identical"
         if view == "sidebyside":
-            diff_html = generate_side_by_side_html(origin_data, dest_data)
+            diff_html = generate_side_by_side_html(
+                origin_data,
+                dest_data,
+                diff_mode=diff_mode,
+                context_lines=context_lines,
+            )
         else:
             # Escape HTML to prevent XSS
             diff_html = f"<pre>{html_lib.escape(origin_data)}</pre>"
     else:
         status = "changes detected"
         if view == "sidebyside":
-            diff_html = generate_side_by_side_html(origin_data, dest_data)
+            diff_html = generate_side_by_side_html(
+                origin_data,
+                dest_data,
+                diff_mode=diff_mode,
+                context_lines=context_lines,
+            )
         else:
             # Note: diff_prettyHtml automatically escapes HTML entities in the text
             # This has been verified - it converts < to &lt;, > to &gt;, etc.
@@ -80,6 +163,15 @@ def compute_diff(origin_data, dest_data, view="inline"):
                     )
                 else:
                     new_lines.append(line)
+            if diff_mode == "context":
+                diff_indexes = [
+                    index
+                    for index, line in enumerate(new_lines)
+                    if "<del" in line or "<ins" in line
+                ]
+                new_lines = _apply_context_to_lines(
+                    new_lines, diff_indexes, context_lines
+                )
             diff_html = "<br>".join(new_lines)
     return status, diff_html
 
@@ -232,7 +324,9 @@ def _append_replace_rows(
     return origin_line_num, dest_line_num
 
 
-def generate_side_by_side_html(origin_data, dest_data):
+def generate_side_by_side_html(
+    origin_data, dest_data, *, diff_mode="full", context_lines=3
+):
     """
     Generates side-by-side HTML displaying the origin content on the left
     and destination content on the right with aligned rows.
@@ -245,6 +339,7 @@ def generate_side_by_side_html(origin_data, dest_data):
     - Changed lines are highlighted with appropriate backgrounds
 
     All text is HTML-escaped to prevent XSS attacks.
+    diff_mode="context" collapses unchanged sections while keeping context lines.
     """
     # Split into lines for line-level diffing
     origin_lines = origin_data.splitlines() if origin_data else []
@@ -318,6 +413,13 @@ def generate_side_by_side_html(origin_data, dest_data):
                 ins_style=ins_style,
             )
 
+    if diff_mode not in {"full", "context"}:
+        raise ValueError("Invalid diff_mode")
+    if context_lines < 0:
+        raise ValueError("context_lines must be >= 0")
+    if diff_mode == "context":
+        rows = _apply_context_to_rows(rows, context_lines)
+
     # Build the HTML table with aligned rows
     table_class = "table table-bordered"
     table_style = "width:100%; border-collapse: collapse; table-layout: fixed;"
@@ -356,6 +458,8 @@ def generate_side_by_side_html(origin_data, dest_data):
             row_bg = " background-color: #ffeeee;"
         elif row["type"] == "add":
             row_bg = " background-color: #eeffee;"
+        elif row["type"] == "omitted":
+            row_bg = " background-color: #f7f7f7;"
 
         html_parts.append("<tr>")
         # Origin line number

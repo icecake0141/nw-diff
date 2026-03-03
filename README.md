@@ -93,6 +93,7 @@ Legacy v1 (`/api/*`, `/capture/*`, `/logs`, `/export/*`) sections below are reta
   The application compares corresponding files from the `origin` and `dest` directories using diff-match-patch:
   - **Inline View:** Presents the standard diff output.
   - **Side-by-Side View:** Displays the origin data on the left and the computed differences on the right.
+  - **Context View:** Shows only lines with differences plus surrounding context lines (default: 3), with omitted sections collapsed.
 
   Diff results are converted into HTML files and saved in the `diff` directory.
 
@@ -1224,6 +1225,7 @@ NW-Diff は、ネットワークデバイスから収集された設定または
   アプリケーションは、`origin` と `dest` ディレクトリ内の対応するファイルを diff-match-patch を使用して比較します:
   - **インライン表示:** 標準の差分出力を提示します。
   - **サイドバイサイド表示:** 左側に元データ、右側に計算された差分を表示します。
+  - **コンテキスト表示:** 差分行とその前後の数行（デフォルト: 3）のみを表示し、省略部分は折りたたみます。
 
   差分結果は HTML ファイルに変換され、`diff` ディレクトリに保存されます。
 

@@ -1,3 +1,16 @@
+<!--
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+-->
 # NW-Diff プロジェクト
 
 [![CI](https://github.com/icecake0141/nw-diff/workflows/CI/badge.svg)](https://github.com/icecake0141/nw-diff/actions/workflows/ci.yml)
@@ -61,6 +74,7 @@ NW-Diff は、ネットワークデバイス向けの設定/状態取得およ�
   アプリケーションは、`origin` と `dest` ディレクトリ内の対応するファイルを diff-match-patch を使用して比較します:
   - **インライン表示:** 標準の差分出力を提示します。
   - **サイドバイサイド表示:** 左側に元データ、右側に計算された差分を表示します。
+  - **コンテキスト表示:** 差分行とその前後の数行（デフォルト: 3）のみを表示し、省略部分は折りたたみます。
 
   差分結果は HTML ファイルに変換され、`diff` ディレクトリに保存されます。
 

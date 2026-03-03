@@ -735,10 +735,14 @@ def test_v2_host_detail_endpoint(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "nw_diff_api_token", None)
 
     with TestClient(app) as client:
-        response = client.get("/api/v2/hosts/router1/detail?view=inline")
+        response = client.get(
+            "/api/v2/hosts/router1/detail?view=inline&diff_mode=context&context_lines=2"
+        )
         assert response.status_code == 200
         payload = response.json()
         assert payload["hostname"] == "router1"
+        assert payload["diff_mode"] == "context"
+        assert payload["context_lines"] == 2
         assert payload["summary"]["total"] == 1
         assert payload["summary"]["changed"] == 1
         assert payload["command_results"][0]["command"] == "show version"
