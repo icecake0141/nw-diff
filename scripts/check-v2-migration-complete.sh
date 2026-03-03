@@ -25,8 +25,8 @@ CONTRACT_CURRENT="${CONTRACT_CURRENT:-${ARTIFACT_DIR}/v2_contract_gate_current.j
 CONTRACT_DIFF="${CONTRACT_DIFF:-${ARTIFACT_DIR}/v2_contract_gate_diff.json}"
 
 echo "[gate] checking v2 default startup paths"
-rg -q "nw_diff_v2.main:app" docker-compose.yml
-rg -q "uvicorn nw_diff_v2.main:app" README.md
+grep -q "nw_diff_v2.main:app" docker-compose.yml
+grep -q "uvicorn nw_diff_v2.main:app" README.md
 
 echo "[gate] checking v2 route contract snapshot"
 "${PYTHON_BIN}" scripts/generate-v2-contract.py --output "${CONTRACT_CURRENT}"
