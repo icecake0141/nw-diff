@@ -25,6 +25,7 @@ cd nw-diff
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-v2.txt
 
 cp hosts.csv.sample hosts.csv
 
@@ -32,12 +33,12 @@ cp hosts.csv.sample hosts.csv
 export DEVICE_PASSWORD=dummy
 export NW_DIFF_ENV=development
 
-python run_app.py
+uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 ```
 
 ### Success Check
-- Open [http://127.0.0.1:5000](http://127.0.0.1:5000).
-- If the host list page appears, startup succeeded.
+- Open [http://127.0.0.1:5000/v2](http://127.0.0.1:5000/v2).
+- If the v2 page appears, startup succeeded.
 
 ### Stop
 Press `Ctrl+C` in the terminal.
@@ -55,6 +56,7 @@ cd nw-diff
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-v2.txt
 
 cp hosts.csv.sample hosts.csv
 
@@ -62,12 +64,12 @@ cp hosts.csv.sample hosts.csv
 export DEVICE_PASSWORD=dummy
 export NW_DIFF_ENV=development
 
-python run_app.py
+uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 ```
 
 ### 成功確認
-- [http://127.0.0.1:5000](http://127.0.0.1:5000) を開く。
-- ホスト一覧ページが表示されれば起動成功です。
+- [http://127.0.0.1:5000/v2](http://127.0.0.1:5000/v2) を開く。
+- v2 画面が表示されれば起動成功です。
 
 ### 停止方法
 ターミナルで `Ctrl+C` を押して停止します。

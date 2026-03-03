@@ -386,7 +386,7 @@ curl -H "Authorization: Bearer your_token_here" http://localhost:5000/api/v2/sys
 
 ## Docker デプロイメント
 
-NW-Diff は Docker と docker-compose を介した HTTPS（TLS 終端）およびオプションの Basic 認証を使用したコンテナ化デプロイメントをサポートしています。これにより、安全で本番環境に対応したデプロイメントオプションが提供されます。
+NW-Diff は Docker と docker compose を介した HTTPS（TLS 終端）およびオプションの Basic 認証を使用したコンテナ化デプロイメントをサポートしています。これにより、安全で本番環境に対応したデプロイメントオプションが提供されます。
 
 **アーキテクチャ概要:**
 - **nginx**: TLS 終端を伴うリバースプロキシとして機能し、`X-Forwarded-*` ヘッダーを設定します
@@ -532,7 +532,7 @@ htpasswd docker/.htpasswd <username>
 # auth_basic "NW-Diff Access";
 # auth_basic_user_file /etc/nginx/.htpasswd;
 ```
-その後再起動: `docker-compose restart nginx`
+その後再起動: `docker compose restart nginx`
 
 #### 永続データ
 
@@ -664,7 +664,7 @@ NW-Diff はセキュリティを優先して設計されていますが、適切
 1. **ログ管理:**
    - nginx アクセス/エラーログを定期的に確認:
      ```bash
-     docker-compose logs nginx | grep -E "40[134]|50[0-3]"
+     docker compose logs nginx | grep -E "40[134]|50[0-3]"
      ```
    - 疑わしいアクティビティを監視: 繰り返される 401/403 エラー、異常なトラフィックパターン
    - 集中ログ（ELK スタック、Splunk など）を検討
@@ -686,7 +686,7 @@ NW-Diff はセキュリティを優先して設計されていますが、適切
 #### 定期的なメンテナンス
 
 1. **更新:**
-   - ベース Docker イメージを最新に保つ: `docker-compose pull`
+   - ベース Docker イメージを最新に保つ: `docker compose pull`
    - Python 依存関係を更新: `pip install -r requirements.txt --upgrade`
    - セキュリティアドバイザリと CVE を監視
 
@@ -717,7 +717,7 @@ NW-Diff はセキュリティを優先して設計されていますが、適切
 - [ ] コンテナイメージの脆弱性がスキャンされている
 - [ ] ログが収集され監視されている
 - [ ] バックアップ戦略が実装されテストされている
-- [ ] デバッグモードが無効（`APP_DEBUG=false`）
+- [ ] 本番向けの実行環境/認証ポリシーが設定済み（`NW_DIFF_ENV=production` と `NW_DIFF_API_TOKEN`）
 - [ ] すべての依存関係の最新安定バージョンを実行
 - [ ] インシデント対応計画が文書化されている
 
@@ -755,8 +755,8 @@ NW-Diff でセキュリティ脆弱性を発見した場合:
 - ブラウザで例外を追加するか、システム信頼ストアに証明書をインポート（scripts/mk-certs.sh の出力を参照）
 
 **接続拒否:**
-- コンテナが実行されていることを確認: `docker-compose ps`
-- ログを確認: `docker-compose logs`
+- コンテナが実行されていることを確認: `docker compose ps`
+- ログを確認: `docker compose logs`
 
 **認証失敗:**
 - .htpasswd ファイルが存在することを確認: `ls -la docker/.htpasswd`
@@ -764,7 +764,7 @@ NW-Diff でセキュリティ脆弱性を発見した場合:
 
 **権限エラー:**
 - 証明書ファイルに正しい権限があることを確認（cert.pem: 644、key.pem: 600）
-- ボリューム権限を確認: `docker-compose exec nw-diff ls -la /app`
+- ボリューム権限を確認: `docker compose exec nw-diff ls -la /app`
 
 **Docker ビルド SSL 証明書エラー:**
 - SSL インターセプトを伴う企業/CI 環境でビルドする場合は、以下を使用:
@@ -852,7 +852,7 @@ pytest -v
    # 値で .env を編集
 
    # スタックを起動
-   docker-compose up -d
+   docker compose up -d
    ```
 
 2. **統合テストスクリプトを実行:**
@@ -865,7 +865,7 @@ pytest -v
 
 3. **クリーンアップ:**
    ```bash
-   docker-compose down -v
+   docker compose down -v
    ```
 
 #### 継続的インテグレーション
