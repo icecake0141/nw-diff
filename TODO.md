@@ -66,7 +66,7 @@
   - `tests/test_app.py`
   - `tests/test_installation.py` legacy v1 checks
   - docs mentioning v1/legacy runtime
-- [ ] Define explicit removal scope:
+- [x] Define explicit removal scope:
   - files/modules to delete
   - any compatibility stubs to keep temporarily (or none)
 
