@@ -96,6 +96,10 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 - [Deploy systemd API service](docs/deploy/nw-diff-v2-api.service.example)
 - [Deploy systemd worker service](docs/deploy/nw-diff-v2-worker.service.example)
 
+## Integration Testing
+
+- Run Docker-based integration checks with `./scripts/test-integration.sh`.
+
 ## 日本語概要
 
 NW-Diff はネットワーク機器向けのキャプチャ/差分比較ツールです。
