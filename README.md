@@ -75,26 +75,26 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 
 ## Documentation
 
-- Main Japanese guide: `docs/README_ja.md`
-- Spec: `docs/SPEC.md`
-- Testing: `docs/TESTING.md`
-- V2 migration: `docs/V2_MIGRATION.md`
-- V2 runbook: `docs/V2_RUNBOOK.md`
-- V2 cutover checklist: `docs/V2_CUTOVER_CHECKLIST.md`
-- V2 implementation status: `docs/V2_IMPLEMENTATION_STATUS.md`
-- V2 PR summary: `docs/V2_PR_SUMMARY.md`
-- V2 commit split plan: `docs/V2_COMMIT_SPLIT_PLAN.md`
-- V2 contract snapshot: `docs/contract/v2.json`
-- Startup overview: `docs/startup/STARTUP_OVERVIEW.md`
-- Startup by environment: `docs/startup/STARTUP_ENVIRONMENTS.md`
-- Startup quick test: `docs/startup/STARTUP_QUICK_TEST.md`
-- Startup docker guide: `docs/startup/STARTUP_DOCKER.md`
-- Startup troubleshooting: `docs/startup/STARTUP_TROUBLESHOOTING.md`
-- Deploy guide: `docs/deploy/README.md`
-- Deploy nginx (v2): `docs/deploy/nginx-v2.conf.example`
-- Deploy nginx (v1->v2 cutover): `docs/deploy/nginx-v1-v2-cutover.conf.example`
-- Deploy systemd API service: `docs/deploy/nw-diff-v2-api.service.example`
-- Deploy systemd worker service: `docs/deploy/nw-diff-v2-worker.service.example`
+- [Main Japanese guide](docs/README_ja.md)
+- [Spec](docs/SPEC.md)
+- [Testing](docs/TESTING.md)
+- [V2 migration](docs/V2_MIGRATION.md)
+- [V2 runbook](docs/V2_RUNBOOK.md)
+- [V2 cutover checklist](docs/V2_CUTOVER_CHECKLIST.md)
+- [V2 implementation status](docs/V2_IMPLEMENTATION_STATUS.md)
+- [V2 PR summary](docs/V2_PR_SUMMARY.md)
+- [V2 commit split plan](docs/V2_COMMIT_SPLIT_PLAN.md)
+- [V2 contract snapshot](docs/contract/v2.json)
+- [Startup overview](docs/startup/STARTUP_OVERVIEW.md)
+- [Startup by environment](docs/startup/STARTUP_ENVIRONMENTS.md)
+- [Startup quick test](docs/startup/STARTUP_QUICK_TEST.md)
+- [Startup docker guide](docs/startup/STARTUP_DOCKER.md)
+- [Startup troubleshooting](docs/startup/STARTUP_TROUBLESHOOTING.md)
+- [Deploy guide](docs/deploy/README.md)
+- [Deploy nginx (v2)](docs/deploy/nginx-v2.conf.example)
+- [Deploy nginx (v1->v2 cutover)](docs/deploy/nginx-v1-v2-cutover.conf.example)
+- [Deploy systemd API service](docs/deploy/nw-diff-v2-api.service.example)
+- [Deploy systemd worker service](docs/deploy/nw-diff-v2-worker.service.example)
 
 ## 日本語概要
 
