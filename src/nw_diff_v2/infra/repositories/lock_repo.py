@@ -1,4 +1,18 @@
-"""SQLite-backed host lock repository for cross-process capture locking."""
+"""
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+
+SQLite-backed host lock repository for cross-process capture locking.
+"""
 
 from __future__ import annotations
 
@@ -31,14 +45,12 @@ def init_lock_table() -> None:
     """Ensure host lock table exists."""
     with _DB_INIT_LOCK:
         with _connect() as conn:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS host_locks (
                     host TEXT PRIMARY KEY,
                     acquired_at REAL NOT NULL
                 )
-                """
-            )
+                """)
             conn.commit()
 
 
