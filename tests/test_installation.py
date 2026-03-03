@@ -22,6 +22,9 @@ import os
 import socket
 import subprocess
 import sys
+import importlib
+import secrets
+import shutil
 from pathlib import Path
 
 import pytest
@@ -119,8 +122,6 @@ class TestInstallationSteps:
 
     def test_hosts_csv_can_be_created_from_sample(self, tmp_path):
         """Test that hosts.csv can be created from sample file."""
-        import shutil  # pylint: disable=import-outside-toplevel
-
         repo_root = Path(__file__).parent.parent
         sample_file = repo_root / "hosts.csv.sample"
         test_file = tmp_path / "hosts.csv"
@@ -146,8 +147,6 @@ class TestEnvironmentVariables:
     def test_api_token_generation(self):
         """Test that API token can be generated using documented method."""
         # This is the command documented in README
-        import secrets  # pylint: disable=import-outside-toplevel
-
         token = secrets.token_urlsafe(32)
         assert len(token) > 0, "Failed to generate token"
         assert isinstance(token, str), "Token should be a string"
@@ -174,7 +173,7 @@ class TestApplicationStartup:
         sys.path.insert(0, str(src_dir))
 
         try:
-            from nw_diff_v2.main import app  # pylint: disable=import-outside-toplevel
+            app = importlib.import_module("nw_diff_v2.main").app
 
             assert app is not None, "Failed to import v2 FastAPI app"
             assert hasattr(app, "router"), "FastAPI app missing router"
@@ -190,7 +189,7 @@ class TestApplicationStartup:
         sys.path.insert(0, str(src_dir))
 
         try:
-            from nw_diff.app import app  # pylint: disable=import-outside-toplevel
+            app = importlib.import_module("nw_diff.app").app
 
             assert app is not None, "Failed to import legacy v1 Flask app"
             assert hasattr(app, "run"), "Legacy Flask app missing run method"
