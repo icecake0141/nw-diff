@@ -62,12 +62,12 @@ export HOSTS_CSV=/path/to/hosts.csv
 
 ### Error: Browser cannot connect
 **Symptom**
-- `http://127.0.0.1:5000` does not open.
+- `http://127.0.0.1:5000/v2` does not open.
 
 **Fix**
 - Confirm process is running in the same terminal.
 - If you changed the port, open the configured port.
-- Check host binding with `FLASK_RUN_HOST` and `FLASK_RUN_PORT`.
+- Check `uvicorn` host/port options and the URL path (`/v2`).
 
 ## 日本語
 
@@ -117,9 +117,9 @@ export HOSTS_CSV=/path/to/hosts.csv
 
 ### エラー: ブラウザから接続できない
 **症状**
-- `http://127.0.0.1:5000` が開けない。
+- `http://127.0.0.1:5000/v2` が開けない。
 
 **対処**
 - 同じターミナルでプロセスが起動中か確認する。
 - ポートを変えた場合は設定したポートにアクセスする。
-- `FLASK_RUN_HOST` と `FLASK_RUN_PORT` の設定を確認する。
+- `uvicorn` の host/port 指定と URL パス（`/v2`）を確認する。
