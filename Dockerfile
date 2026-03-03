@@ -55,7 +55,6 @@ COPY --from=builder /root/.local /home/nwdiff/.local
 # Copy application code
 COPY --chown=nwdiff:nwdiff src/ ./src/
 COPY --chown=nwdiff:nwdiff templates/ ./templates/
-COPY --chown=nwdiff:nwdiff run_app.py .
 COPY --chown=nwdiff:nwdiff hosts.csv.sample ./hosts.csv.sample
 
 # Create necessary directories with correct permissions.
@@ -71,12 +70,12 @@ USER nwdiff
 ENV PATH=/home/nwdiff/.local/bin:$PATH
 ENV PYTHONPATH=/app/src
 
-# Expose Flask default port
+# Expose application port
 EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/').read()" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/v2').read()" || exit 1
 
 # Run the application
-CMD ["python", "run_app.py"]
+CMD ["uvicorn", "nw_diff_v2.main:app", "--host", "0.0.0.0", "--port", "5000", "--app-dir", "src"]

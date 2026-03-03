@@ -78,6 +78,7 @@ class TestInstallationPrerequisites:
         assert sample_file.exists(), "hosts.csv.sample not found"
         assert sample_file.is_file(), "hosts.csv.sample is not a file"
 
+
 class TestInstallationSteps:
     """Test that documented installation steps can be executed successfully."""
 
