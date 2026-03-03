@@ -1,4 +1,18 @@
-"""Host detail APIs for v2 UI/automation."""
+"""
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+
+Host detail APIs for v2 UI/automation.
+"""
 
 from __future__ import annotations
 
@@ -34,10 +48,12 @@ def _result_category(diff_status: str) -> str:
 
 
 @router.get("/{hostname}/detail")
-def host_detail(
+def host_detail(  # pylint: disable=too-many-positional-arguments
     hostname: str,
     _: None = Depends(require_auth),
     view: str = "inline",
+    diff_mode: str = "full",
+    context_lines: int = 3,
     status_filter: str = "",
     command_contains: str = "",
 ) -> dict:
@@ -52,6 +68,17 @@ def host_detail(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERR_INVALID_VIEW,
+        )
+    safe_diff_mode = diff_mode.strip().lower()
+    if safe_diff_mode not in {"full", "context"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid diff_mode",
+        )
+    if context_lines < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid context_lines",
         )
 
     command_keys = sorted(
@@ -79,6 +106,8 @@ def host_detail(
                 origin_data or "",
                 dest_data or "",
                 safe_view,
+                diff_mode=safe_diff_mode,
+                context_lines=context_lines,
             )
         elif origin_status != "not_found":
             diff_status = f"origin {origin_status}"
@@ -156,6 +185,8 @@ def host_detail(
         "hostname": hostname,
         "view": safe_view,
         "toggle_view": "sidebyside" if safe_view == "inline" else "inline",
+        "diff_mode": safe_diff_mode,
+        "context_lines": context_lines,
         "status_filter": safe_status,
         "command_contains": command_contains,
         "summary": {
