@@ -181,6 +181,7 @@ class TestApplicationStartup:
         except ImportError as e:
             pytest.fail(f"Failed to import v2 app: {e}")
 
+    @pytest.mark.legacy_v1
     def test_legacy_v1_app_can_import(self):
         """Test that the legacy v1 Flask app can still be imported."""
         # Add src to path

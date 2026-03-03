@@ -29,6 +29,8 @@ import pytest
 from netmiko import NetMikoTimeoutException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+pytestmark = pytest.mark.legacy_v1
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
