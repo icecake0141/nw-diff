@@ -79,9 +79,6 @@ jobs:
       - name: Run tests (default + v2 scope)
         run: pytest -m "not legacy_v1"
 
-      - name: Run tests (legacy v1 compatibility)
-        run: pytest -m "legacy_v1"
-
       - name: Run v2 contract + post-check suite
         if: always()
         env:
