@@ -12,7 +12,8 @@ You may obtain a copy of the License at
 This file was created or modified with the assistance of an AI (Large Language Model).
 Review required for correctness, security, and licensing.
 
-Simple wrapper script to run the NW-Diff application.
+Legacy v1 (Flask) wrapper script.
+Preferred runtime is v2 (FastAPI): `uvicorn nw_diff_v2.main:app --app-dir src`.
 """
 
 import os
@@ -23,7 +24,7 @@ from pathlib import Path
 src_dir = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_dir))
 
-# Import the Flask app
+# Import the legacy Flask app (v1)
 from nw_diff.app import app  # pylint: disable=wrong-import-position,import-error
 
 if __name__ == "__main__":
@@ -39,5 +40,11 @@ if __name__ == "__main__":
     host = os.environ.get("FLASK_RUN_HOST", "127.0.0.1")
     port = int(os.environ.get("FLASK_RUN_PORT", "5000"))
 
-    logger.info("Starting Flask app on %s:%d (debug=%s)", host, port, debug_mode)
+    logger.warning(
+        "run_app.py starts legacy v1 Flask runtime. Prefer v2: "
+        "uvicorn nw_diff_v2.main:app --host %s --port %d --app-dir src",
+        host,
+        port,
+    )
+    logger.info("Starting legacy Flask app on %s:%d (debug=%s)", host, port, debug_mode)
     app.run(host=host, port=port, debug=debug_mode)

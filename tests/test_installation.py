@@ -76,7 +76,7 @@ class TestInstallationPrerequisites:
         assert sample_file.is_file(), "hosts.csv.sample is not a file"
 
     def test_run_app_script_exists(self):
-        """Verify run_app.py exists and is executable."""
+        """Verify legacy run_app.py exists for backward compatibility."""
         repo_root = Path(__file__).parent.parent
         run_app = repo_root / "run_app.py"
         assert run_app.exists(), "run_app.py not found"
@@ -166,8 +166,23 @@ class TestEnvironmentVariables:
 class TestApplicationStartup:
     """Test that the application can start with minimal configuration."""
 
-    def test_app_can_import(self):
-        """Test that the Flask app can be imported."""
+    def test_v2_app_can_import(self):
+        """Test that the default v2 FastAPI app can be imported."""
+        # Add src to path
+        repo_root = Path(__file__).parent.parent
+        src_dir = repo_root / "src"
+        sys.path.insert(0, str(src_dir))
+
+        try:
+            from nw_diff_v2.main import app  # pylint: disable=import-outside-toplevel
+
+            assert app is not None, "Failed to import v2 FastAPI app"
+            assert hasattr(app, "router"), "FastAPI app missing router"
+        except ImportError as e:
+            pytest.fail(f"Failed to import v2 app: {e}")
+
+    def test_legacy_v1_app_can_import(self):
+        """Test that the legacy v1 Flask app can still be imported."""
         # Add src to path
         repo_root = Path(__file__).parent.parent
         src_dir = repo_root / "src"
@@ -176,10 +191,10 @@ class TestApplicationStartup:
         try:
             from nw_diff.app import app  # pylint: disable=import-outside-toplevel
 
-            assert app is not None, "Failed to import Flask app"
-            assert hasattr(app, "run"), "Flask app missing run method"
+            assert app is not None, "Failed to import legacy v1 Flask app"
+            assert hasattr(app, "run"), "Legacy Flask app missing run method"
         except ImportError as e:
-            pytest.fail(f"Failed to import app: {e}")
+            pytest.fail(f"Failed to import legacy v1 app: {e}")
 
     def test_required_dependencies_importable(self):
         """Test that required dependencies can be imported."""
