@@ -43,6 +43,14 @@ Cleanup:
 docker compose down -v
 ```
 
+## Deploy Template Validation
+
+Validate deploy templates (nginx/systemd) with strict mode:
+
+```bash
+./scripts/validate-deploy-templates.sh --strict
+```
+
 ## CI Workflows
 
 - CI: `.github/workflows/ci.yml`
@@ -93,6 +101,14 @@ docker compose up -d --build
 
 ```bash
 docker compose down -v
+```
+
+## デプロイテンプレート検証
+
+デプロイテンプレート（nginx/systemd）を strict モードで検証:
+
+```bash
+./scripts/validate-deploy-templates.sh --strict
 ```
 
 ## CI ワークフロー
