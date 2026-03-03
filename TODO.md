@@ -74,8 +74,8 @@
 
 - [x] Remove legacy v1 test scope from CI:
   - drop `pytest -m "legacy_v1"` job in `.github/workflows/ci.yml`
-- [ ] Remove or rewrite v1-specific tests to v2-only behavior.
-- [ ] Ensure required checks are green without any v1 code path.
+- [x] Remove or rewrite v1-specific tests to v2-only behavior.
+- [x] Ensure required checks are green without any v1 code path.
 
 ### Phase 3: Code and Runtime Deletion
 
