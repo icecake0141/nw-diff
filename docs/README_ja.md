@@ -75,6 +75,9 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 
 ## ドキュメント一覧
 
+- 言語運用方針:
+  - 原則として各ドキュメントは 1 ファイル内で英語 + 日本語訳を併記します。
+  - トップガイドは `README.md`（英語中心）と `docs/README_ja.md`（日本語中心）に分けて管理します。
 - [トップ README（英語）](../README.md)
 - [仕様（SPEC）](SPEC.md)
 - [テスト手順](TESTING.md)
