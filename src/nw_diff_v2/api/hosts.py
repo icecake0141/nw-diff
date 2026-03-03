@@ -20,7 +20,7 @@ import html
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from nw_diff.diff import compute_diff, compute_diff_status
+from nw_diff_v2.domain.services.diff_service import compute_diff, compute_diff_status
 from nw_diff_v2.api.error_messages import ERR_INVALID_HOSTNAME, ERR_INVALID_VIEW
 from nw_diff_v2.infra.repositories.host_repo import load_hosts
 from nw_diff_v2.infra.repositories.task_repo import get_latest_task_for_host
