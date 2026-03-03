@@ -156,4 +156,3 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 
 - `docker-compose.yml` runs v2 by default.
 - Legacy v1 instructions are intentionally not duplicated in this top-level README.
-- `run_app.py` is kept as a legacy v1 (Flask) entrypoint only.
