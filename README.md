@@ -75,6 +75,9 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 
 ## Documentation
 
+- Language policy:
+  - Most docs are bilingual in a single file (English + Japanese section).
+  - Top guides can be split as `README.md` (EN-focused) and `docs/README_ja.md` (JA-focused).
 - [Main Japanese guide](docs/README_ja.md)
 - [Spec](docs/SPEC.md)
 - [Testing](docs/TESTING.md)
