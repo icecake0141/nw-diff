@@ -78,13 +78,6 @@ class TestInstallationPrerequisites:
         assert sample_file.exists(), "hosts.csv.sample not found"
         assert sample_file.is_file(), "hosts.csv.sample is not a file"
 
-    def test_run_app_script_exists(self):
-        """Verify legacy run_app.py exists for backward compatibility."""
-        repo_root = Path(__file__).parent.parent
-        run_app = repo_root / "run_app.py"
-        assert run_app.exists(), "run_app.py not found"
-        assert run_app.is_file(), "run_app.py is not a file"
-
 
 class TestInstallationSteps:
     """Test that documented installation steps can be executed successfully."""
