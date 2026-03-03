@@ -72,7 +72,7 @@
 
 ### Phase 2: CI and Test Cutover
 
-- [ ] Remove legacy v1 test scope from CI:
+- [x] Remove legacy v1 test scope from CI:
   - drop `pytest -m "legacy_v1"` job in `.github/workflows/ci.yml`
 - [ ] Remove or rewrite v1-specific tests to v2-only behavior.
 - [ ] Ensure required checks are green without any v1 code path.
