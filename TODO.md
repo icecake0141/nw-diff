@@ -20,7 +20,7 @@
 - [x] Align integration checks and wording to v2-first behavior:
   - remove stale v1 references/comments where practical
   - ensure smoke checks target `/api/v2/*` and `/v2`
-- [ ] Isolate unrelated local edits from v2 migration changes.
+- [x] Isolate unrelated local edits from v2 migration changes.
 - [x] Reduce duplicated v2 post-check logic across CI workflows.
 
 ### P2 (Nice to have)
