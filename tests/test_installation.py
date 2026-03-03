@@ -180,22 +180,6 @@ class TestApplicationStartup:
         except ImportError as e:
             pytest.fail(f"Failed to import v2 app: {e}")
 
-    @pytest.mark.legacy_v1
-    def test_legacy_v1_app_can_import(self):
-        """Test that the legacy v1 Flask app can still be imported."""
-        # Add src to path
-        repo_root = Path(__file__).parent.parent
-        src_dir = repo_root / "src"
-        sys.path.insert(0, str(src_dir))
-
-        try:
-            app = importlib.import_module("nw_diff.app").app
-
-            assert app is not None, "Failed to import legacy v1 Flask app"
-            assert hasattr(app, "run"), "Legacy Flask app missing run method"
-        except ImportError as e:
-            pytest.fail(f"Failed to import legacy v1 app: {e}")
-
     def test_required_dependencies_importable(self):
         """Test that required dependencies can be imported."""
         required_modules = [
