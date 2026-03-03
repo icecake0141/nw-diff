@@ -55,3 +55,46 @@
   - lock queue watch
   - rollback execution
 - [ ] Run a dry run and store timestamped logs.
+
+## V1 Removal Plan (Breaking Change Track)
+
+### Phase 1: Discovery and Scope
+
+- [ ] Inventory all v1 references and dependencies in code/tests/docs:
+  - `src/nw_diff/*`
+  - `run_app.py`
+  - `tests/test_app.py`
+  - `tests/test_installation.py` legacy v1 checks
+  - docs mentioning v1/legacy runtime
+- [ ] Define explicit removal scope:
+  - files/modules to delete
+  - any compatibility stubs to keep temporarily (or none)
+
+### Phase 2: CI and Test Cutover
+
+- [ ] Remove legacy v1 test scope from CI:
+  - drop `pytest -m "legacy_v1"` job in `.github/workflows/ci.yml`
+- [ ] Remove or rewrite v1-specific tests to v2-only behavior.
+- [ ] Ensure required checks are green without any v1 code path.
+
+### Phase 3: Code and Runtime Deletion
+
+- [ ] Remove v1 runtime entrypoint (`run_app.py`).
+- [ ] Remove v1 Flask package (`src/nw_diff/*`) and v1-only templates/assets.
+- [ ] Remove v1-only scripts or references that are no longer used.
+
+### Phase 4: Documentation and Release Notes
+
+- [ ] Update README/docs to state v2-only runtime.
+- [ ] Add migration note for users still invoking v1 paths.
+- [ ] Document breaking-change release notes (what was removed, expected replacement paths).
+
+### Phase 5: Final Validation
+
+- [ ] Run full quality gates:
+  - `pytest -q tests`
+  - `pylint src tests`
+  - `mypy src tests`
+  - `./scripts/check-v2-migration-complete.sh`
+  - integration workflow equivalent checks
+- [ ] Confirm no references to removed v1 modules remain in repository.
