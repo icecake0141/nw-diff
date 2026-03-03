@@ -18,12 +18,15 @@ import base64
 import sys
 from pathlib import Path
 
+import pytest
 from werkzeug.security import generate_password_hash
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from nw_diff import app  # pylint: disable=wrong-import-position
+
+pytestmark = pytest.mark.legacy_v1
 
 
 def _make_basic_auth_header(username: str, password: str) -> str:
