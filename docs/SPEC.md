@@ -7,8 +7,7 @@ The authoritative API route snapshot is `docs/contract/v2.json`.
 
 ## Runtime Model
 
-- Default runtime: v2 FastAPI (`src/nw_diff_v2`)
-- Legacy runtime: v1 Flask (`src/nw_diff`)
+- Runtime: v2 FastAPI (`src/nw_diff_v2`)
 - Default container startup: `docker-compose.yml` -> `uvicorn nw_diff_v2.main:app`
 - Default nginx routing (HTTPS):
   - `/` -> v2 UI content (`/v2` upstream)
@@ -64,8 +63,7 @@ API ルート定義の正本は `docs/contract/v2.json` です。
 
 ## ランタイムモデル
 
-- 標準ランタイム: v2 FastAPI（`src/nw_diff_v2`）
-- 旧ランタイム: v1 Flask（`src/nw_diff`）
+- ランタイム: v2 FastAPI（`src/nw_diff_v2`）
 - コンテナ標準起動: `docker-compose.yml` -> `uvicorn nw_diff_v2.main:app`
 - nginx 標準ルーティング（HTTPS）:
   - `/` -> v2 UI コンテンツ（上流 `/v2`）

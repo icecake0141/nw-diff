@@ -1,7 +1,17 @@
 # NW-Diff v2 Migration Guide
 
-This guide describes a practical migration from current Flask-based v1 routes to
-the new FastAPI-based v2 scaffold under `src/nw_diff_v2/`.
+This guide documents the migration that moved NW-Diff from Flask-based v1 routes
+to the FastAPI-based v2 runtime under `src/nw_diff_v2/`.
+
+## Current Status (v1 Removed)
+
+- v1 runtime (`src/nw_diff`) is removed.
+- v1 entrypoint (`run_app.py`) is removed.
+- Use v2 startup command:
+  - `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src`
+- Use v2 endpoints:
+  - UI: `/v2`
+  - API: `/api/v2/*`
 
 ## Scope
 
@@ -71,10 +81,10 @@ the new FastAPI-based v2 scaffold under `src/nw_diff_v2/`.
 - Startup recovery marks orphaned `running` tasks as `failed`.
 - Cancel endpoint returns `409` for terminal states (`completed`/`failed`/`cancelled`).
 
-## Migration Phases
+## Migration Phases (Historical Record)
 
 1. Parallel run
-- Keep v1 as primary.
+- Keep v1 as primary (at that time).
 - Start v2 on a separate path/port.
 - Optionally run queue worker as a separate process:
   - `python -m nw_diff_v2.worker`
@@ -82,19 +92,21 @@ the new FastAPI-based v2 scaffold under `src/nw_diff_v2/`.
 
 2. API client cutover
 - Point automation clients to v2 capture/task endpoints.
-- Keep v1 UI for visual diff until v2 UI is implemented.
+- Keep v1 UI for visual diff until v2 UI is implemented (at that time).
 
 3. Export cutover
 - Move machine-readable export consumers to `GET /api/v2/exports/{hostname}`.
 
 4. Final switch
 - Switch reverse proxy to v2 APIs.
-- Keep v1 routes available during rollback window.
+- Keep v1 routes available during rollback window (temporary).
 
 ## Rollback
 
-- Keep v1 runtime config and data paths unchanged.
-- Re-point clients/proxy to v1 endpoints.
+The old rollback path to v1 is no longer available after v1 removal.
+
+- Keep backups of v2 runtime config and SQLite data for recovery.
+- Re-deploy a known-good v2 release if rollback is required.
 - v2 artifacts and SQLite DB are isolated and can remain for postmortem.
 
 ## Contract Snapshot
@@ -113,14 +125,24 @@ the new FastAPI-based v2 scaffold under `src/nw_diff_v2/`.
   - `docs/env/v2-cutover-production.env.example`
 - nginx deploy templates:
   - `docs/deploy/nginx-v2.conf.example`
-  - `docs/deploy/nginx-v1-v2-cutover.conf.example`
+  - `docs/deploy/nginx-v1-v2-cutover.conf.example` (historical reference)
 
 ## 日本語訳
 
 # NW-Diff v2 移行ガイド
 
-このガイドでは、現在の Flask ベース v1 ルートから、
-`src/nw_diff_v2/` 配下の FastAPI ベース v2 スキャフォールドへの実践的な移行手順を説明します。
+このガイドは、Flask ベース v1 ルートから
+`src/nw_diff_v2/` 配下の FastAPI ベース v2 ランタイムへ移行した内容を記録したものです。
+
+## 現在の状態（v1 削除済み）
+
+- v1 ランタイム（`src/nw_diff`）は削除済みです。
+- v1 エントリポイント（`run_app.py`）は削除済みです。
+- v2 の起動コマンド:
+  - `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src`
+- v2 のエンドポイント:
+  - UI: `/v2`
+  - API: `/api/v2/*`
 
 ## スコープ
 
@@ -190,10 +212,10 @@ the new FastAPI-based v2 scaffold under `src/nw_diff_v2/`.
 - 起動時リカバリーで孤立した `running` タスクを `failed` に変更
 - cancel エンドポイントは終端状態（`completed`/`failed`/`cancelled`）に `409` を返す
 
-## 移行フェーズ
+## 移行フェーズ（履歴）
 
 1. 並行稼働
-- v1 を主系として維持。
+- （当時）v1 を主系として維持。
 - v2 を別パス/ポートで起動。
 - 必要に応じ queue worker を別プロセスで実行:
   - `python -m nw_diff_v2.worker`
@@ -201,20 +223,22 @@ the new FastAPI-based v2 scaffold under `src/nw_diff_v2/`.
 
 2. API クライアント切替
 - 自動化クライアントを v2 capture/task エンドポイントへ切替。
-- v2 UI 実装完了までは v1 UI の可視差分を維持。
+- （当時）v2 UI 実装完了までは v1 UI の可視差分を維持。
 
 3. エクスポート切替
 - 機械可読エクスポート利用側を `GET /api/v2/exports/{hostname}` へ移行。
 
 4. 最終切替
 - リバースプロキシを v2 API へ切替。
-- ロールバック期間中は v1 ルートを維持。
+- （当時）ロールバック期間中は v1 ルートを維持。
 
 ## ロールバック
 
-- v1 のランタイム設定とデータパスは変更しない。
-- クライアント/プロキシの接続先を v1 エンドポイントへ戻す。
-- v2 アーティファクトと SQLite DB は隔離されているため、事後検証用に保持可能。
+v1 削除後は、旧 v1 へのロールバックはできません。
+
+- 復旧時は v2 の設定バックアップと SQLite データを利用します。
+- ロールバックが必要な場合は、正常実績のある v2 リリースを再デプロイします。
+- v2 アーティファクトと SQLite DB は隔離されているため、事後検証用に保持可能です。
 
 ## 契約スナップショット
 
@@ -232,4 +256,4 @@ the new FastAPI-based v2 scaffold under `src/nw_diff_v2/`.
   - `docs/env/v2-cutover-production.env.example`
 - nginx デプロイテンプレート:
   - `docs/deploy/nginx-v2.conf.example`
-  - `docs/deploy/nginx-v1-v2-cutover.conf.example`
+  - `docs/deploy/nginx-v1-v2-cutover.conf.example`（履歴参照）

@@ -19,10 +19,9 @@ Review required for correctness, security, and licensing.
 
 NW-Diff はネットワーク機器向けのキャプチャ/差分比較ツールです。
 
-- v1（旧実装）: `src/nw_diff`（Flask）
-- v2（標準）: `src/nw_diff_v2`（FastAPI）
+- ランタイム: v2 `src/nw_diff_v2`（FastAPI）
 
-現在のコンテナ標準起動は v2 です。
+現在のコンテナ標準起動は v2 のみです。
 
 ## インストール
 
@@ -95,11 +94,12 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 - [起動トラブルシューティング](startup/STARTUP_TROUBLESHOOTING.md)
 - [デプロイガイド](deploy/README.md)
 - [nginx テンプレート（v2）](deploy/nginx-v2.conf.example)
-- [nginx テンプレート（v1->v2 cutover）](deploy/nginx-v1-v2-cutover.conf.example)
 - [systemd API サービステンプレート](deploy/nw-diff-v2-api.service.example)
 - [systemd Worker サービステンプレート](deploy/nw-diff-v2-worker.service.example)
 
 ## 補足
 
 - `docker-compose.yml` は v2 を標準起動します。
-- 旧 v1 の詳細説明はトップ README には重複掲載しません。
+- 破壊的変更: 旧 v1 パスは削除済みです。
+- `run_app.py` や `src/nw_diff` を使っていた場合は、`uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src` に切り替えてください。
+- 移行メモは `docs/V2_MIGRATION.md` を参照してください。

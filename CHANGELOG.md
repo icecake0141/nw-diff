@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored v2 auth parser to reduce lint suppressions while preserving behavior
 - Documented v2 auth and CI fallback behavior in runbook
 - Deduplicated duplicated CI post-check logic in both `ci.yml` and `integration.yml`
+- Removed legacy v1 runtime assets (`run_app.py`, `src/nw_diff/*`, root `templates/*`)
+- Updated docs/spec to v2-only runtime wording and migration note for removed v1 paths
 
 ### Security
 - Enforced HTTPS by default with HTTP to HTTPS redirection
@@ -96,6 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 挙動を維持しつつ lint 抑制を減らすため v2 認証パーサーをリファクタリング
 - v2 認証と CI フォールバック挙動をランブックに追記
 - `ci.yml` と `integration.yml` の重複した CI 後処理ロジックを統合
+- 旧 v1 ランタイム資産（`run_app.py`、`src/nw_diff/*`、ルート `templates/*`）を削除
+- README/SPEC を v2 専用表現へ更新し、削除済み v1 パスの移行メモを追記
 
 ### セキュリティ
 - HTTP から HTTPS へのリダイレクトにより HTTPS をデフォルトで強制

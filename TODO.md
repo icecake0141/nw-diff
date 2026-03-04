@@ -85,16 +85,16 @@
 
 ### Phase 4: Documentation and Release Notes
 
-- [ ] Update README/docs to state v2-only runtime.
-- [ ] Add migration note for users still invoking v1 paths.
-- [ ] Document breaking-change release notes (what was removed, expected replacement paths).
+- [x] Update README/docs to state v2-only runtime.
+- [x] Add migration note for users still invoking v1 paths.
+- [x] Document breaking-change release notes (what was removed, expected replacement paths).
 
 ### Phase 5: Final Validation
 
-- [ ] Run full quality gates:
+- [x] Run full quality gates:
   - `pytest -q tests`
   - `pylint src tests`
   - `mypy src tests`
   - `./scripts/check-v2-migration-complete.sh`
-  - integration workflow equivalent checks
-- [ ] Confirm no references to removed v1 modules remain in repository.
+  - `./scripts/run-v2-ci-postchecks.sh` (integration workflow equivalent post-checks)
+- [x] Confirm no references to removed v1 modules remain in executable paths (`src/`, `tests/`, `scripts/`, CI/runtime configs).

@@ -19,10 +19,9 @@ Review required for correctness, security, and licensing.
 
 NW-Diff is a network capture and diff tool for network devices.
 
-- v1 (legacy): `src/nw_diff` (Flask)
-- v2 (default): `src/nw_diff_v2` (FastAPI)
+- Runtime: v2 `src/nw_diff_v2` (FastAPI)
 
-The default container runtime is v2.
+The default container runtime is v2 only.
 
 ## Installation
 
@@ -95,7 +94,6 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 - [Startup troubleshooting](docs/startup/STARTUP_TROUBLESHOOTING.md)
 - [Deploy guide](docs/deploy/README.md)
 - [Deploy nginx (v2)](docs/deploy/nginx-v2.conf.example)
-- [Deploy nginx (v1->v2 cutover)](docs/deploy/nginx-v1-v2-cutover.conf.example)
 - [Deploy systemd API service](docs/deploy/nw-diff-v2-api.service.example)
 - [Deploy systemd worker service](docs/deploy/nw-diff-v2-worker.service.example)
 
@@ -107,10 +105,9 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 
 NW-Diff はネットワーク機器向けのキャプチャ/差分比較ツールです。
 
-- v1（旧実装）: `src/nw_diff`（Flask）
-- v2（標準）: `src/nw_diff_v2`（FastAPI）
+- ランタイム: v2 `src/nw_diff_v2`（FastAPI）
 
-現在のコンテナ標準起動は v2 です。
+現在のコンテナ標準起動は v2 のみです。
 
 ### インストール（ローカル v2 最短手順）
 
@@ -155,4 +152,6 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 ## Notes
 
 - `docker-compose.yml` runs v2 by default.
-- Legacy v1 instructions are intentionally not duplicated in this top-level README.
+- Breaking change: legacy v1 paths were removed.
+- If you used `run_app.py` or `src/nw_diff`, switch to `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src`.
+- See migration notes in `docs/V2_MIGRATION.md`.
