@@ -30,14 +30,30 @@ COMMAND_PROFILES: dict[str, tuple[str, ...]] = {
         "show chassis hardware",
         "show route",
     ),
+    "linux": (
+        "uname -a",
+        "cat /etc/os-release",
+        "ip addr",
+    ),
 }
 DEFAULT_COMMANDS = ("show version",)
+MODEL_ALIASES: dict[str, str] = {
+    "generic linux": "linux",
+    "generic_linux": "linux",
+}
 logger = logging.getLogger("nw-diff-v2")
 
 
 def _commands_for_model(model: str) -> list[str]:
     """Return the command profile for a device model."""
-    return list(COMMAND_PROFILES.get(model.lower(), DEFAULT_COMMANDS))
+    normalized = MODEL_ALIASES.get(model.strip().lower(), model.strip().lower())
+    return list(COMMAND_PROFILES.get(normalized, DEFAULT_COMMANDS))
+
+
+def _device_type_for_model(model: str) -> str:
+    """Return netmiko device_type for a configured model value."""
+    normalized = model.strip().lower()
+    return MODEL_ALIASES.get(normalized, normalized)
 
 
 def run_capture_task(
@@ -79,7 +95,7 @@ def run_capture_task(
             commands = _commands_for_model(host_info["model"])
             try:
                 outputs = adapter.capture_commands(
-                    device_type=host_info["model"],
+                    device_type=_device_type_for_model(host_info["model"]),
                     host=host_info["ip"],
                     username=host_info["username"],
                     port=int(host_info["port"]),

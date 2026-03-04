@@ -91,6 +91,21 @@ def test_v2_host_repo_rejects_overlong_values(tmp_path: Path) -> None:
     assert rows[0].host == "router3"
 
 
+def test_v2_host_repo_accepts_generic_linux_model_with_space(tmp_path: Path) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        (
+            "host,ip,username,port,model\n"
+            "linux01,10.0.0.10,admin,22,Generic Linux\n"
+        ),
+        encoding="utf-8",
+    )
+
+    rows = load_hosts(str(hosts_csv))
+    assert len(rows) == 1
+    assert rows[0].model == "Generic Linux"
+
+
 def test_v2_lock_service_rejects_same_host(tmp_path: Path, monkeypatch) -> None:
     db_path = tmp_path / "v2.db"
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -195,6 +210,57 @@ def test_v2_worker_processes_queued_task(tmp_path: Path, monkeypatch) -> None:
     reacquired, _ = try_lock_hosts({"router1"})
     assert reacquired is True
     release_hosts({"router1"})
+
+
+def test_v2_worker_maps_generic_linux_model_to_netmiko_linux(
+    tmp_path: Path, monkeypatch
+) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        "host,ip,username,port,model\nlinux01,10.0.0.10,admin,22,Generic Linux\n",
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2_linux.db"
+    artifact_root = tmp_path / "artifacts"
+
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+    monkeypatch.setattr(settings, "task_worker_enabled", False)
+
+    acquired, conflicts = try_lock_hosts({"linux01"})
+    assert acquired is True
+    assert conflicts == set()
+
+    task_repo.create_task(
+        task_id="task-linux-1",
+        mode="single",
+        base="origin",
+        hosts=["linux01"],
+    )
+
+    def _fake_capture(self, **kwargs):  # noqa: ANN001
+        assert kwargs["device_type"] == "linux"
+        assert kwargs["commands"] == ["uname -a", "cat /etc/os-release", "ip addr"]
+        return {"uname -a": "Linux test"}
+
+    monkeypatch.setattr(NetmikoAdapter, "capture_commands", _fake_capture)
+
+    processed = process_one_queued_task()
+    assert processed is True
+
+    task = task_repo.get_task("task-linux-1")
+    assert task is not None
+    assert task["status"] == "completed"
+    assert task["result"]["success_count"] == 1
+    assert task["result"]["failure_count"] == 0
+
+    reacquired, _ = try_lock_hosts({"linux01"})
+    assert reacquired is True
+    release_hosts({"linux01"})
 
 
 def test_v2_recover_orphaned_running_tasks(tmp_path: Path, monkeypatch) -> None:
