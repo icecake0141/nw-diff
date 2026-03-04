@@ -71,8 +71,7 @@ def start_capture(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    "Capture already running: "
-                    + ", ".join(sorted(current_conflicts))
+                    "Capture already running: " + ", ".join(sorted(current_conflicts))
                 ),
             )
 

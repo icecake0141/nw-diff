@@ -722,7 +722,9 @@ def test_v2_compare_files_rejects_invalid_command(tmp_path: Path, monkeypatch) -
         assert response.json()["detail"] == "File for router1 not found"
 
 
-def test_v2_compare_files_accepts_command_with_slash(tmp_path: Path, monkeypatch) -> None:
+def test_v2_compare_files_accepts_command_with_slash(
+    tmp_path: Path, monkeypatch
+) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
         (
