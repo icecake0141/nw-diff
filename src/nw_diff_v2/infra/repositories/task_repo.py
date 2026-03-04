@@ -39,7 +39,9 @@ def _db_path() -> Path:
 def _connect() -> sqlite3.Connection:
     path = _db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(path, check_same_thread=False)
+    conn = sqlite3.connect(path, check_same_thread=False)
+    conn.execute("PRAGMA busy_timeout = 3000")
+    return conn
 
 
 def init_db() -> None:

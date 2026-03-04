@@ -54,7 +54,8 @@ def start_capture(
         )
 
     acquired, conflicts = try_lock_hosts(target_hosts)
-    skipped_conflicts = sorted(conflicts)
+    current_conflicts = set(conflicts)
+    skipped_conflicts = sorted(current_conflicts)
     if not acquired:
         policy = settings.batch_conflict_policy.lower()
         if request.mode == CaptureMode.BATCH and policy == "skip_locked":
@@ -64,11 +65,15 @@ def start_capture(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="All target hosts are currently locked",
                 )
-            acquired, _retry_conflicts = try_lock_hosts(target_hosts)
+            acquired, retry_conflicts = try_lock_hosts(target_hosts)
+            current_conflicts = set(retry_conflicts)
         if not acquired:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Capture already running: {', '.join(sorted(conflicts))}",
+                detail=(
+                    "Capture already running: "
+                    + ", ".join(sorted(current_conflicts))
+                ),
             )
 
     task_id = uuid.uuid4().hex

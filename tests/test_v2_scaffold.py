@@ -116,6 +116,15 @@ def test_v2_lock_service_releases_stale_locks(tmp_path: Path, monkeypatch) -> No
     release_hosts({"router1"})
 
 
+def test_v2_task_repo_uses_sqlite_busy_timeout(tmp_path: Path, monkeypatch) -> None:
+    db_path = tmp_path / "v2_busy.db"
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    task_repo.init_db()
+    with task_repo._connect() as conn:  # pylint: disable=protected-access
+        timeout_ms = conn.execute("PRAGMA busy_timeout").fetchone()[0]
+    assert timeout_ms == 3000
+
+
 def test_v2_startup_cleans_stale_locks(tmp_path: Path, monkeypatch) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
@@ -458,6 +467,45 @@ def test_v2_batch_skip_locked_policy(tmp_path: Path, monkeypatch) -> None:
         release_hosts({"router1"})
 
 
+def test_v2_batch_skip_locked_reports_retry_conflicts(
+    tmp_path: Path, monkeypatch
+) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        (
+            "host,ip,username,port,model\n"
+            "router1,10.0.0.1,admin,22,cisco\n"
+            "router2,10.0.0.2,admin,22,cisco\n"
+        ),
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2.db"
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+    monkeypatch.setattr(settings, "batch_conflict_policy", "skip_locked")
+
+    call_count = {"value": 0}
+
+    def _fake_try_lock_hosts(hosts):  # noqa: ANN001
+        call_count["value"] += 1
+        if call_count["value"] == 1:
+            return False, {"router1"}
+        return False, {"router2"}
+
+    monkeypatch.setattr("nw_diff_v2.api.capture.try_lock_hosts", _fake_try_lock_hosts)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v2/captures",
+            json={"mode": "batch", "base": "origin", "hosts": []},
+        )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Capture already running: router2"
+
+
 def test_v2_capture_allows_parallel_on_different_host(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -670,8 +718,53 @@ def test_v2_compare_files_rejects_invalid_command(tmp_path: Path, monkeypatch) -
                 "view": "inline",
             },
         )
-        assert response.status_code == 400
-        assert response.json()["detail"] == "Invalid command"
+        assert response.status_code == 404
+        assert response.json()["detail"] == "File for router1 not found"
+
+
+def test_v2_compare_files_accepts_command_with_slash(tmp_path: Path, monkeypatch) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        (
+            "host,ip,username,port,model\n"
+            "router1,10.0.0.1,admin,22,cisco\n"
+            "router2,10.0.0.2,admin,22,cisco\n"
+        ),
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2.db"
+    artifact_root = tmp_path / "artifacts"
+    origin_dir = artifact_root / "origin"
+    origin_dir.mkdir(parents=True, exist_ok=True)
+    (origin_dir / "router1-show_route_0.0.0.0_0.txt").write_text(
+        "via 10.0.0.254\n", encoding="utf-8"
+    )
+    (origin_dir / "router2-show_route_0.0.0.0_0.txt").write_text(
+        "via 10.0.0.1\n", encoding="utf-8"
+    )
+
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v2/compare/files",
+            json={
+                "host1": "router1",
+                "host2": "router2",
+                "base": "origin",
+                "command": "show route 0.0.0.0/0",
+                "view": "inline",
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "changes detected"
+        assert payload["command"] == "show route 0.0.0.0/0"
 
 
 def test_v2_diff_host_endpoint(tmp_path: Path, monkeypatch) -> None:

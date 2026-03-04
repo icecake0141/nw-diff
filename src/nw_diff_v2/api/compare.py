@@ -33,9 +33,7 @@ def compare_files(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERR_INVALID_HOSTNAME,
         )
-    if not request.command or any(
-        token in request.command for token in ("..", "/", "\\")
-    ):
+    if not request.command or not request.command.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid command",
