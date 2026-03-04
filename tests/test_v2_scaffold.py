@@ -94,10 +94,7 @@ def test_v2_host_repo_rejects_overlong_values(tmp_path: Path) -> None:
 def test_v2_host_repo_accepts_generic_linux_model_with_space(tmp_path: Path) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
-        (
-            "host,ip,username,port,model\n"
-            "linux01,10.0.0.10,admin,22,Generic Linux\n"
-        ),
+        ("host,ip,username,port,model\n" "linux01,10.0.0.10,admin,22,Generic Linux\n"),
         encoding="utf-8",
     )
 
