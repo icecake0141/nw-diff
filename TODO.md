@@ -27,34 +27,7 @@
 
 - [x] Replace low-value lint suppressions with structural fixes where practical.
 
-## Operational Readiness (Non-blocking for code migration)
-
-- [ ] Run a staging cutover rehearsal using `docs/env/v2-cutover-staging.env.example`.
-- [ ] Execute `./scripts/run-v2-preflight.sh` and archive cutover artifacts:
-  - `.artifacts/v2_contract_diff.json`
-  - `.artifacts/v2_readiness.json`
-  - `.artifacts/v2_locks.json`
-  - `.artifacts/v2_cutover_eval.json`
-- [ ] Confirm cutover evaluation result is `decision=GO`.
-- [ ] Finalize production thresholds for:
-  - `V2_CUTOVER_MAX_QUEUED`
-  - `V2_CUTOVER_MAX_RUNNING`
-  - `V2_CUTOVER_MAX_FAILED`
-  - `V2_CUTOVER_MAX_LOCKED`
-- [ ] Document final threshold values in:
-  - `docs/env/v2-cutover-staging.env.example`
-  - `docs/env/v2-cutover-production.env.example`
-  - `docs/V2_RUNBOOK.md`
-- [ ] Finalize lock release operation policy (`POST /api/v2/system/locks/release`):
-  - execution authority
-  - approval flow
-  - audit log retention
-- [ ] Prepare a one-page cutover and rollback runbook for release day.
-- [ ] Pre-assign operators for:
-  - API health watch
-  - lock queue watch
-  - rollback execution
-- [ ] Run a dry run and store timestamped logs.
+> Note: Operational/cutover tasks are excluded because this tool is not a continuously running production server.
 
 ## V1 Removal Plan (Breaking Change Track)
 
