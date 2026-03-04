@@ -85,9 +85,9 @@
 
 ### Phase 4: Documentation and Release Notes
 
-- [ ] Update README/docs to state v2-only runtime.
-- [ ] Add migration note for users still invoking v1 paths.
-- [ ] Document breaking-change release notes (what was removed, expected replacement paths).
+- [x] Update README/docs to state v2-only runtime.
+- [x] Add migration note for users still invoking v1 paths.
+- [x] Document breaking-change release notes (what was removed, expected replacement paths).
 
 ### Phase 5: Final Validation
 
