@@ -3,27 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NW-Diff v2</title>
+  <title>NW-Diff v2 Control Panel</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <style>
     body {
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background: linear-gradient(180deg, #f6f8fb 0%, #ebf0f7 100%);
-      color: #1f2937;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #f8f9fa;
+      color: #212529;
       margin: 0;
-      padding: 24px;
     }
-    .wrap { max-width: 1080px; margin: 0 auto; }
+    .wrap { width: 100%; max-width: 1280px; margin: 24px auto; padding: 0 16px; }
     .card {
       background: #fff;
-      border: 1px solid #d9e2ef;
-      border-radius: 12px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
       padding: 16px;
       margin-bottom: 16px;
-      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
     }
-    h1 { margin-top: 0; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; border-bottom: 1px solid #e5e7eb; padding: 8px; }
+    h1 { margin-top: 0; font-size: 28px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { text-align: left; border: 1px solid #dee2e6; padding: 8px; vertical-align: top; }
+    thead th { background: #343a40; color: #fff; font-weight: 600; }
     .mini-table th, .mini-table td { padding: 6px; font-size: 12px; }
     .status-pill {
       display: inline-block;
@@ -38,40 +38,61 @@
     .status-completed { background: #bbf7d0; }
     .status-failed { background: #fecaca; }
     .status-cancelled { background: #e5e7eb; }
-    button {
-      border: none;
-      border-radius: 8px;
-      padding: 8px 12px;
-      background: #0a5bdc;
+    button, .btn-local {
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 6px 12px;
+      background: #28a745;
       color: #fff;
       cursor: pointer;
+      font-size: 14px;
+      line-height: 1.5;
     }
-    button.secondary { background: #2563eb; }
-    button.warn { background: #d97706; }
-    .row { display: flex; gap: 8px; align-items: center; }
-    .task-box { font-family: Menlo, Monaco, monospace; white-space: pre-wrap; font-size: 12px; }
+    button.secondary, .btn-local.secondary { background: #007bff; }
+    button.warn, .btn-local.warn { background: #fd7e14; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .task-box {
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      font-size: 12px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 10px;
+    }
     input[type="text"] {
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
       padding: 8px;
       width: 240px;
     }
     select {
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
       padding: 8px;
       width: 180px;
+    }
+    .muted-note {
+      color: #6c757d;
+      font-size: 0.95rem;
     }
   </style>
 </head>
 <body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <a class="navbar-brand" href="/v2">Nwdiff v2</a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="/v2">Control Panel</a>
+      <a class="nav-link" href="/v2/logs">Logs</a>
+    </div>
+  </nav>
   <div class="wrap">
     <div class="card">
       <h1>NW-Diff v2 Control Panel</h1>
-      <p>Hosts loaded: <strong>{{ hosts|length }}</strong></p>
+      <p class="muted-note">Hosts loaded: <strong>{{ hosts|length }}</strong></p>
       <div class="row">
-        <button id="captureAllOrigin">Capture All Origin</button>
-        <button id="captureAllDest" class="secondary">Capture All Dest</button>
+        <button id="captureAllOrigin">Capture Origin All</button>
+        <button id="captureAllDest" class="secondary">Capture Dest All</button>
         <button class="secondary" onclick="openLogsPage()">Logs</button>
         <button class="secondary" onclick="loadWorkerStatus()">Worker Status</button>
         <button class="secondary" onclick="loadReadinessStatus()">Readiness</button>
@@ -95,7 +116,7 @@
 
     <div class="card">
       <h2>Hosts</h2>
-      <table>
+      <table class="table table-striped table-bordered">
         <thead>
           <tr><th>Host</th><th>IP</th><th>Model</th><th>Actions</th></tr>
         </thead>
@@ -408,7 +429,7 @@
         '<td>' + escapeHtml(r.not_found) + '</td>',
         '<td>' + escapeHtml(r.last_task_status) + '</td>',
         '<td>' + escapeHtml(r.last_capture_at) + '</td>',
-        '<td><button class="secondary" onclick="openHostDetail(\\'' + escapeJs(r.host) + '\\')">Detail</button></td>',
+        '<td><button class="secondary" onclick="openHostDetail(&quot;' + escapeHtml(r.host) + '&quot;)">Detail</button></td>',
         '</tr>'
       ].join('')).join('');
       wrap.innerHTML = [
@@ -463,10 +484,10 @@
           '<td>' + escapeHtml(t.base) + '</td>',
           '<td>' + escapeHtml(hosts) + '</td>',
           '<td>',
-          '<button onclick="selectTask(\\'' + escapeJs(t.task_id) + '\\')">Select</button> ',
-          '<button class="warn" onclick="quickCancel(\\'' + escapeJs(t.task_id) + '\\')">Cancel</button> ',
-          '<button class="secondary" onclick="quickRetry(\\'' + escapeJs(t.task_id) + '\\')">Retry</button> ',
-          '<button class="secondary" onclick="quickLive(\\'' + escapeJs(t.task_id) + '\\')">Live</button>',
+          '<button onclick="selectTask(&quot;' + escapeHtml(t.task_id) + '&quot;)">Select</button> ',
+          '<button class="warn" onclick="quickCancel(&quot;' + escapeHtml(t.task_id) + '&quot;)">Cancel</button> ',
+          '<button class="secondary" onclick="quickRetry(&quot;' + escapeHtml(t.task_id) + '&quot;)">Retry</button> ',
+          '<button class="secondary" onclick="quickLive(&quot;' + escapeHtml(t.task_id) + '&quot;)">Live</button>',
           '</td>',
           '</tr>'
         ].join('');
@@ -519,10 +540,6 @@
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
-    }
-
-    function escapeJs(value) {
-      return String(value ?? '').replaceAll('\\', '\\\\').replaceAll("'", "\\'");
     }
 
     function openStream() {
