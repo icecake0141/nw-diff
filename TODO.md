@@ -91,10 +91,10 @@
 
 ### Phase 5: Final Validation
 
-- [ ] Run full quality gates:
+- [x] Run full quality gates:
   - `pytest -q tests`
   - `pylint src tests`
   - `mypy src tests`
   - `./scripts/check-v2-migration-complete.sh`
-  - integration workflow equivalent checks
-- [ ] Confirm no references to removed v1 modules remain in repository.
+  - `./scripts/run-v2-ci-postchecks.sh` (integration workflow equivalent post-checks)
+- [x] Confirm no references to removed v1 modules remain in executable paths (`src/`, `tests/`, `scripts/`, CI/runtime configs).
