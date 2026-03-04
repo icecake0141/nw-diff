@@ -11,7 +11,7 @@ from nw_diff_v2.domain.models import HostRecord
 
 HOST_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 USER_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
-MODEL_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+MODEL_RE = re.compile(r"^[a-zA-Z0-9_ -]+$")
 REQUIRED_COLUMNS = {"host", "ip", "username", "port", "model"}
 MAX_HOST_LEN = 253
 MAX_USERNAME_LEN = 64

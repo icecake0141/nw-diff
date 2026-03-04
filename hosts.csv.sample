@@ -4,3 +4,4 @@ ciscosw,10.0.0.1,22,cisco,admin
 junosfw,10.0.0.2,22,junos,user1
 fortigate,192.168.100.1,22,fortinet,forti
 netsw,192.168.2.1,22,cisco,netadmin
+linuxsrv,10.0.0.10,22,Generic Linux,linuxadmin

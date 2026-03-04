@@ -32,7 +32,9 @@ class NetmikoAdapter:  # pylint: disable=too-few-public-methods
                 port=port,
                 password=password,
             )
-            connection.enable()
+            # Linux-like platforms do not provide network "enable" mode.
+            if device_type != "linux":
+                connection.enable()
             for command in commands:
                 outputs[command] = connection.send_command(command, read_timeout=10)
             return outputs
