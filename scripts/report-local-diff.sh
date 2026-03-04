@@ -47,12 +47,12 @@ printf "%s\n" "${CHANGED_FILES}" | awk -F/ '{print $1}' | sort | uniq -c | sort 
 echo
 
 echo "== High-Risk Files =="
-printf "%s\n" "${CHANGED_FILES}" | rg -n "requirements|\\.github/workflows|Dockerfile|docker-compose|src/nw_diff/app.py" || true
+printf "%s\n" "${CHANGED_FILES}" | rg -n "requirements|\\.github/workflows|Dockerfile|docker-compose|src/nw_diff_v2/" || true
 echo
 
 echo "== Suggested Split =="
 echo "1) infra/ci: workflow, dependency, deploy scripts"
-echo "2) app/api: src/nw_diff*"
+echo "2) app/api: src/nw_diff_v2*"
 echo "3) tests-only: tests/*"
 echo "4) docs-only: docs/*"
 
@@ -78,7 +78,7 @@ if [[ "${SCOPE}" != "v2-migration" ]]; then
   exit 2
 fi
 
-ALLOWED_PATTERN='^(src/nw_diff_v2/|tests/test_v2_|scripts/(check-v2-|run-v2-|generate-v2-|diff-v2-|evaluate-v2-|render-v2-|summarize-v2-|report-local-diff\.sh)|docs/(V2_|contract/v2\.json|deploy/)|\.github/workflows/(ci\.yml|integration\.yml)$|docker-compose\.yml$|README\.md$|TODO\.md$|pytest\.ini$)'
+ALLOWED_PATTERN='^(src/nw_diff_v2/|tests/test_v2_|scripts/(check-v2-|run-v2-|generate-v2-|diff-v2-|evaluate-v2-|render-v2-|summarize-v2-|report-local-diff\.sh)|docs/(V2_|contract/v2\.json|deploy/)|\.github/workflows/(ci\.yml|integration\.yml)$|docker-compose\.yml$|README\.md$|TODO\.md$)'
 
 DISALLOWED="$(printf "%s\n" "${CHANGED_FILES}" | rg -n -v "${ALLOWED_PATTERN}" || true)"
 if [[ -n "${DISALLOWED}" ]]; then
