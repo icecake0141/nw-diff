@@ -871,6 +871,98 @@ def test_v2_compare_files_accepts_command_with_slash(
         assert payload["command"] == "show route 0.0.0.0/0"
 
 
+def test_v2_compare_files_requires_exact_inventory_hosts(
+    tmp_path: Path, monkeypatch
+) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        (
+            "host,ip,username,port,model\n"
+            "router1,10.0.0.1,admin,22,cisco\n"
+            "router2,10.0.0.2,admin,22,cisco\n"
+        ),
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2.db"
+    artifact_root = tmp_path / "artifacts"
+    origin_dir = artifact_root / "origin"
+    origin_dir.mkdir(parents=True, exist_ok=True)
+    (origin_dir / "router1-show_version.txt").write_text("abc\n", encoding="utf-8")
+    (origin_dir / "router2-show_version.txt").write_text("abd\n", encoding="utf-8")
+
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v2/compare/files",
+            json={
+                "host1": "router1-prefix",
+                "host2": "router2",
+                "base": "origin",
+                "command": "show version",
+                "view": "inline",
+            },
+        )
+        assert response.status_code == 400
+        assert (
+            response.json()["detail"]
+            == "Invalid host1: must exactly match an inventory host"
+        )
+
+        response = client.post(
+            "/api/v2/compare/files",
+            json={
+                "host1": "router1",
+                "host2": "router2-suffix",
+                "base": "origin",
+                "command": "show version",
+                "view": "inline",
+            },
+        )
+        assert response.status_code == 400
+        assert (
+            response.json()["detail"]
+            == "Invalid host2: must exactly match an inventory host"
+        )
+
+        response = client.post(
+            "/api/v2/compare/files",
+            json={
+                "host1": "Router1",
+                "host2": "router2",
+                "base": "origin",
+                "command": "show version",
+                "view": "inline",
+            },
+        )
+        assert response.status_code == 400
+        assert (
+            response.json()["detail"]
+            == "Invalid host1: must exactly match an inventory host"
+        )
+
+        response = client.post(
+            "/api/v2/compare/files",
+            json={
+                "host1": "router1-prefix",
+                "host2": "router2-suffix",
+                "base": "origin",
+                "command": "show version",
+                "view": "inline",
+            },
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == (
+            "Invalid host1: must exactly match an inventory host, "
+            "Invalid host2: must exactly match an inventory host"
+        )
+
+
 def test_v2_diff_host_endpoint(tmp_path: Path, monkeypatch) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
