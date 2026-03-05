@@ -473,6 +473,31 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "host1,host2" in response.text
         assert "taskQuickSummary" in response.text
         assert "compareSummary" in response.text
+        assert (
+            "document.getElementById('workerStatus').textContent = JSON.stringify("
+            not in response.text
+        )
+        assert (
+            "document.getElementById('readinessStatus').textContent = JSON.stringify("
+            not in response.text
+        )
+        assert (
+            "document.getElementById('contractStatus').textContent = JSON.stringify("
+            not in response.text
+        )
+        assert (
+            "document.getElementById('lockStatus').textContent = JSON.stringify("
+            not in response.text
+        )
+        assert (
+            "document.getElementById('hostSummaryView').textContent = JSON.stringify("
+            not in response.text
+        )
+        assert "formatWorkerStatus(" in response.text
+        assert "formatReadinessStatus(" in response.text
+        assert "formatContractStatus(" in response.text
+        assert "formatLockStatus(" in response.text
+        assert "formatHostSummaryStatus(" in response.text
 
 
 def test_v2_batch_skip_locked_policy(tmp_path: Path, monkeypatch) -> None:

@@ -250,6 +250,110 @@
       return data;
     }
 
+    function toNumber(value, fallback = 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function joinParts(parts) {
+      return (parts || [])
+        .filter((part) => String(part ?? '').trim().length > 0)
+        .join(' | ');
+    }
+
+    function formatError(err) {
+      return 'Error: ' + (err && err.message ? err.message : String(err));
+    }
+
+    function formatWorkerStatus(data) {
+      return joinParts([
+        'queued=' + toNumber(data && data.queued, 0),
+        'running=' + toNumber(data && data.running, 0),
+        'completed=' + toNumber(data && data.completed, 0),
+        'failed=' + toNumber(data && data.failed, 0),
+        'cancelled=' + toNumber(data && data.cancelled, 0),
+        'locked_hosts=' + toNumber(data && data.locked_hosts, 0),
+        'total=' + toNumber(data && data.total, 0)
+      ]);
+    }
+
+    function formatReadinessStatus(data) {
+      const counts = (data && typeof data.counts === 'object' && data.counts) ? data.counts : {};
+      const checks = Array.isArray(data && data.checks) ? data.checks : [];
+      const head = joinParts([
+        'status=' + String((data && data.status) || 'unknown'),
+        'queued=' + toNumber(counts.queued, 0),
+        'running=' + toNumber(counts.running, 0),
+        'locked_hosts=' + toNumber(counts.locked_hosts, 0),
+        'total=' + toNumber(counts.total, 0)
+      ]);
+      const checkSummary = checks.length
+        ? 'checks=' + checks.map((check) => {
+          const name = String((check && check.name) || 'unknown');
+          return name + '=' + ((check && check.ok) ? 'ok' : 'ng');
+        }).join(', ')
+        : '';
+      return [head, checkSummary].filter((line) => line).join('\n');
+    }
+
+    function formatContractStatus(data) {
+      const missing = Array.isArray(data && data.missing)
+        ? data.missing.length
+        : toNumber(data && data.missing, 0);
+      const extra = Array.isArray(data && data.extra)
+        ? data.extra.length
+        : toNumber(data && data.extra, 0);
+      return joinParts([
+        'status=' + String((data && data.status) || 'unknown'),
+        'required_count=' + toNumber(data && data.required_count, 0),
+        'actual_count=' + toNumber(data && data.actual_count, 0),
+        'missing=' + missing,
+        'extra=' + extra
+      ]);
+    }
+
+    function formatLockStatus(data) {
+      const locks = Array.isArray(data && data.locks) ? data.locks : [];
+      const hosts = locks
+        .slice(0, 5)
+        .map((item) => String((item && item.host) || ''))
+        .filter((host) => host);
+      const more = Math.max(0, locks.length - hosts.length);
+      const hostLine = hosts.length > 0
+        ? 'hosts=' + hosts.join(', ') + (more > 0 ? ', +' + more + ' more' : '')
+        : 'hosts=none';
+      const head = joinParts([
+        'count=' + toNumber(data && data.count, locks.length),
+        'timeout_seconds=' + toNumber(data && data.timeout_seconds, 0)
+      ]);
+      return [head, hostLine].join('\n');
+    }
+
+    function formatLockMutationResult(data) {
+      if (Array.isArray(data && data.released) || Array.isArray(data && data.not_locked)) {
+        const released = Array.isArray(data.released) ? data.released : [];
+        const notLocked = Array.isArray(data.not_locked) ? data.not_locked : [];
+        return joinParts([
+          'released=' + released.length + (released.length ? ' (' + released.join(', ') + ')' : ''),
+          'not_locked=' + notLocked.length + (notLocked.length ? ' (' + notLocked.join(', ') + ')' : ''),
+          'remaining=' + toNumber(data && data.remaining, 0)
+        ]);
+      }
+      return joinParts([
+        'deleted=' + toNumber(data && data.deleted, 0),
+        'remaining=' + toNumber(data && data.remaining, 0),
+        'timeout_seconds=' + toNumber(data && data.timeout_seconds, 0)
+      ]);
+    }
+
+    function formatHostSummaryStatus(data) {
+      const rows = Array.isArray(data && data.rows) ? data.rows : [];
+      return joinParts([
+        'displayed=' + toNumber(data && data.count, rows.length),
+        'total_hosts=' + toNumber(data && data.total_hosts, rows.length)
+      ]);
+    }
+
     async function captureSingle(host, base) {
       try {
         const data = await api('/api/v2/captures', 'POST', { mode: 'single', base, hosts: [host] });
@@ -293,61 +397,43 @@
     async function loadWorkerStatus() {
       try {
         const data = await api('/api/v2/system/worker');
-        document.getElementById('workerStatus').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('workerStatus').textContent = formatWorkerStatus(data);
       } catch (err) {
-        document.getElementById('workerStatus').textContent = err.message;
+        document.getElementById('workerStatus').textContent = formatError(err);
       }
     }
 
     async function loadContractStatus() {
       try {
         const data = await api('/api/v2/system/contract');
-        document.getElementById('contractStatus').textContent = JSON.stringify(
-          {
-            status: data.status,
-            required_count: data.required_count,
-            actual_count: data.actual_count,
-            missing: data.missing.length,
-            extra: data.extra.length
-          },
-          null,
-          2
-        );
+        document.getElementById('contractStatus').textContent = formatContractStatus(data);
       } catch (err) {
-        document.getElementById('contractStatus').textContent = err.message;
+        document.getElementById('contractStatus').textContent = formatError(err);
       }
     }
 
     async function loadReadinessStatus() {
       try {
         const data = await api('/api/v2/system/readiness');
-        document.getElementById('readinessStatus').textContent = JSON.stringify(
-          {
-            status: data.status,
-            counts: data.counts,
-            checks: data.checks
-          },
-          null,
-          2
-        );
+        document.getElementById('readinessStatus').textContent = formatReadinessStatus(data);
       } catch (err) {
-        document.getElementById('readinessStatus').textContent = err.message;
+        document.getElementById('readinessStatus').textContent = formatError(err);
       }
     }
 
     async function loadLockStatus() {
       try {
         const data = await api('/api/v2/system/locks');
-        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('lockStatus').textContent = formatLockStatus(data);
       } catch (err) {
-        document.getElementById('lockStatus').textContent = err.message;
+        document.getElementById('lockStatus').textContent = formatError(err);
       }
     }
 
     async function cleanupLocks() {
       try {
         const data = await api('/api/v2/system/locks/cleanup', 'POST');
-        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('lockStatus').textContent = formatLockMutationResult(data);
         await loadWorkerStatus();
         await loadReadinessStatus();
       } catch (err) {
@@ -363,7 +449,7 @@
         .filter((item) => item.length > 0);
       try {
         const data = await api('/api/v2/system/locks/release', 'POST', { hosts });
-        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('lockStatus').textContent = formatLockMutationResult(data);
         await loadWorkerStatus();
         await loadReadinessStatus();
       } catch (err) {
@@ -399,14 +485,10 @@
       if (!prioritizeFailed) parts.push('prioritize_failed=false');
       try {
         const data = await api('/api/v2/hosts/summary?' + parts.join('&'));
-        document.getElementById('hostSummaryView').textContent = JSON.stringify(
-          { count: data.count, total_hosts: data.total_hosts },
-          null,
-          2
-        );
+        document.getElementById('hostSummaryView').textContent = formatHostSummaryStatus(data);
         renderHostSummaryTable(data.rows || []);
       } catch (err) {
-        document.getElementById('hostSummaryView').textContent = err.message;
+        document.getElementById('hostSummaryView').textContent = formatError(err);
         document.getElementById('hostSummaryTableWrap').innerHTML = '';
       }
     }
