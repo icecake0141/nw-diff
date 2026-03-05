@@ -54,7 +54,9 @@ def read_output_by_key(
     """Read output by stored command key and return (status, content)."""
     safe_host = _sanitize(host)
     safe_key = _sanitize(command_key)
-    path = Path(settings.artifact_root) / base / f"{safe_host}{ARTIFACT_SEP}{safe_key}.txt"
+    path = (
+        Path(settings.artifact_root) / base / f"{safe_host}{ARTIFACT_SEP}{safe_key}.txt"
+    )
     if not path.exists():
         return "not_found", None
     try:
@@ -89,4 +91,6 @@ def list_artifact_files(base: str, host: str) -> list[Path]:
     if not root.exists():
         return []
     prefix = f"{safe_host}{ARTIFACT_SEP}"
-    return sorted(path for path in root.glob(f"{prefix}*.txt") if path.stem.startswith(prefix))
+    return sorted(
+        path for path in root.glob(f"{prefix}*.txt") if path.stem.startswith(prefix)
+    )
