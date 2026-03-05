@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-# pylint: disable=missing-function-docstring,protected-access
+# pylint: disable=missing-function-docstring,protected-access,wrong-import-position
 
 from collections.abc import Generator
 from pathlib import Path
+import sys
 
 import pytest
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from nw_diff_v2.config import settings
 from nw_diff_v2.domain.services import capture_service
