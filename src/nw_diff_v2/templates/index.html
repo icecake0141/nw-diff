@@ -260,13 +260,13 @@
       </div>
       <div class="row" style="margin-bottom:8px;">
         <select id="cmpHost1">
-          <option value="">-- Select host1 --</option>
+          <option value="">-- Select host1 (exact) --</option>
           {% for h in hosts %}
           <option value="{{ h.host }}">{{ h.host }}</option>
           {% endfor %}
         </select>
         <select id="cmpHost2">
-          <option value="">-- Select host2 --</option>
+          <option value="">-- Select host2 (exact) --</option>
           {% for h in hosts %}
           <option value="{{ h.host }}">{{ h.host }}</option>
           {% endfor %}
