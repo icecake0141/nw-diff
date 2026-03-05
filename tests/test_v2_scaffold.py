@@ -1085,7 +1085,9 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
         response = client.get("/v2/hosts/router1")
         assert response.status_code == 200
         assert "Host Detail: router1" in response.text
-        assert '<option value="sidebyside" selected>sidebyside</option>' in response.text
+        assert (
+            '<option value="sidebyside" selected>sidebyside</option>' in response.text
+        )
         assert 'id="displayModeToggle"' in response.text
         assert "Display: Full (click for Compact)" in response.text
         assert "summary-table" in response.text
