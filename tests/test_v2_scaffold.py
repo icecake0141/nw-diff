@@ -674,7 +674,7 @@ def test_v2_export_html_endpoint(tmp_path: Path, monkeypatch) -> None:
     artifact_root = tmp_path / "artifacts"
     origin_dir = artifact_root / "origin"
     origin_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_version.txt").write_text("output", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("output", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -687,7 +687,7 @@ def test_v2_export_html_endpoint(tmp_path: Path, monkeypatch) -> None:
         response = client.get("/api/v2/exports/router1/html")
         assert response.status_code == 200
         assert "NW-Diff v2 Export" in response.text
-        assert "router1-show_version.txt" in response.text
+        assert "router1~show_version.txt" in response.text
 
 
 def test_v2_export_diff_json_endpoint(tmp_path: Path, monkeypatch) -> None:
@@ -702,10 +702,10 @@ def test_v2_export_diff_json_endpoint(tmp_path: Path, monkeypatch) -> None:
     dest_dir = artifact_root / "dest"
     origin_dir.mkdir(parents=True, exist_ok=True)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_version.txt").write_text("same\n", encoding="utf-8")
-    (dest_dir / "router1-show_version.txt").write_text("same\n", encoding="utf-8")
-    (origin_dir / "router1-show_running-config.txt").write_text("x\n", encoding="utf-8")
-    (dest_dir / "router1-show_running-config.txt").write_text("y\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("same\n", encoding="utf-8")
+    (dest_dir / "router1~show_version.txt").write_text("same\n", encoding="utf-8")
+    (origin_dir / "router1~show_running-config.txt").write_text("x\n", encoding="utf-8")
+    (dest_dir / "router1~show_running-config.txt").write_text("y\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -762,8 +762,8 @@ def test_v2_compare_files_endpoint(tmp_path: Path, monkeypatch) -> None:
     artifact_root = tmp_path / "artifacts"
     origin_dir = artifact_root / "origin"
     origin_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_version.txt").write_text("abc\n", encoding="utf-8")
-    (origin_dir / "router2-show_version.txt").write_text("abd\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("abc\n", encoding="utf-8")
+    (origin_dir / "router2~show_version.txt").write_text("abd\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -840,10 +840,10 @@ def test_v2_compare_files_accepts_command_with_slash(
     artifact_root = tmp_path / "artifacts"
     origin_dir = artifact_root / "origin"
     origin_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_route_0.0.0.0_0.txt").write_text(
+    (origin_dir / "router1~show_route_0.0.0.0_0.txt").write_text(
         "via 10.0.0.254\n", encoding="utf-8"
     )
-    (origin_dir / "router2-show_route_0.0.0.0_0.txt").write_text(
+    (origin_dir / "router2~show_route_0.0.0.0_0.txt").write_text(
         "via 10.0.0.1\n", encoding="utf-8"
     )
 
@@ -887,8 +887,8 @@ def test_v2_compare_files_requires_exact_inventory_hosts(
     artifact_root = tmp_path / "artifacts"
     origin_dir = artifact_root / "origin"
     origin_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_version.txt").write_text("abc\n", encoding="utf-8")
-    (origin_dir / "router2-show_version.txt").write_text("abd\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("abc\n", encoding="utf-8")
+    (origin_dir / "router2~show_version.txt").write_text("abd\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -975,12 +975,12 @@ def test_v2_diff_host_endpoint(tmp_path: Path, monkeypatch) -> None:
     dest_dir = artifact_root / "dest"
     origin_dir.mkdir(parents=True, exist_ok=True)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_version.txt").write_text("abc\n", encoding="utf-8")
-    (dest_dir / "router1-show_version.txt").write_text("abc\n", encoding="utf-8")
-    (origin_dir / "router1-show_running-config.txt").write_text(
+    (origin_dir / "router1~show_version.txt").write_text("abc\n", encoding="utf-8")
+    (dest_dir / "router1~show_version.txt").write_text("abc\n", encoding="utf-8")
+    (origin_dir / "router1~show_running-config.txt").write_text(
         "line1\n", encoding="utf-8"
     )
-    (dest_dir / "router1-show_running-config.txt").write_text(
+    (dest_dir / "router1~show_running-config.txt").write_text(
         "line2\n", encoding="utf-8"
     )
 
@@ -1013,8 +1013,8 @@ def test_v2_host_detail_endpoint(tmp_path: Path, monkeypatch) -> None:
     dest_dir = artifact_root / "dest"
     origin_dir.mkdir(parents=True, exist_ok=True)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_version.txt").write_text("a\n", encoding="utf-8")
-    (dest_dir / "router1-show_version.txt").write_text("b\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("a\n", encoding="utf-8")
+    (dest_dir / "router1~show_version.txt").write_text("b\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -1049,10 +1049,10 @@ def test_v2_host_detail_endpoint_filters(tmp_path: Path, monkeypatch) -> None:
     dest_dir = artifact_root / "dest"
     origin_dir.mkdir(parents=True, exist_ok=True)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_version.txt").write_text("same\n", encoding="utf-8")
-    (dest_dir / "router1-show_version.txt").write_text("same\n", encoding="utf-8")
-    (origin_dir / "router1-show_running-config.txt").write_text("x\n", encoding="utf-8")
-    (dest_dir / "router1-show_running-config.txt").write_text("y\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("same\n", encoding="utf-8")
+    (dest_dir / "router1~show_version.txt").write_text("same\n", encoding="utf-8")
+    (origin_dir / "router1~show_running-config.txt").write_text("x\n", encoding="utf-8")
+    (dest_dir / "router1~show_running-config.txt").write_text("y\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -1078,6 +1078,61 @@ def test_v2_host_detail_endpoint_filters(tmp_path: Path, monkeypatch) -> None:
         assert contains_payload["command_results"][0]["command_key"] == "show_version"
 
 
+def test_v2_host_isolated_from_prefixed_hostname(tmp_path: Path, monkeypatch) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        (
+            "host,ip,username,port,model\n"
+            "Host,10.0.0.1,admin,22,cisco\n"
+            "Host-TMP,10.0.0.2,admin,22,cisco\n"
+        ),
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2.db"
+    artifact_root = tmp_path / "artifacts"
+    origin_dir = artifact_root / "origin"
+    dest_dir = artifact_root / "dest"
+    origin_dir.mkdir(parents=True, exist_ok=True)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    (origin_dir / "Host~show_version.txt").write_text("host-origin\n", encoding="utf-8")
+    (dest_dir / "Host~show_version.txt").write_text("host-dest\n", encoding="utf-8")
+    (origin_dir / "Host-TMP~show_version.txt").write_text(
+        "tmp-origin\n", encoding="utf-8"
+    )
+    (dest_dir / "Host-TMP~show_version.txt").write_text("tmp-dest\n", encoding="utf-8")
+
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+
+    with TestClient(app) as client:
+        detail_response = client.get("/api/v2/hosts/Host/detail")
+        assert detail_response.status_code == 200
+        detail_payload = detail_response.json()
+        assert detail_payload["summary"]["total"] == 1
+        assert detail_payload["command_results"][0]["command_key"] == "show_version"
+
+        diff_response = client.get("/api/v2/diff/Host?view=inline")
+        assert diff_response.status_code == 200
+        diff_payload = diff_response.json()
+        assert diff_payload["summary"]["total"] == 1
+        assert diff_payload["commands"][0]["command_key"] == "show_version"
+
+        export_response = client.get("/api/v2/exports/Host")
+        assert export_response.status_code == 200
+        export_payload = export_response.json()
+        export_files = {
+            item["file"]
+            for base in ("origin", "dest")
+            for item in export_payload["bases"][base]
+        }
+        assert export_files == {"Host~show_version.txt"}
+
+
 def test_v2_hosts_summary_endpoint(tmp_path: Path, monkeypatch) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
@@ -1095,10 +1150,10 @@ def test_v2_hosts_summary_endpoint(tmp_path: Path, monkeypatch) -> None:
     origin_dir.mkdir(parents=True, exist_ok=True)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    (origin_dir / "router1-show_version.txt").write_text("a\n", encoding="utf-8")
-    (dest_dir / "router1-show_version.txt").write_text("b\n", encoding="utf-8")
-    (origin_dir / "router2-show_version.txt").write_text("same\n", encoding="utf-8")
-    (dest_dir / "router2-show_version.txt").write_text("same\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("a\n", encoding="utf-8")
+    (dest_dir / "router1~show_version.txt").write_text("b\n", encoding="utf-8")
+    (origin_dir / "router2~show_version.txt").write_text("same\n", encoding="utf-8")
+    (dest_dir / "router2~show_version.txt").write_text("same\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -1184,8 +1239,8 @@ def test_v2_hosts_summary_endpoint_command_capture_statuses(
     origin_dir.mkdir(parents=True, exist_ok=True)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    (origin_dir / "router1-show_version.txt").write_text("version\n", encoding="utf-8")
-    (dest_dir / "router1-show_clock.txt").write_text("clock\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("version\n", encoding="utf-8")
+    (dest_dir / "router1~show_clock.txt").write_text("clock\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
