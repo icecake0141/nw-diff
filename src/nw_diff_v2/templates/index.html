@@ -12,7 +12,7 @@
       color: #212529;
       margin: 0;
     }
-    .wrap { width: 100%; max-width: 1280px; margin: 24px auto; padding: 0 16px; }
+    .wrap { width: 100%; max-width: 1600px; margin: 24px auto; padding: 0 12px; }
     .card {
       background: #fff;
       border: 1px solid #dee2e6;
@@ -50,7 +50,34 @@
     }
     button.secondary, .btn-local.secondary { background: #007bff; }
     button.warn, .btn-local.warn { background: #fd7e14; }
-    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .hosts-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+    .host-summary-table {
+      min-width: 1100px;
+      table-layout: fixed;
+    }
+    .host-summary-table th:nth-child(1), .host-summary-table td:nth-child(1) { width: 14%; }
+    .host-summary-table th:nth-child(2), .host-summary-table td:nth-child(2) { width: 13%; }
+    .host-summary-table th:nth-child(3), .host-summary-table td:nth-child(3) { width: 13%; }
+    .host-summary-table th:nth-child(4), .host-summary-table td:nth-child(4) { width: 22%; }
+    .host-summary-table th:nth-child(5), .host-summary-table td:nth-child(5) { width: 22%; }
+    .host-summary-table th:nth-child(6), .host-summary-table td:nth-child(6) { width: 16%; }
+    .host-summary-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
     .task-box {
       font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       white-space: pre-wrap;
@@ -744,7 +771,7 @@
         '<td>' + escapeHtml(r.model) + '</td>',
         '<td>' + renderCommandStatuses(r.commands, 'origin') + '</td>',
         '<td>' + renderCommandStatuses(r.commands, 'dest') + '</td>',
-        '<td><div class="row">' +
+        '<td><div class="host-summary-actions">' +
           '<button onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;origin&quot;)">Origin</button>' +
           '<button class="secondary" onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;dest&quot;)">Dest</button>' +
           '<button class="secondary" onclick="openHostDetail(&quot;' + escapeHtml(r.host) + '&quot;)">Detail</button>' +
@@ -752,12 +779,14 @@
         '</tr>'
       ].join('')).join('');
       wrap.innerHTML = [
-        '<table class="mini-table">',
+        '<div class="hosts-table-wrap">',
+        '<table class="mini-table host-summary-table">',
         '<thead><tr><th>Host</th><th>IP</th><th>Model</th><th>Origin取得状況</th><th>Dest取得状況</th><th>Actions</th></tr></thead>',
         '<tbody>',
         body,
         '</tbody>',
-        '</table>'
+        '</table>',
+        '</div>'
       ].join('');
     }
 
