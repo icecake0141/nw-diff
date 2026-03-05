@@ -1,5 +1,7 @@
 """Capture task execution service for v2."""
 
+# mypy: disable-error-code=import-untyped
+
 from __future__ import annotations
 
 import logging

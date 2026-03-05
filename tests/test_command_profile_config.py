@@ -4,6 +4,7 @@ from __future__ import annotations
 
 # pylint: disable=missing-function-docstring,protected-access
 
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,9 @@ from nw_diff_v2.domain.services import capture_service
 
 
 @pytest.fixture(autouse=True)
-def reset_command_profile_state(monkeypatch, tmp_path: Path) -> None:
+def reset_command_profile_state(
+    monkeypatch, tmp_path: Path
+) -> Generator[None, None, None]:
     """Reset active command profile config to defaults after each test."""
     missing = tmp_path / "missing.override.yaml"
     monkeypatch.setattr(settings, "command_profiles_override_yaml", str(missing))
