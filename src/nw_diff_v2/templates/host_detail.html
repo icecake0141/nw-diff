@@ -74,6 +74,23 @@ Review required for correctness, security, and licensing.
       max-height: 360px;
       overflow: auto;
     }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .summary-table th,
+    .summary-table td {
+      border: 1px solid #d9e2ef;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .summary-table th {
+      width: 240px;
+      background: #f8fafc;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -84,7 +101,7 @@ Review required for correctness, security, and licensing.
         <a href="/v2">Back to v2</a>
         <select id="view">
           <option value="inline">inline</option>
-          <option value="sidebyside">sidebyside</option>
+          <option value="sidebyside" selected>sidebyside</option>
         </select>
         <button class="secondary" id="diffModeToggle" onclick="toggleDiffMode()">Context View</button>
         <button class="secondary" id="displayModeToggle" onclick="toggleDisplayMode()">Display: Full (click for Compact)</button>
@@ -109,6 +126,14 @@ Review required for correctness, security, and licensing.
     let diffMode = 'full';
     let displayMode = 'full';
     const contextLines = 3;
+    const summaryLabels = {
+      total_before_filter: 'total_before_filter',
+      total: 'total',
+      changed: 'changed',
+      identical: 'identical',
+      unavailable: 'unavailable',
+      not_found: 'not_found',
+    };
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -149,7 +174,7 @@ Review required for correctness, security, and licensing.
         const res = await fetch('/api/v2/hosts/' + encodeURIComponent(hostname) + '/detail?' + params.toString());
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
-        summaryBox.textContent = JSON.stringify(data.summary, null, 2);
+        renderSummaryTable(summaryBox, data.summary || {});
         const cards = (data.command_results || []).map((item) => {
           const statusClass = item.diff_status === 'changes detected'
             ? 'changed'
@@ -171,18 +196,39 @@ Review required for correctness, security, and licensing.
         });
         resultWrap.innerHTML = cards.join('');
         applyDisplayMode(resultWrap);
+        expandAll();
       } catch (err) {
         summaryBox.textContent = err.message;
         resultWrap.innerHTML = '';
       }
     }
 
+    function renderSummaryTable(summaryBox, summary) {
+      const rows = Object.keys(summaryLabels).map((key) => {
+        const raw = summary[key];
+        const value = raw === null || raw === undefined ? '-' : String(raw);
+        return [
+          '<tr>',
+          '<th scope="row">' + escapeHtml(summaryLabels[key]) + '</th>',
+          '<td>' + escapeHtml(value) + '</td>',
+          '</tr>'
+        ].join('');
+      });
+      summaryBox.innerHTML = [
+        '<table class="summary-table">',
+        '<tbody>',
+        rows.join(''),
+        '</tbody>',
+        '</table>'
+      ].join('');
+    }
+
     function updateDiffModeButton() {
       const button = document.getElementById('diffModeToggle');
       if (diffMode === 'context') {
-        button.textContent = 'Full View';
+        button.textContent = 'Context View（クリックでFull View）';
       } else {
-        button.textContent = 'Context View';
+        button.textContent = 'Full View（クリックでContext View）';
       }
     }
 
