@@ -132,9 +132,7 @@ def _load_override_profiles(
 
     parsed_profiles: dict[str, tuple[str, ...]] = {}
     for profile_key, profile_commands in raw_profiles.items():
-        normalized_key = _validate_model_key(
-            profile_key, context="command_profiles"
-        )
+        normalized_key = _validate_model_key(profile_key, context="command_profiles")
         if not isinstance(profile_commands, list):
             raise RuntimeError(
                 f"command_profiles[{profile_key!r}] must be a list of commands"
@@ -168,9 +166,7 @@ def _load_override_profiles(
     parsed_aliases: dict[str, str] = {}
     for source, destination in raw_aliases.items():
         source_key = _validate_model_key(source, context="model_aliases")
-        destination_key = _validate_model_key(
-            destination, context="model_aliases"
-        )
+        destination_key = _validate_model_key(destination, context="model_aliases")
         parsed_aliases[source_key] = destination_key
 
     if not parsed_profiles:
