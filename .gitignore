@@ -1,4 +1,6 @@
 hosts.csv
+command_profiles/device_commands.override.yaml
+!command_profiles/device_commands.override.yaml.sample
 dest/
 origin/
 diff/

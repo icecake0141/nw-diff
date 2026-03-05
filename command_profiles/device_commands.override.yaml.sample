@@ -1,0 +1,29 @@
+# Command profile override (full replacement)
+# - If this file is copied to device_commands.override.yaml, defaults in
+#   capture_service.py are replaced entirely.
+# - Both `command_profiles` and `default_commands` are required.
+
+model_aliases:
+  generic linux: linux
+  generic_linux: linux
+
+command_profiles:
+  fortinet:
+    - get system status
+    - diag switch physical-ports summary
+    - diag switch trunk summary
+    - diag switch trunk list
+    - diag stp vlan list
+  cisco:
+    - show version
+    - show running-config
+  junos:
+    - show chassis hardware
+    - show route
+  linux:
+    - uname -a
+    - cat /etc/os-release
+    - ip addr
+
+default_commands:
+  - show version
