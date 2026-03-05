@@ -76,6 +76,21 @@
       color: #6c757d;
       font-size: 0.95rem;
     }
+    .compare-html {
+      border-top: 1px solid #e5e7eb;
+      margin-top: 8px;
+    }
+    .diff-content {
+      padding-top: 8px;
+    }
+    .diff-content.full {
+      max-height: none;
+      overflow: visible;
+    }
+    .diff-content.compact {
+      max-height: 360px;
+      overflow: auto;
+    }
   </style>
 </head>
 <body>
@@ -211,6 +226,7 @@
           <option value="sidebyside">sidebyside</option>
         </select>
         <button onclick="runHostDiff()">Host Diff (origin vs dest)</button>
+        <button class="secondary" id="compareDisplayModeToggle" onclick="toggleCompareDisplayMode()">表示: 全体（クリックで一部表示）</button>
       </div>
       <div class="row" style="margin-bottom:8px;">
         <input id="cmpHost1" type="text" placeholder="host1">
@@ -228,7 +244,7 @@
       </div>
       <div id="compareView" class="task-box"></div>
       <div id="compareSummary" class="task-box" style="margin-top:8px;"></div>
-      <div id="compareHtml" style="overflow:auto; max-height:360px; border-top:1px solid #e5e7eb; margin-top:8px; padding-top:8px;"></div>
+      <div id="compareHtml" class="compare-html diff-content"></div>
     </div>
   </div>
 
@@ -237,6 +253,7 @@
     let refreshTimer = null;
     let taskPageOffset = 0;
     const taskPageSize = 10;
+    let compareDisplayMode = 'full';
 
     async function api(path, method = 'GET', body = null) {
       const options = { method, headers: {} };
@@ -352,6 +369,36 @@
         'displayed=' + toNumber(data && data.count, rows.length),
         'total_hosts=' + toNumber(data && data.total_hosts, rows.length)
       ]);
+    }
+
+    function updateDisplayToggleLabel(buttonId, mode) {
+      const button = document.getElementById(buttonId);
+      if (!button) return;
+      button.textContent = mode === 'full'
+        ? '表示: 全体（クリックで一部表示）'
+        : '表示: 一部（クリックで全体表示）';
+    }
+
+    function applyDisplayMode(rootEl, mode) {
+      if (!rootEl) return;
+      rootEl.querySelectorAll('.diff-content').forEach((el) => {
+        el.classList.remove('full', 'compact');
+        el.classList.add(mode);
+      });
+      if (rootEl.classList && rootEl.classList.contains('diff-content')) {
+        rootEl.classList.remove('full', 'compact');
+        rootEl.classList.add(mode);
+      }
+    }
+
+    function setCompareDisplayMode(mode) {
+      compareDisplayMode = mode === 'compact' ? 'compact' : 'full';
+      updateDisplayToggleLabel('compareDisplayModeToggle', compareDisplayMode);
+      applyDisplayMode(document.getElementById('compareHtml'), compareDisplayMode);
+    }
+
+    function toggleCompareDisplayMode() {
+      setCompareDisplayMode(compareDisplayMode === 'full' ? 'compact' : 'full');
     }
 
     async function captureSingle(host, base) {
@@ -730,6 +777,7 @@
           ].join('');
         });
         htmlBox.innerHTML = blocks.join('<hr>');
+        applyDisplayMode(htmlBox, compareDisplayMode);
       } catch (err) {
         document.getElementById('compareSummary').textContent = '';
         viewBox.textContent = err.message;
@@ -763,6 +811,7 @@
           'status=' + data.status
         ].join(' | ');
         htmlBox.innerHTML = data.diff_html || '';
+        applyDisplayMode(htmlBox, compareDisplayMode);
       } catch (err) {
         document.getElementById('compareSummary').textContent = '';
         viewBox.textContent = err.message;
@@ -782,6 +831,7 @@
     loadLockStatus();
     loadContractStatus();
     loadHostSummary();
+    setCompareDisplayMode('full');
   </script>
 </body>
 </html>
