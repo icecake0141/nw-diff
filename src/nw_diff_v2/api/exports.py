@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import html
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,6 +14,7 @@ from nw_diff_v2.config import settings
 from nw_diff_v2.infra.repositories.host_repo import load_hosts
 from nw_diff_v2.infra.storage.files import (
     command_label_from_key,
+    list_artifact_files,
     list_command_keys,
     read_output_by_key,
 )
@@ -33,18 +33,9 @@ def export_host_json(hostname: str, _: None = Depends(require_auth)) -> dict:
             detail=ERR_INVALID_HOSTNAME,
         )
 
-    root = Path(settings.artifact_root)
-    if not root.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No artifacts"
-        )
-
     result: dict[str, Any] = {"hostname": hostname, "bases": {"origin": [], "dest": []}}
     for base in ("origin", "dest"):
-        base_dir = root / base
-        if not base_dir.exists():
-            continue
-        for path in sorted(base_dir.glob(f"{hostname}-*.txt")):
+        for path in list_artifact_files(base, hostname):
             result["bases"][base].append(
                 {
                     "file": path.name,
