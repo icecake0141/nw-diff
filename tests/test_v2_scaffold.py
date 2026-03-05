@@ -887,8 +887,8 @@ def test_v2_compare_files_requires_exact_inventory_hosts(
     artifact_root = tmp_path / "artifacts"
     origin_dir = artifact_root / "origin"
     origin_dir.mkdir(parents=True, exist_ok=True)
-    (origin_dir / "router1-show_version.txt").write_text("abc\n", encoding="utf-8")
-    (origin_dir / "router2-show_version.txt").write_text("abd\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("abc\n", encoding="utf-8")
+    (origin_dir / "router2~show_version.txt").write_text("abd\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
@@ -1239,8 +1239,8 @@ def test_v2_hosts_summary_endpoint_command_capture_statuses(
     origin_dir.mkdir(parents=True, exist_ok=True)
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    (origin_dir / "router1-show_version.txt").write_text("version\n", encoding="utf-8")
-    (dest_dir / "router1-show_clock.txt").write_text("clock\n", encoding="utf-8")
+    (origin_dir / "router1~show_version.txt").write_text("version\n", encoding="utf-8")
+    (dest_dir / "router1~show_clock.txt").write_text("clock\n", encoding="utf-8")
 
     monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
