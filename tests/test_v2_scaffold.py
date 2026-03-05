@@ -471,8 +471,16 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "Lock Status" in response.text
         assert "Readiness" in response.text
         assert "host1,host2" in response.text
+        assert "topActionStatus" in response.text
         assert "taskQuickSummary" in response.text
         assert "compareSummary" in response.text
+        assert '<select id="exportHost">' in response.text
+        assert '<select id="diffHost">' in response.text
+        assert '<select id="cmpHost1">' in response.text
+        assert '<select id="cmpHost2">' in response.text
+        assert response.text.find("<h2>Compare</h2>") < response.text.find(
+            "<h2>Lock Status</h2>"
+        )
         assert 'id="compareDisplayModeToggle"' in response.text
         assert "表示: 全体（クリックで一部表示）" in response.text
         assert 'class="compare-html diff-content"' in response.text

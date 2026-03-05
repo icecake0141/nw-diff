@@ -109,24 +109,14 @@
         <button id="captureAllOrigin">Capture Origin All</button>
         <button id="captureAllDest" class="secondary">Capture Dest All</button>
         <button class="secondary" onclick="openLogsPage()">Logs</button>
-        <button class="secondary" onclick="loadWorkerStatus()">Worker Status</button>
-        <button class="secondary" onclick="loadReadinessStatus()">Readiness</button>
-        <button class="secondary" onclick="loadContractStatus()">Contract Check</button>
+        <button class="secondary" onclick="runTopWorkerStatus()">Worker Status</button>
+        <button class="secondary" onclick="runTopReadinessStatus()">Readiness</button>
+        <button class="secondary" onclick="runTopContractStatus()">Contract Check</button>
       </div>
+      <div id="topActionStatus" class="task-box" style="margin-top:8px;"></div>
       <div id="workerStatus" class="task-box" style="margin-top:8px;"></div>
       <div id="readinessStatus" class="task-box" style="margin-top:8px;"></div>
       <div id="contractStatus" class="task-box" style="margin-top:8px;"></div>
-    </div>
-
-    <div class="card">
-      <h2>Lock Status</h2>
-      <div class="row">
-        <input id="lockReleaseHosts" type="text" placeholder="host1,host2" style="width:240px;">
-        <button class="warn" onclick="releaseLocks()">Release Hosts</button>
-        <button class="secondary" onclick="loadLockStatus()">Reload Locks</button>
-        <button class="warn" onclick="cleanupLocks()">Cleanup Stale Locks</button>
-      </div>
-      <div id="lockStatus" class="task-box" style="margin-top:8px;"></div>
     </div>
 
     <div class="card">
@@ -209,7 +199,12 @@
     <div class="card">
       <h2>Export</h2>
       <div class="row">
-        <input id="exportHost" type="text" placeholder="hostname">
+        <select id="exportHost">
+          <option value="">-- Select host --</option>
+          {% for h in hosts %}
+          <option value="{{ h.host }}">{{ h.host }}</option>
+          {% endfor %}
+        </select>
         <button onclick="openExportJson()">JSON</button>
         <button onclick="loadExportDiffJson()">Diff JSON</button>
         <button class="secondary" onclick="openExportHtml()">HTML</button>
@@ -220,7 +215,12 @@
     <div class="card">
       <h2>Compare</h2>
       <div class="row" style="margin-bottom:8px;">
-        <input id="diffHost" type="text" placeholder="hostname">
+        <select id="diffHost">
+          <option value="">-- Select host --</option>
+          {% for h in hosts %}
+          <option value="{{ h.host }}">{{ h.host }}</option>
+          {% endfor %}
+        </select>
         <select id="diffView">
           <option value="inline">inline</option>
           <option value="sidebyside">sidebyside</option>
@@ -229,8 +229,18 @@
         <button class="secondary" id="compareDisplayModeToggle" onclick="toggleCompareDisplayMode()">表示: 全体（クリックで一部表示）</button>
       </div>
       <div class="row" style="margin-bottom:8px;">
-        <input id="cmpHost1" type="text" placeholder="host1">
-        <input id="cmpHost2" type="text" placeholder="host2">
+        <select id="cmpHost1">
+          <option value="">-- Select host1 --</option>
+          {% for h in hosts %}
+          <option value="{{ h.host }}">{{ h.host }}</option>
+          {% endfor %}
+        </select>
+        <select id="cmpHost2">
+          <option value="">-- Select host2 --</option>
+          {% for h in hosts %}
+          <option value="{{ h.host }}">{{ h.host }}</option>
+          {% endfor %}
+        </select>
         <select id="cmpBase">
           <option value="origin">origin</option>
           <option value="dest">dest</option>
@@ -245,6 +255,17 @@
       <div id="compareView" class="task-box"></div>
       <div id="compareSummary" class="task-box" style="margin-top:8px;"></div>
       <div id="compareHtml" class="compare-html diff-content"></div>
+    </div>
+
+    <div class="card">
+      <h2>Lock Status</h2>
+      <div class="row">
+        <input id="lockReleaseHosts" type="text" placeholder="host1,host2" style="width:240px;">
+        <button class="warn" onclick="releaseLocks()">Release Hosts</button>
+        <button class="secondary" onclick="loadLockStatus()">Reload Locks</button>
+        <button class="warn" onclick="cleanupLocks()">Cleanup Stale Locks</button>
+      </div>
+      <div id="lockStatus" class="task-box" style="margin-top:8px;"></div>
     </div>
   </div>
 
@@ -280,6 +301,23 @@
 
     function formatError(err) {
       return 'Error: ' + (err && err.message ? err.message : String(err));
+    }
+
+    function setTopActionStatus(message) {
+      document.getElementById('topActionStatus').textContent = String(message || '');
+    }
+
+    function formatBrowserTime(epochSeconds) {
+      const parsed = Number(epochSeconds);
+      if (!Number.isFinite(parsed) || parsed <= 0) return '-';
+      return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(new Date(parsed * 1000));
     }
 
     function formatWorkerStatus(data) {
@@ -412,12 +450,22 @@
     }
 
     async function captureAll(base) {
+      const isOrigin = base === 'origin';
+      const actionLabel = isOrigin ? 'Capture Origin All' : 'Capture Dest All';
+      const buttonId = isOrigin ? 'captureAllOrigin' : 'captureAllDest';
+      const button = document.getElementById(buttonId);
+      if (button) button.disabled = true;
+      setTopActionStatus('[' + actionLabel + '] started');
       try {
         const data = await api('/api/v2/captures', 'POST', { mode: 'batch', base, hosts: [] });
+        setTopActionStatus('[' + actionLabel + '] queued task_id=' + data.task_id + ' status=queued');
         document.getElementById('taskId').value = data.task_id;
         await checkTask();
       } catch (err) {
+        setTopActionStatus('[' + actionLabel + '] failed: ' + err.message);
         alert('Capture-all failed: ' + err.message);
+      } finally {
+        if (button) button.disabled = false;
       }
     }
 
@@ -445,8 +493,10 @@
       try {
         const data = await api('/api/v2/system/worker');
         document.getElementById('workerStatus').textContent = formatWorkerStatus(data);
+        return data;
       } catch (err) {
         document.getElementById('workerStatus').textContent = formatError(err);
+        throw err;
       }
     }
 
@@ -454,8 +504,10 @@
       try {
         const data = await api('/api/v2/system/contract');
         document.getElementById('contractStatus').textContent = formatContractStatus(data);
+        return data;
       } catch (err) {
         document.getElementById('contractStatus').textContent = formatError(err);
+        throw err;
       }
     }
 
@@ -463,8 +515,40 @@
       try {
         const data = await api('/api/v2/system/readiness');
         document.getElementById('readinessStatus').textContent = formatReadinessStatus(data);
+        return data;
       } catch (err) {
         document.getElementById('readinessStatus').textContent = formatError(err);
+        throw err;
+      }
+    }
+
+    async function runTopWorkerStatus() {
+      setTopActionStatus('[Worker Status] started');
+      try {
+        await loadWorkerStatus();
+        setTopActionStatus('[Worker Status] success');
+      } catch (err) {
+        setTopActionStatus('[Worker Status] failed: ' + err.message);
+      }
+    }
+
+    async function runTopReadinessStatus() {
+      setTopActionStatus('[Readiness] started');
+      try {
+        await loadReadinessStatus();
+        setTopActionStatus('[Readiness] success');
+      } catch (err) {
+        setTopActionStatus('[Readiness] failed: ' + err.message);
+      }
+    }
+
+    async function runTopContractStatus() {
+      setTopActionStatus('[Contract Check] started');
+      try {
+        await loadContractStatus();
+        setTopActionStatus('[Contract Check] success');
+      } catch (err) {
+        setTopActionStatus('[Contract Check] failed: ' + err.message);
       }
     }
 
@@ -557,7 +641,7 @@
         '<td>' + escapeHtml(r.unavailable) + '</td>',
         '<td>' + escapeHtml(r.not_found) + '</td>',
         '<td>' + escapeHtml(r.last_task_status) + '</td>',
-        '<td>' + escapeHtml(r.last_capture_at) + '</td>',
+        '<td>' + escapeHtml(formatBrowserTime(r.last_capture_at)) + '</td>',
         '<td><button class="secondary" onclick="openHostDetail(&quot;' + escapeHtml(r.host) + '&quot;)">Detail</button></td>',
         '</tr>'
       ].join('')).join('');
@@ -792,6 +876,14 @@
       const command = document.getElementById('cmpCommand').value.trim();
       const view = document.getElementById('cmpView').value;
       if (!host1 || !host2 || !command) return;
+      if (host1 === host2) {
+        const message = 'host1 and host2 must be different';
+        document.getElementById('compareSummary').textContent = message;
+        document.getElementById('compareView').textContent = message;
+        document.getElementById('compareHtml').innerHTML = '';
+        alert(message);
+        return;
+      }
       const viewBox = document.getElementById('compareView');
       const htmlBox = document.getElementById('compareHtml');
       try {
@@ -826,10 +918,10 @@
     document.getElementById('hostSearch').addEventListener('input', () => { taskPageOffset = 0; loadRecentTasks(); });
     document.getElementById('summaryHostSearch').addEventListener('input', loadHostSummary);
     document.getElementById('summaryPrioritizeFailed').addEventListener('change', loadHostSummary);
-    loadWorkerStatus();
-    loadReadinessStatus();
+    loadWorkerStatus().catch(() => {});
+    loadReadinessStatus().catch(() => {});
     loadLockStatus();
-    loadContractStatus();
+    loadContractStatus().catch(() => {});
     loadHostSummary();
     setCompareDisplayMode('full');
   </script>
