@@ -474,7 +474,7 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "taskQuickSummary" in response.text
         assert "compareSummary" in response.text
         assert 'id="compareDisplayModeToggle"' in response.text
-        assert "表示: 全体（クリックで一部表示）" in response.text
+        assert "Display: Full (click for Compact)" in response.text
         assert 'class="compare-html diff-content"' in response.text
         assert (
             "document.getElementById('workerStatus').textContent = JSON.stringify("
@@ -1078,7 +1078,7 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
         assert response.status_code == 200
         assert "Host Detail: router1" in response.text
         assert 'id="displayModeToggle"' in response.text
-        assert "表示: 全体（クリックで一部表示）" in response.text
+        assert "Display: Full (click for Compact)" in response.text
         assert "diff-content" in response.text
 
 

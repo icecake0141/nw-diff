@@ -87,7 +87,7 @@ Review required for correctness, security, and licensing.
           <option value="sidebyside">sidebyside</option>
         </select>
         <button class="secondary" id="diffModeToggle" onclick="toggleDiffMode()">Context View</button>
-        <button class="secondary" id="displayModeToggle" onclick="toggleDisplayMode()">表示: 全体（クリックで一部表示）</button>
+        <button class="secondary" id="displayModeToggle" onclick="toggleDisplayMode()">Display: Full (click for Compact)</button>
         <select id="statusFilter">
           <option value="">all</option>
           <option value="changed">changed</option>
@@ -189,8 +189,8 @@ Review required for correctness, security, and licensing.
     function updateDisplayModeButton() {
       const button = document.getElementById('displayModeToggle');
       button.textContent = displayMode === 'full'
-        ? '表示: 全体（クリックで一部表示）'
-        : '表示: 一部（クリックで全体表示）';
+        ? 'Display: Full (click for Compact)'
+        : 'Display: Compact (click for Full)';
     }
 
     function setDisplayMode(mode) {
