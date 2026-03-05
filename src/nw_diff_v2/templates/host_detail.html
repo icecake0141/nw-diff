@@ -63,6 +63,17 @@ Review required for correctness, security, and licensing.
       border-top: 1px solid #e5e7eb;
       padding-top: 8px;
     }
+    .diff-content {
+      padding-top: 8px;
+    }
+    .diff-content.full {
+      max-height: none;
+      overflow: visible;
+    }
+    .diff-content.compact {
+      max-height: 360px;
+      overflow: auto;
+    }
   </style>
 </head>
 <body>
@@ -76,6 +87,7 @@ Review required for correctness, security, and licensing.
           <option value="sidebyside">sidebyside</option>
         </select>
         <button class="secondary" id="diffModeToggle" onclick="toggleDiffMode()">Context View</button>
+        <button class="secondary" id="displayModeToggle" onclick="toggleDisplayMode()">表示: 全体（クリックで一部表示）</button>
         <select id="statusFilter">
           <option value="">all</option>
           <option value="changed">changed</option>
@@ -95,6 +107,7 @@ Review required for correctness, security, and licensing.
   <script>
     const hostname = {{ hostname|tojson }};
     let diffMode = 'full';
+    let displayMode = 'full';
     const contextLines = 3;
 
     function escapeHtml(value) {
@@ -136,7 +149,7 @@ Review required for correctness, security, and licensing.
             '<p>dest: ' + escapeHtml(item.dest_status) + ' / mtime: ' + escapeHtml(item.dest_mtime) + '</p>',
             '<details class="diff-details">',
             '<summary>Show Diff</summary>',
-            '<div style="overflow:auto; max-height:360px; padding-top:8px;">',
+            '<div class="diff-content">',
             item.diff_html || '',
             '</div>',
             '</details>',
@@ -144,6 +157,7 @@ Review required for correctness, security, and licensing.
           ].join('');
         });
         resultWrap.innerHTML = cards.join('');
+        applyDisplayMode(resultWrap);
       } catch (err) {
         summaryBox.textContent = err.message;
         resultWrap.innerHTML = '';
@@ -165,6 +179,30 @@ Review required for correctness, security, and licensing.
       loadDetail();
     }
 
+    function applyDisplayMode(root = document) {
+      root.querySelectorAll('.diff-content').forEach((el) => {
+        el.classList.remove('full', 'compact');
+        el.classList.add(displayMode);
+      });
+    }
+
+    function updateDisplayModeButton() {
+      const button = document.getElementById('displayModeToggle');
+      button.textContent = displayMode === 'full'
+        ? '表示: 全体（クリックで一部表示）'
+        : '表示: 一部（クリックで全体表示）';
+    }
+
+    function setDisplayMode(mode) {
+      displayMode = mode === 'compact' ? 'compact' : 'full';
+      updateDisplayModeButton();
+      applyDisplayMode(document);
+    }
+
+    function toggleDisplayMode() {
+      setDisplayMode(displayMode === 'full' ? 'compact' : 'full');
+    }
+
     function expandAll() {
       document.querySelectorAll('.diff-details').forEach((el) => { el.open = true; });
     }
@@ -177,6 +215,7 @@ Review required for correctness, security, and licensing.
     document.getElementById('statusFilter').addEventListener('change', loadDetail);
     document.getElementById('commandContains').addEventListener('input', loadDetail);
     updateDiffModeButton();
+    updateDisplayModeButton();
     loadDetail();
   </script>
 </body>
