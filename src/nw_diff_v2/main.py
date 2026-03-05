@@ -15,6 +15,7 @@ from nw_diff_v2.api.system import router as system_router
 from nw_diff_v2.api.tasks import router as tasks_router
 from nw_diff_v2.api.ui import router as ui_router
 from nw_diff_v2.config import settings
+from nw_diff_v2.domain.services.capture_service import validate_command_profile_config
 from nw_diff_v2.domain.services.lock_service import cleanup_stale_locks, release_hosts
 from nw_diff_v2.domain.services.task_worker import TaskWorkerManager
 from nw_diff_v2.infra.repositories.task_repo import (
@@ -29,6 +30,7 @@ _worker_manager = TaskWorkerManager()
 async def lifespan(_: FastAPI):
     """Validate runtime configuration at startup."""
     settings.validate_runtime()
+    validate_command_profile_config()
     init_db()
     cleanup_stale_locks()
     recovered = recover_orphaned_running_tasks()

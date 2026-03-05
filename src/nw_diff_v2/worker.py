@@ -7,6 +7,7 @@ import signal
 import threading
 
 from nw_diff_v2.config import settings
+from nw_diff_v2.domain.services.capture_service import validate_command_profile_config
 from nw_diff_v2.domain.services.lock_service import cleanup_stale_locks, release_hosts
 from nw_diff_v2.domain.services.task_worker import process_one_queued_task
 from nw_diff_v2.infra.repositories.task_repo import (
@@ -20,6 +21,7 @@ logger = logging.getLogger("nw-diff-v2-worker")
 def run_forever() -> None:
     """Run queue worker loop until interrupted."""
     settings.validate_runtime()
+    validate_command_profile_config()
     init_db()
     deleted_locks = cleanup_stale_locks()
     if deleted_locks:

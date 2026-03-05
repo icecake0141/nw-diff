@@ -56,19 +56,30 @@ pip install -r requirements.txt -r requirements-v2.txt
 cp hosts.csv.sample hosts.csv
 ```
 
-5. Set required environment variables:
+5. (Optional) Override per-model command profiles:
+```bash
+cp command_profiles/device_commands.override.yaml.sample \
+  command_profiles/device_commands.override.yaml
+```
+- Edit `command_profiles/device_commands.override.yaml` to fully replace defaults.
+- Invalid YAML or schema causes startup failure (fail closed).
+- Remove `command_profiles/device_commands.override.yaml` to return to defaults.
+
+6. Set required environment variables:
 ```bash
 export DEVICE_PASSWORD=your_device_password
 export NW_DIFF_ENV=development
 export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+# Optional: custom override path
+# export COMMAND_PROFILES_OVERRIDE_YAML=command_profiles/device_commands.override.yaml
 ```
 
-6. Start v2 API/UI:
+7. Start v2 API/UI:
 ```bash
 uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 ```
 
-7. Open:
+8. Open:
 - <http://127.0.0.1:5000/v2>
 - <http://127.0.0.1:5000/api/v2/system/health>
 
@@ -133,19 +144,30 @@ pip install -r requirements.txt -r requirements-v2.txt
 cp hosts.csv.sample hosts.csv
 ```
 
-5. 必須環境変数を設定:
+5. （任意）モデル別コマンド定義を上書き:
+```bash
+cp command_profiles/device_commands.override.yaml.sample \
+  command_profiles/device_commands.override.yaml
+```
+- `command_profiles/device_commands.override.yaml` を編集するとデフォルト定義を全置換します。
+- YAML/スキーマが不正な場合は起動時にエラーで停止します（fail closed）。
+- デフォルトに戻すには `command_profiles/device_commands.override.yaml` を削除します。
+
+6. 必須環境変数を設定:
 ```bash
 export DEVICE_PASSWORD=your_device_password
 export NW_DIFF_ENV=development
 export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+# 任意: 上書きファイルのパスを変更
+# export COMMAND_PROFILES_OVERRIDE_YAML=command_profiles/device_commands.override.yaml
 ```
 
-6. v2 API/UI を起動:
+7. v2 API/UI を起動:
 ```bash
 uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 ```
 
-7. 動作確認:
+8. 動作確認:
 - <http://127.0.0.1:5000/v2>
 - <http://127.0.0.1:5000/api/v2/system/health>
 
