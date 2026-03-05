@@ -23,7 +23,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from nw_diff_v2.domain.services.diff_service import compute_diff, compute_diff_status
 from nw_diff_v2.api.error_messages import ERR_INVALID_HOSTNAME, ERR_INVALID_VIEW
 from nw_diff_v2.infra.repositories.host_repo import load_hosts
-from nw_diff_v2.infra.repositories.task_repo import get_latest_task_for_host
+from nw_diff_v2.infra.repositories.task_repo import (
+    get_latest_task_for_host,
+    list_tasks,
+)
 from nw_diff_v2.config import settings
 from nw_diff_v2.infra.storage.files import (
     artifact_path_by_key,
@@ -45,6 +48,39 @@ def _result_category(diff_status: str) -> str:
     if diff_status == "file not found":
         return "not_found"
     return "unavailable"
+
+
+def _running_host_base_pairs() -> set[tuple[str, str]]:
+    """Return (host, base) pairs currently in running task rows."""
+    pairs: set[tuple[str, str]] = set()
+    running_rows = list_tasks(limit=500, offset=0, status="running")
+    for row in running_rows:
+        base = str(row.get("base", "")).strip().lower()
+        if base not in {"origin", "dest"}:
+            continue
+        for host in row.get("hosts", []):
+            host_name = str(host).strip()
+            if host_name:
+                pairs.add((host_name, base))
+    return pairs
+
+
+def _capture_status_entry(path, *, running: bool) -> dict:
+    """Build captured/running/not_captured status payload for one artifact."""
+    if path.exists():
+        return {
+            "status": "captured",
+            "captured_at": path.stat().st_mtime,
+        }
+    if running:
+        return {
+            "status": "running",
+            "captured_at": None,
+        }
+    return {
+        "status": "not_captured",
+        "captured_at": None,
+    }
 
 
 @router.get("/{hostname}/detail")
@@ -211,6 +247,7 @@ def host_summary(
     """Return per-host diff summary sorted by changed count desc."""
     hosts = load_hosts(settings.hosts_csv)
     query = host_contains.strip().lower()
+    running_pairs = _running_host_base_pairs()
     rows: list[dict] = []
 
     for host in hosts:
@@ -224,8 +261,11 @@ def host_summary(
         identical = 0
         unavailable = 0
         not_found = 0
+        commands: list[dict] = []
 
         for command_key in command_keys:
+            origin_path = artifact_path_by_key("origin", hostname, command_key)
+            dest_path = artifact_path_by_key("dest", hostname, command_key)
             origin_status, origin_data = read_output_by_key(
                 "origin", hostname, command_key
             )
@@ -247,6 +287,18 @@ def host_summary(
                 unavailable += 1
             else:
                 not_found += 1
+            commands.append(
+                {
+                    "command_key": command_key,
+                    "command": command_label_from_key(command_key),
+                    "origin": _capture_status_entry(
+                        origin_path, running=(hostname, "origin") in running_pairs
+                    ),
+                    "dest": _capture_status_entry(
+                        dest_path, running=(hostname, "dest") in running_pairs
+                    ),
+                }
+            )
 
         rows.append(
             {
@@ -260,18 +312,16 @@ def host_summary(
                 "not_found": not_found,
                 "last_capture_at": max(
                     (
-                        path.stat().st_mtime
+                        entry[base]["captured_at"]
+                        for entry in commands
                         for base in ("origin", "dest")
-                        for path in [
-                            artifact_path_by_key(base, hostname, key)
-                            for key in command_keys
-                        ]
-                        if path.exists()
+                        if entry[base]["captured_at"] is not None
                     ),
                     default=None,
                 ),
                 "last_task_status": None,
                 "last_task_finished_at": None,
+                "commands": commands,
             }
         )
 

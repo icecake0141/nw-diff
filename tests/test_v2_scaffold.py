@@ -483,6 +483,9 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         )
         assert 'id="compareDisplayModeToggle"' in response.text
         assert "Display: Full (click for Compact)" in response.text
+        assert "<h2>Host Diff Summary</h2>" not in response.text
+        assert "Origin取得状況" in response.text
+        assert "Dest取得状況" in response.text
         assert 'class="compare-html diff-content"' in response.text
         assert (
             "document.getElementById('workerStatus').textContent = JSON.stringify("
@@ -1050,6 +1053,12 @@ def test_v2_hosts_summary_endpoint(tmp_path: Path, monkeypatch) -> None:
         assert payload["rows"][1]["host"] == "router1"
         assert payload["rows"][1]["changed"] == 1
         assert payload["rows"][1]["last_task_status"] == "completed"
+        assert isinstance(payload["rows"][1]["commands"], list)
+        assert payload["rows"][1]["commands"][0]["command_key"] == "show_version"
+        assert payload["rows"][1]["commands"][0]["origin"]["status"] == "captured"
+        assert payload["rows"][1]["commands"][0]["origin"]["captured_at"] is not None
+        assert payload["rows"][1]["commands"][0]["dest"]["status"] == "captured"
+        assert payload["rows"][1]["commands"][0]["dest"]["captured_at"] is not None
 
         filtered = client.get("/api/v2/hosts/summary?host_contains=router2")
         assert filtered.status_code == 200
@@ -1066,6 +1075,63 @@ def test_v2_hosts_summary_endpoint(tmp_path: Path, monkeypatch) -> None:
         assert non_prioritized.status_code == 200
         non_prioritized_payload = non_prioritized.json()
         assert non_prioritized_payload["rows"][0]["host"] == "router1"
+
+
+def test_v2_hosts_summary_endpoint_command_capture_statuses(
+    tmp_path: Path, monkeypatch
+) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2.db"
+    artifact_root = tmp_path / "artifacts"
+    origin_dir = artifact_root / "origin"
+    dest_dir = artifact_root / "dest"
+    origin_dir.mkdir(parents=True, exist_ok=True)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    (origin_dir / "router1-show_version.txt").write_text("version\n", encoding="utf-8")
+    (dest_dir / "router1-show_clock.txt").write_text("clock\n", encoding="utf-8")
+
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+
+    with TestClient(app) as client:
+        task_repo.create_task(
+            task_id="sum-task-running-dest",
+            mode="single",
+            base="dest",
+            hosts=["router1"],
+        )
+        task_repo.update_task(
+            "sum-task-running-dest",
+            status=CaptureTaskStatus.RUNNING,
+            started_at=1.0,
+        )
+        response = client.get("/api/v2/hosts/summary?limit=10")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["count"] == 1
+        command_rows = payload["rows"][0]["commands"]
+        by_key = {row["command_key"]: row for row in command_rows}
+
+        show_version = by_key["show_version"]
+        assert show_version["origin"]["status"] == "captured"
+        assert show_version["origin"]["captured_at"] is not None
+        assert show_version["dest"]["status"] == "running"
+        assert show_version["dest"]["captured_at"] is None
+
+        show_clock = by_key["show_clock"]
+        assert show_clock["origin"]["status"] == "not_captured"
+        assert show_clock["origin"]["captured_at"] is None
+        assert show_clock["dest"]["status"] == "captured"
+        assert show_clock["dest"]["captured_at"] is not None
 
 
 def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
