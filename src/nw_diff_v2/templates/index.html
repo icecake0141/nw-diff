@@ -159,12 +159,12 @@
       <h1>NW-Diff v2 Control Panel</h1>
       <p class="muted-note">Hosts loaded: <strong>{{ hosts|length }}</strong></p>
       <div class="row">
-        <button id="captureAllOrigin">Capture Origin All</button>
-        <button id="captureAllDest" class="secondary">Capture Dest All</button>
-        <button class="secondary" onclick="openLogsPage()">Logs</button>
-        <button class="secondary" onclick="runTopWorkerStatus()">Worker Status</button>
-        <button class="secondary" onclick="runTopReadinessStatus()">Readiness</button>
-        <button class="secondary" onclick="runTopContractStatus()">Contract Check</button>
+        <button id="captureAllOrigin" title="Capture origin configs from all hosts">Capture Origin All</button>
+        <button id="captureAllDest" class="secondary" title="Capture destination configs from all hosts">Capture Dest All</button>
+        <button class="secondary" onclick="openLogsPage()" title="Open the logs page">Logs</button>
+        <button class="secondary" onclick="runTopWorkerStatus()" title="Load current worker status">Worker Status</button>
+        <button class="secondary" onclick="runTopReadinessStatus()" title="Run readiness checks and show status">Readiness</button>
+        <button class="secondary" onclick="runTopContractStatus()" title="Run API contract status check">Contract Check</button>
       </div>
       <div id="topActionStatus" class="task-box" style="margin-top:8px;"></div>
       <div id="workerStatus" class="task-box" style="margin-top:8px;"></div>
@@ -185,7 +185,7 @@
           <input id="summaryPrioritizeFailed" type="checkbox" checked />
           failed first
         </label>
-        <button onclick="loadHostSummary()">Reload Summary</button>
+        <button onclick="loadHostSummary()" title="Reload host diff summary">Reload Summary</button>
       </div>
       <div id="hostSummaryView" class="task-box"></div>
       <div id="hostSummaryTableWrap"></div>
@@ -195,12 +195,12 @@
       <h2>Task Inspector</h2>
       <div class="row">
         <input id="taskId" type="text" placeholder="Task ID">
-        <button class="warn" onclick="checkTask()">Check</button>
-        <button class="secondary" onclick="openStream()">Open Stream</button>
-        <button class="warn" onclick="cancelTask()">Cancel Task</button>
-        <button class="secondary" onclick="startLiveStream()">Live Stream</button>
-        <button onclick="stopLiveStream()">Stop Live</button>
-        <button onclick="loadRecentTasks()">Recent Tasks</button>
+        <button class="warn" onclick="checkTask()" title="Load selected task details">Check</button>
+        <button class="secondary" onclick="openStream()" title="Open task stream in a new tab">Open Stream</button>
+        <button class="warn" onclick="cancelTask()" title="Request cancellation for selected task">Cancel Task</button>
+        <button class="secondary" onclick="startLiveStream()" title="Start live stream in this page">Live Stream</button>
+        <button onclick="stopLiveStream()" title="Stop the live stream">Stop Live</button>
+        <button onclick="loadRecentTasks()" title="Load recent tasks list">Recent Tasks</button>
       </div>
       <div class="row" style="margin-top: 8px;">
         <select id="statusFilter">
@@ -217,8 +217,8 @@
           running only
         </label>
         <input id="refreshSec" type="text" value="5" style="width:80px;" />
-        <button onclick="startAutoRefresh()">Start Auto Refresh</button>
-        <button class="warn" onclick="stopAutoRefresh()">Stop Auto Refresh</button>
+        <button onclick="startAutoRefresh()" title="Start periodic recent-task refresh">Start Auto Refresh</button>
+        <button class="warn" onclick="stopAutoRefresh()" title="Stop periodic recent-task refresh">Stop Auto Refresh</button>
         <input id="tailLines" type="text" value="20" style="width:80px;" />
       </div>
       <div id="taskQuickSummary" class="task-box" style="margin-top:8px;"></div>
@@ -237,9 +237,9 @@
           <option value="{{ h.host }}">{{ h.host }}</option>
           {% endfor %}
         </select>
-        <button onclick="openExportJson()">JSON</button>
-        <button onclick="loadExportDiffJson()">Diff JSON</button>
-        <button class="secondary" onclick="openExportHtml()">HTML</button>
+        <button onclick="openExportJson()" title="Open exported host JSON in a new tab">JSON</button>
+        <button onclick="loadExportDiffJson()" title="Load exported diff JSON for selected host">Diff JSON</button>
+        <button class="secondary" onclick="openExportHtml()" title="Open exported host HTML in a new tab">HTML</button>
       </div>
       <div id="exportDiffView" class="task-box" style="margin-top:8px;"></div>
     </div>
@@ -257,8 +257,8 @@
           <option value="inline">inline</option>
           <option value="sidebyside">sidebyside</option>
         </select>
-        <button onclick="runHostDiff()">Host Diff (origin vs dest)</button>
-        <button class="secondary" id="compareDisplayModeToggle" onclick="toggleCompareDisplayMode()">Display: Full (click for Compact)</button>
+        <button onclick="runHostDiff()" title="Run origin vs destination diff for selected host">Host Diff (origin vs dest)</button>
+        <button class="secondary" id="compareDisplayModeToggle" onclick="toggleCompareDisplayMode()" title="Toggle compare output between full and compact">Display: Full (click for Compact)</button>
       </div>
       <div class="row" style="margin-bottom:8px;">
         <select id="cmpHost1">
@@ -282,7 +282,7 @@
           <option value="sidebyside">sidebyside</option>
           <option value="inline">inline</option>
         </select>
-        <button class="secondary" onclick="runFileCompare()">Compare Files</button>
+        <button class="secondary" onclick="runFileCompare()" title="Compare command output between two hosts">Compare Files</button>
       </div>
       <div id="compareView" class="task-box"></div>
       <div id="compareSummary" class="task-box" style="margin-top:8px;"></div>
@@ -293,9 +293,9 @@
       <h2>Lock Status</h2>
       <div class="row">
         <input id="lockReleaseHosts" type="text" placeholder="host1,host2" style="width:240px;">
-        <button class="warn" onclick="releaseLocks()">Release Hosts</button>
-        <button class="secondary" onclick="loadLockStatus()">Reload Locks</button>
-        <button class="warn" onclick="cleanupLocks()">Cleanup Stale Locks</button>
+        <button class="warn" onclick="releaseLocks()" title="Release locks for listed hosts">Release Hosts</button>
+        <button class="secondary" onclick="loadLockStatus()" title="Reload current lock status">Reload Locks</button>
+        <button class="warn" onclick="cleanupLocks()" title="Remove stale host locks">Cleanup Stale Locks</button>
       </div>
       <div id="lockStatus" class="task-box" style="margin-top:8px;"></div>
     </div>
@@ -772,9 +772,9 @@
         '<td>' + renderCommandStatuses(r.commands, 'origin') + '</td>',
         '<td>' + renderCommandStatuses(r.commands, 'dest') + '</td>',
         '<td><div class="host-summary-actions">' +
-          '<button onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;origin&quot;)">Origin</button>' +
-          '<button class="secondary" onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;dest&quot;)">Dest</button>' +
-          '<button class="secondary" onclick="openHostDetail(&quot;' + escapeHtml(r.host) + '&quot;)">Detail</button>' +
+          '<button title="Capture origin config for this host" onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;origin&quot;)">Origin</button>' +
+          '<button class="secondary" title="Capture destination config for this host" onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;dest&quot;)">Dest</button>' +
+          '<button class="secondary" title="Open detailed diff view for this host" onclick="openHostDetail(&quot;' + escapeHtml(r.host) + '&quot;)">Detail</button>' +
           '</div></td>',
         '</tr>'
       ].join('')).join('');
@@ -832,18 +832,18 @@
           '<td>' + escapeHtml(t.base) + '</td>',
           '<td>' + escapeHtml(hosts) + '</td>',
           '<td>',
-          '<button onclick="selectTask(&quot;' + escapeHtml(t.task_id) + '&quot;)">Select</button> ',
-          '<button class="warn" onclick="quickCancel(&quot;' + escapeHtml(t.task_id) + '&quot;)">Cancel</button> ',
-          '<button class="secondary" onclick="quickRetry(&quot;' + escapeHtml(t.task_id) + '&quot;)">Retry</button> ',
-          '<button class="secondary" onclick="quickLive(&quot;' + escapeHtml(t.task_id) + '&quot;)">Live</button>',
+          '<button title="Select this task in Task Inspector" onclick="selectTask(&quot;' + escapeHtml(t.task_id) + '&quot;)">Select</button> ',
+          '<button class="warn" title="Request cancellation for this task" onclick="quickCancel(&quot;' + escapeHtml(t.task_id) + '&quot;)">Cancel</button> ',
+          '<button class="secondary" title="Retry this task" onclick="quickRetry(&quot;' + escapeHtml(t.task_id) + '&quot;)">Retry</button> ',
+          '<button class="secondary" title="Start live stream for this task" onclick="quickLive(&quot;' + escapeHtml(t.task_id) + '&quot;)">Live</button>',
           '</td>',
           '</tr>'
         ].join('');
       }).join('');
       wrap.innerHTML = [
         '<div class="row" style="margin-bottom: 6px;">',
-        '<button onclick="prevTaskPage()">Prev</button>',
-        '<button class="secondary" onclick="nextTaskPage()">Next</button>',
+        '<button title="Show previous page of tasks" onclick="prevTaskPage()">Prev</button>',
+        '<button class="secondary" title="Show next page of tasks" onclick="nextTaskPage()">Next</button>',
         '<small>offset=' + taskPageOffset + ', limit=' + taskPageSize + '</small>',
         '</div>',
         '<table class="mini-table">',
