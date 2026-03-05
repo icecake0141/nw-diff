@@ -25,7 +25,13 @@ Review required for correctness, security, and licensing.
       margin: 0;
       padding: 20px;
     }
-    .wrap { max-width: 1200px; margin: 0 auto; }
+    .wrap {
+      width: 100%;
+      max-width: none;
+      margin: 0 auto;
+      padding: 0 12px;
+      box-sizing: border-box;
+    }
     .card {
       background: #fff;
       border: 1px solid #d9e2ef;
