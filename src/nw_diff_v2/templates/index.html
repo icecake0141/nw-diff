@@ -745,9 +745,9 @@
         if (status === 'running') return 'Running';
         if (status === 'captured') {
           const ts = formatLocalDateTime(entry.captured_at);
-          return ts ? ('取得済み (' + ts + ')') : '取得済み';
+          return ts ? ('Captured (' + ts + ')') : 'Captured';
         }
-        return '未取得';
+        return 'Not Captured';
       };
       const renderCommandStatuses = (commands, side) => {
         if (!Array.isArray(commands) || commands.length === 0) {
@@ -781,7 +781,7 @@
       wrap.innerHTML = [
         '<div class="hosts-table-wrap">',
         '<table class="mini-table host-summary-table">',
-        '<thead><tr><th>Host</th><th>IP</th><th>Model</th><th>Origin取得状況</th><th>Dest取得状況</th><th>Actions</th></tr></thead>',
+        '<thead><tr><th>Host</th><th>IP</th><th>Model</th><th>Origin Capture Status</th><th>Dest Capture Status</th><th>Actions</th></tr></thead>',
         '<tbody>',
         body,
         '</tbody>',

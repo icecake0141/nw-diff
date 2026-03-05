@@ -484,8 +484,8 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert 'id="compareDisplayModeToggle"' in response.text
         assert "Display: Full (click for Compact)" in response.text
         assert "<h2>Host Diff Summary</h2>" not in response.text
-        assert "Origin取得状況" in response.text
-        assert "Dest取得状況" in response.text
+        assert "Origin Capture Status" in response.text
+        assert "Dest Capture Status" in response.text
         assert 'class="compare-html diff-content"' in response.text
         assert (
             "document.getElementById('workerStatus').textContent = JSON.stringify("
