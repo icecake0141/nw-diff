@@ -48,7 +48,7 @@ DEFAULT_MODEL_ALIASES: dict[str, str] = {
 MODEL_KEY_RE = re.compile(r"^[a-zA-Z0-9_ -]+$")
 SUPPORTED_OVERRIDE_KEYS = {"model_aliases", "command_profiles", "default_commands"}
 ACTIVE_COMMAND_PROFILES = dict(DEFAULT_COMMAND_PROFILES)
-ACTIVE_DEFAULT_COMMANDS = DEFAULT_COMMANDS
+ACTIVE_DEFAULT_COMMANDS = list(DEFAULT_COMMANDS)
 ACTIVE_MODEL_ALIASES = dict(DEFAULT_MODEL_ALIASES)
 logger = logging.getLogger("nw-diff-v2")
 
@@ -179,21 +179,23 @@ def _load_override_profiles(
 
 def validate_command_profile_config() -> None:
     """Load command profile config and fail fast on invalid override settings."""
-    global ACTIVE_COMMAND_PROFILES
-    global ACTIVE_DEFAULT_COMMANDS
-    global ACTIVE_MODEL_ALIASES
-
     override_path = Path(settings.command_profiles_override_yaml)
     if not override_path.exists():
-        ACTIVE_COMMAND_PROFILES = dict(DEFAULT_COMMAND_PROFILES)
-        ACTIVE_DEFAULT_COMMANDS = DEFAULT_COMMANDS
-        ACTIVE_MODEL_ALIASES = dict(DEFAULT_MODEL_ALIASES)
+        ACTIVE_COMMAND_PROFILES.clear()
+        ACTIVE_COMMAND_PROFILES.update(DEFAULT_COMMAND_PROFILES)
+        ACTIVE_MODEL_ALIASES.clear()
+        ACTIVE_MODEL_ALIASES.update(DEFAULT_MODEL_ALIASES)
+        ACTIVE_DEFAULT_COMMANDS.clear()
+        ACTIVE_DEFAULT_COMMANDS.extend(DEFAULT_COMMANDS)
         return
 
     profiles, default_commands, aliases = _load_override_profiles(override_path)
-    ACTIVE_COMMAND_PROFILES = profiles
-    ACTIVE_DEFAULT_COMMANDS = default_commands
-    ACTIVE_MODEL_ALIASES = aliases
+    ACTIVE_COMMAND_PROFILES.clear()
+    ACTIVE_COMMAND_PROFILES.update(profiles)
+    ACTIVE_MODEL_ALIASES.clear()
+    ACTIVE_MODEL_ALIASES.update(aliases)
+    ACTIVE_DEFAULT_COMMANDS.clear()
+    ACTIVE_DEFAULT_COMMANDS.extend(default_commands)
 
 
 def _commands_for_model(model: str) -> list[str]:
