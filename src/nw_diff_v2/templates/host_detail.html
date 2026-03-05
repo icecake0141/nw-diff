@@ -119,6 +119,19 @@ Review required for correctness, security, and licensing.
         .replaceAll("'", '&#39;');
     }
 
+    function formatBrowserTime(epochSeconds) {
+      const parsed = Number(epochSeconds);
+      if (!Number.isFinite(parsed) || parsed <= 0) return '-';
+      return new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(new Date(parsed * 1000));
+    }
+
     async function loadDetail() {
       const view = document.getElementById('view').value;
       const statusFilter = document.getElementById('statusFilter').value;
@@ -145,8 +158,8 @@ Review required for correctness, security, and licensing.
             '<div class="card">',
             '<h3>' + escapeHtml(item.command) + '</h3>',
             '<p><span class="status ' + statusClass + '">' + escapeHtml(item.diff_status) + '</span></p>',
-            '<p>origin: ' + escapeHtml(item.origin_status) + ' / mtime: ' + escapeHtml(item.origin_mtime) + '</p>',
-            '<p>dest: ' + escapeHtml(item.dest_status) + ' / mtime: ' + escapeHtml(item.dest_mtime) + '</p>',
+            '<p>origin: ' + escapeHtml(item.origin_status) + ' / mtime: ' + escapeHtml(formatBrowserTime(item.origin_mtime)) + '</p>',
+            '<p>dest: ' + escapeHtml(item.dest_status) + ' / mtime: ' + escapeHtml(formatBrowserTime(item.dest_mtime)) + '</p>',
             '<details class="diff-details">',
             '<summary>Show Diff</summary>',
             '<div class="diff-content">',
