@@ -103,8 +103,8 @@ Review required for correctness, security, and licensing.
           <option value="inline">inline</option>
           <option value="sidebyside" selected>sidebyside</option>
         </select>
-        <button class="secondary" id="diffModeToggle" onclick="toggleDiffMode()">Context View</button>
-        <button class="secondary" id="displayModeToggle" onclick="toggleDisplayMode()">Display: Full (click for Compact)</button>
+        <button class="secondary" id="diffModeToggle" onclick="toggleDiffMode()" title="Toggle between full and context diff mode">Context View</button>
+        <button class="secondary" id="displayModeToggle" onclick="toggleDisplayMode()" title="Toggle diff display between full and compact">Display: Full (click for Compact)</button>
         <select id="statusFilter">
           <option value="">all</option>
           <option value="changed">changed</option>
@@ -113,9 +113,9 @@ Review required for correctness, security, and licensing.
           <option value="not_found">not_found</option>
         </select>
         <input id="commandContains" type="text" placeholder="command contains..." style="width:220px;">
-        <button onclick="loadDetail()">Reload</button>
-        <button class="secondary" onclick="expandAll()">Expand All</button>
-        <button class="secondary" onclick="collapseAll()">Collapse All</button>
+        <button onclick="loadDetail()" title="Reload host detail data">Reload</button>
+        <button class="secondary" onclick="expandAll()" title="Expand all diff sections">Expand All</button>
+        <button class="secondary" onclick="collapseAll()" title="Collapse all diff sections">Collapse All</button>
       </div>
       <div id="summary" class="task-box" style="margin-top:8px;"></div>
     </div>
