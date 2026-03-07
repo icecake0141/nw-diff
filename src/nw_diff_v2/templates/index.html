@@ -144,6 +144,33 @@
       max-height: 360px;
       overflow: auto;
     }
+    .console-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .console-state {
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: #334155;
+    }
+    .live-console {
+      margin: 0;
+      background: #0b1220;
+      color: #d1e4ff;
+      border: 1px solid #233047;
+      border-radius: 6px;
+      padding: 12px;
+      min-height: 220px;
+      max-height: 420px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
   </style>
 </head>
 <body>
@@ -229,6 +256,19 @@
     </div>
 
     <div class="card">
+      <h2>Live Console</h2>
+      <div class="console-toolbar">
+        <button class="secondary" onclick="startLiveConsole()">Start</button>
+        <button onclick="stopLiveStream()">Stop</button>
+        <button class="warn" onclick="clearLiveConsole()">Clear</button>
+        <button class="secondary" id="liveConsoleFollowButton" onclick="toggleLiveConsoleFollow()">Follow: ON</button>
+        <span id="liveConsoleFollowState" class="console-state">follow=on</span>
+      </div>
+      <div id="liveConsoleMeta" class="console-state" style="margin-bottom:8px;"></div>
+      <pre id="liveConsoleView" class="live-console"></pre>
+    </div>
+
+    <div class="card">
       <h2>Export</h2>
       <div class="row">
         <select id="exportHost">
@@ -303,10 +343,15 @@
 
   <script>
     let streamSource = null;
+    let streamTaskId = '';
+    let liveConsoleLines = [];
+    let liveConsoleFollow = true;
     let refreshTimer = null;
     let captureStatusTimer = null;
     let taskPageOffset = 0;
     const taskPageSize = 10;
+    const MAX_CONSOLE_LINES = 2000;
+    const CONSOLE_STICKY_THRESHOLD_PX = 16;
     let compareDisplayMode = 'full';
 
     async function api(path, method = 'GET', body = null) {
@@ -866,7 +911,7 @@
 
     function quickLive(taskId) {
       document.getElementById('taskId').value = taskId;
-      startLiveStream();
+      startLiveConsole();
     }
 
     async function quickRetry(taskId) {
@@ -890,6 +935,73 @@
         .replaceAll("'", '&#39;');
     }
 
+    function isNearConsoleBottom(el) {
+      if (!el) return true;
+      const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+      return gap <= CONSOLE_STICKY_THRESHOLD_PX;
+    }
+
+    function setLiveConsoleFollow(next) {
+      liveConsoleFollow = Boolean(next);
+      const state = document.getElementById('liveConsoleFollowState');
+      const button = document.getElementById('liveConsoleFollowButton');
+      if (state) {
+        state.textContent = liveConsoleFollow ? 'follow=on' : 'follow=off';
+      }
+      if (button) {
+        button.textContent = liveConsoleFollow ? 'Follow: ON' : 'Follow: OFF';
+      }
+    }
+
+    function toggleLiveConsoleFollow() {
+      setLiveConsoleFollow(!liveConsoleFollow);
+      if (liveConsoleFollow) {
+        const view = document.getElementById('liveConsoleView');
+        if (view) view.scrollTop = view.scrollHeight;
+      }
+      renderLiveConsoleMeta();
+    }
+
+    function renderLiveConsoleMeta() {
+      const meta = document.getElementById('liveConsoleMeta');
+      if (!meta) return;
+      const labelTaskId = streamTaskId || document.getElementById('taskId').value.trim() || '-';
+      meta.textContent = [
+        'task=' + labelTaskId,
+        'lines=' + liveConsoleLines.length + '/' + MAX_CONSOLE_LINES,
+        'follow=' + (liveConsoleFollow ? 'on' : 'off'),
+        'stream=' + (streamSource ? 'connected' : 'stopped'),
+      ].join(' | ');
+    }
+
+    function appendLegacyStreamLine(line) {
+      const streamView = document.getElementById('streamView');
+      if (!streamView) return;
+      streamView.textContent += String(line) + '\n';
+    }
+
+    function appendLiveConsoleLine(line) {
+      const view = document.getElementById('liveConsoleView');
+      if (!view) return;
+      const stickToBottom = liveConsoleFollow && isNearConsoleBottom(view);
+      liveConsoleLines.push(String(line));
+      if (liveConsoleLines.length > MAX_CONSOLE_LINES) {
+        liveConsoleLines.splice(0, liveConsoleLines.length - MAX_CONSOLE_LINES);
+      }
+      view.textContent = liveConsoleLines.join('\n');
+      if (stickToBottom) {
+        view.scrollTop = view.scrollHeight;
+      }
+      renderLiveConsoleMeta();
+    }
+
+    function clearLiveConsole() {
+      liveConsoleLines = [];
+      const view = document.getElementById('liveConsoleView');
+      if (view) view.textContent = '';
+      renderLiveConsoleMeta();
+    }
+
     function openStream() {
       const taskId = document.getElementById('taskId').value.trim();
       if (!taskId) return;
@@ -909,26 +1021,39 @@
       }
     }
 
-    function startLiveStream() {
+    function startLiveConsole() {
       const taskId = document.getElementById('taskId').value.trim();
       if (!taskId) return;
       stopLiveStream();
       const streamView = document.getElementById('streamView');
-      streamView.textContent = '';
+      if (streamView) streamView.textContent = '';
+      clearLiveConsole();
+      streamTaskId = taskId;
+      setLiveConsoleFollow(true);
       const tail = Number(document.getElementById('tailLines').value || '0');
       const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 0;
+      appendLegacyStreamLine('[stream] connect task=' + taskId + ' tail=' + safeTail);
+      appendLiveConsoleLine('[stream] connect task=' + taskId + ' tail=' + safeTail);
       streamSource = new EventSource('/api/v2/tasks/' + taskId + '/stream?tail_lines=' + safeTail);
       streamSource.onmessage = function(event) {
-        streamView.textContent += event.data + '\n';
+        appendLegacyStreamLine(event.data);
+        appendLiveConsoleLine(event.data);
       };
       streamSource.addEventListener('status', function(event) {
-        streamView.textContent += '[status] ' + event.data + '\n';
+        appendLegacyStreamLine('[status] ' + event.data);
+        appendLiveConsoleLine('[status] ' + event.data);
         stopLiveStream();
       });
       streamSource.onerror = function() {
-        streamView.textContent += '[stream error]\n';
+        appendLegacyStreamLine('[stream error]');
+        appendLiveConsoleLine('[stream error]');
         stopLiveStream();
       };
+      renderLiveConsoleMeta();
+    }
+
+    function startLiveStream() {
+      startLiveConsole();
     }
 
     function stopLiveStream() {
@@ -936,6 +1061,7 @@
         streamSource.close();
         streamSource = null;
       }
+      renderLiveConsoleMeta();
     }
 
     function openExportJson() {
@@ -1053,12 +1179,19 @@
     document.getElementById('hostSearch').addEventListener('input', () => { taskPageOffset = 0; loadRecentTasks(); });
     document.getElementById('summaryHostSearch').addEventListener('input', loadHostSummary);
     document.getElementById('summaryPrioritizeFailed').addEventListener('change', loadHostSummary);
+    document.getElementById('liveConsoleView').addEventListener('scroll', () => {
+      const view = document.getElementById('liveConsoleView');
+      setLiveConsoleFollow(isNearConsoleBottom(view));
+      renderLiveConsoleMeta();
+    });
     loadWorkerStatus().catch(() => {});
     loadReadinessStatus().catch(() => {});
     loadLockStatus();
     loadContractStatus().catch(() => {});
     loadHostSummary();
     setCaptureStatus('Status: Idle', false);
+    setLiveConsoleFollow(true);
+    renderLiveConsoleMeta();
     setCompareDisplayMode('full');
   </script>
 </body>

@@ -53,6 +53,8 @@ ACTIVE_COMMAND_PROFILES = dict(DEFAULT_COMMAND_PROFILES)
 ACTIVE_DEFAULT_COMMANDS = list(DEFAULT_COMMANDS)
 ACTIVE_MODEL_ALIASES = dict(DEFAULT_MODEL_ALIASES)
 logger = logging.getLogger("nw-diff-v2")
+COMMAND_PREVIEW_LINES = 3
+COMMAND_PREVIEW_LINE_CHARS = 200
 
 
 def _normalize_model(value: str) -> str:
@@ -68,6 +70,60 @@ def _dedupe_keep_order(values: list[str]) -> list[str]:
         seen.add(value)
         deduped.append(value)
     return deduped
+
+
+def _sanitize_log_line(line: str) -> str:
+    cleaned = "".join(
+        ch if (ord(ch) >= 32 and ord(ch) != 127) else " " for ch in str(line)
+    )
+    return " ".join(cleaned.split())
+
+
+def _command_preview_lines(
+    output: str,
+    *,
+    preview_lines: int = COMMAND_PREVIEW_LINES,
+    preview_line_chars: int = COMMAND_PREVIEW_LINE_CHARS,
+) -> list[str]:
+    lines = str(output).splitlines()[: max(0, preview_lines)]
+    previews: list[str] = []
+    for line in lines:
+        safe = _sanitize_log_line(line)
+        if len(safe) > preview_line_chars:
+            safe = safe[: max(0, preview_line_chars - 3)] + "..."
+        previews.append(safe)
+    return previews
+
+
+def _append_command_preview_log(
+    task_id: str,
+    *,
+    host: str,
+    command: str,
+    output: str,
+) -> None:
+    safe_host = _sanitize_log_line(host)
+    safe_command = _sanitize_log_line(command)
+    append_task_log(task_id, f"CMD_START host={safe_host} command={safe_command}")
+    preview_lines = _command_preview_lines(output)
+    if not preview_lines:
+        append_task_log(
+            task_id,
+            f"CMD_PREVIEW host={safe_host} command={safe_command} line=1: <empty>",
+        )
+    for idx, line in enumerate(preview_lines, start=1):
+        append_task_log(
+            task_id,
+            (
+                "CMD_PREVIEW "
+                f"host={safe_host} command={safe_command} line={idx}: {line}"
+            ),
+        )
+    output_bytes = len(str(output).encode("utf-8", errors="replace"))
+    append_task_log(
+        task_id,
+        f"CMD_END host={safe_host} command={safe_command} bytes={output_bytes}",
+    )
 
 
 def _validate_command(command: Any, *, context: str) -> str:
@@ -261,6 +317,12 @@ def run_capture_task(
                 )
                 files = []
                 for command, output in outputs.items():
+                    _append_command_preview_log(
+                        task_id,
+                        host=hostname,
+                        command=command,
+                        output=output,
+                    )
                     append_task_log(
                         task_id, f"Captured command '{command}' on {hostname}"
                     )
