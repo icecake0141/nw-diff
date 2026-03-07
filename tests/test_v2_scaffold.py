@@ -216,7 +216,9 @@ def test_v2_worker_processes_queued_task(tmp_path: Path, monkeypatch) -> None:
     release_hosts({"router1"})
 
 
-def test_v2_worker_logs_command_preview_with_limits(tmp_path: Path, monkeypatch) -> None:
+def test_v2_worker_logs_command_preview_with_limits(
+    tmp_path: Path, monkeypatch
+) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
         "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
@@ -258,9 +260,9 @@ def test_v2_worker_logs_command_preview_with_limits(tmp_path: Path, monkeypatch)
 
     from nw_diff_v2.infra.storage.task_logs import task_log_path
 
-    task_log_lines = task_log_path("task-preview").read_text(
-        encoding="utf-8"
-    ).splitlines()
+    task_log_lines = (
+        task_log_path("task-preview").read_text(encoding="utf-8").splitlines()
+    )
     preview_lines = [line for line in task_log_lines if "CMD_PREVIEW " in line]
     assert len(preview_lines) == 3
     assert "line=1: line-1" in preview_lines[0]
