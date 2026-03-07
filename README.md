@@ -87,8 +87,8 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 
 - Language policy:
   - Most docs are bilingual in a single file (English + Japanese section).
-  - Top guides can be split as `README.md` (EN-focused) and `docs/README_ja.md` (JA-focused).
-- [Main Japanese guide](docs/README_ja.md)
+  - Top guides can be split as `README.md` (EN-focused) and `README_ja.md` (JA-focused).
+- [Main Japanese guide](README_ja.md)
 - [Spec](docs/SPEC.md)
 - [Testing](docs/TESTING.md)
 - [V2 migration](docs/V2_MIGRATION.md)
@@ -101,7 +101,7 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 - [Startup overview](docs/startup/STARTUP_OVERVIEW.md)
 - [Startup by environment](docs/startup/STARTUP_ENVIRONMENTS.md)
 - [Startup quick test](docs/startup/STARTUP_QUICK_TEST.md)
-- [Startup docker guide](docs/startup/STARTUP_DOCKER.md)
+- [Startup docker/podman guide](docs/startup/STARTUP_DOCKER.md)
 - [Startup troubleshooting](docs/startup/STARTUP_TROUBLESHOOTING.md)
 - [Deploy guide](docs/deploy/README.md)
 - [Deploy nginx (v2)](docs/deploy/nginx-v2.conf.example)
@@ -174,6 +174,7 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 ## Notes
 
 - `docker-compose.yml` runs v2 by default.
+- `docker-compose.yml` can be used with Docker Compose and Podman Compose compatible runtimes (best-effort).
 - Breaking change: legacy v1 paths were removed.
 - If you used `run_app.py` or `src/nw_diff`, switch to `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src`.
 - See migration notes in `docs/V2_MIGRATION.md`.
