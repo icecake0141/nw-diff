@@ -204,6 +204,73 @@ def test_v2_worker_processes_queued_task(tmp_path: Path, monkeypatch) -> None:
     assert task["result"]["success_count"] == 1
     assert task["result"]["failure_count"] == 0
 
+    from nw_diff_v2.infra.storage.task_logs import task_log_path
+
+    task_log_text = task_log_path("task-1").read_text(encoding="utf-8")
+    assert "CMD_START host=router1 command=show version" in task_log_text
+    assert "CMD_PREVIEW host=router1 command=show version line=1: ok" in task_log_text
+    assert "CMD_END host=router1 command=show version bytes=2" in task_log_text
+
+    reacquired, _ = try_lock_hosts({"router1"})
+    assert reacquired is True
+    release_hosts({"router1"})
+
+
+def test_v2_worker_logs_command_preview_with_limits(
+    tmp_path: Path, monkeypatch
+) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2_preview.db"
+    artifact_root = tmp_path / "artifacts"
+
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+    monkeypatch.setattr(settings, "task_worker_enabled", False)
+
+    acquired, conflicts = try_lock_hosts({"router1"})
+    assert acquired is True
+    assert conflicts == set()
+
+    task_repo.create_task(
+        task_id="task-preview",
+        mode="single",
+        base="origin",
+        hosts=["router1"],
+    )
+
+    long_line = "A" * 250
+    output = "\n".join(["line-1", long_line, "line-3", "line-4"])
+
+    def _fake_capture(self, **kwargs):  # noqa: ANN001
+        _ = kwargs
+        return {"show version": output}
+
+    monkeypatch.setattr(NetmikoAdapter, "capture_commands", _fake_capture)
+
+    processed = process_one_queued_task()
+    assert processed is True
+
+    from nw_diff_v2.infra.storage.task_logs import task_log_path
+
+    task_log_lines = (
+        task_log_path("task-preview").read_text(encoding="utf-8").splitlines()
+    )
+    preview_lines = [line for line in task_log_lines if "CMD_PREVIEW " in line]
+    assert len(preview_lines) == 3
+    assert "line=1: line-1" in preview_lines[0]
+    assert "line=2: " in preview_lines[1]
+    assert preview_lines[1].endswith("...")
+    assert "line=3: line-3" in preview_lines[2]
+    assert "line-4" not in "\n".join(preview_lines)
+
     reacquired, _ = try_lock_hosts({"router1"})
     assert reacquired is True
     release_hosts({"router1"})
@@ -474,6 +541,12 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "topActionStatus" in response.text
         assert "taskQuickSummary" in response.text
         assert "compareSummary" in response.text
+        assert "Live Console" in response.text
+        assert 'id="liveConsoleView"' in response.text
+        assert 'id="liveConsoleFollowButton"' in response.text
+        assert "function startLiveConsole()" in response.text
+        assert "function toggleLiveConsoleFollow()" in response.text
+        assert "MAX_CONSOLE_LINES = 2000" in response.text
         assert '<select id="exportHost">' in response.text
         assert '<select id="diffHost">' in response.text
         assert '<select id="cmpHost1">' in response.text
