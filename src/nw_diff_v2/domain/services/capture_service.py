@@ -31,10 +31,16 @@ DEFAULT_COMMAND_PROFILES: dict[str, tuple[str, ...]] = {
     "cisco": (
         "show version",
         "show running-config",
+        "show ip route summary",
+        "show bgp summary",
+        "show ospf neighbor",
     ),
     "junos": (
         "show chassis hardware",
         "show route",
+        "show route summary",
+        "show bgp summary",
+        "show ospf neighbor",
     ),
     "linux": (
         "uname -a",

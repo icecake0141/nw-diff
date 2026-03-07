@@ -39,6 +39,16 @@ def test_uses_defaults_when_override_is_missing(monkeypatch, tmp_path: Path) -> 
     assert capture_service._commands_for_model("cisco") == [
         "show version",
         "show running-config",
+        "show ip route summary",
+        "show bgp summary",
+        "show ospf neighbor",
+    ]
+    assert capture_service._commands_for_model("junos") == [
+        "show chassis hardware",
+        "show route",
+        "show route summary",
+        "show bgp summary",
+        "show ospf neighbor",
     ]
     assert capture_service._commands_for_model("Generic Linux") == [
         "uname -a",
