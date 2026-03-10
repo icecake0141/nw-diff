@@ -1,11 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NW-Diff v2 Control Panel</title>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <style>
+{% extends "base.html" %}
+
+{% block title %}NW-Diff v2 Control Panel{% endblock %}
+
+{% block page_css %}
     :root {
       --hero-bg: linear-gradient(135deg, #f5f8ff 0%, #eefbf6 100%);
       --hero-border: #d7e6df;
@@ -561,18 +558,20 @@
         align-items: flex-start;
       }
     }
-  </style>
-</head>
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+{% endblock %}
+
+{% block navbar %}
+  <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
     <a class="navbar-brand" href="/v2">Nwdiff v2</a>
     <div class="navbar-nav">
-      <a class="nav-link" href="/v2">Control Panel</a>
+      <a class="nav-link active" href="/v2">Control Panel</a>
       <a class="nav-link" href="/v2/logs">Logs</a>
     </div>
   </nav>
-  <div class="wrap">
-    <div class="card hero-card">
+{% endblock %}
+
+{% block content %}
+    <div class="panel-card hero-card">
       <div class="hero-layout">
         <div class="hero-copy">
           <div class="hero-title-row">
@@ -780,7 +779,7 @@
       </div>
     </div>
 
-    <div class="card panel-card debug-card">
+    <div class="card panel-card diagnostic-panel debug-card">
       <details class="debug-details">
         <summary>
           <span>Debug</span>
@@ -821,8 +820,9 @@
         </div>
       </details>
     </div>
-  </div>
+{% endblock %}
 
+{% block scripts %}
   <script>
     let streamSource = null;
     let streamTaskId = '';
@@ -1758,5 +1758,4 @@
     renderLiveConsoleMeta();
     setCompareDisplayMode('full');
   </script>
-</body>
-</html>
+{% endblock %}
