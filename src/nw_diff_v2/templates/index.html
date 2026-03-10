@@ -6,8 +6,30 @@
   <title>NW-Diff v2 Control Panel</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <style>
+    :root {
+      --hero-bg: linear-gradient(135deg, #f5f8ff 0%, #eefbf6 100%);
+      --hero-border: #d7e6df;
+      --hero-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+      --ink-strong: #162133;
+      --ink-soft: #4a5568;
+      --surface-soft: #f8fbfd;
+      --accent-primary: #0f766e;
+      --accent-primary-dark: #0b5d57;
+      --accent-secondary: #dbeafe;
+      --accent-secondary-ink: #17406d;
+      --status-idle-bg: #eef2ff;
+      --status-idle-border: #c7d2fe;
+      --status-running-bg: #ecfeff;
+      --status-running-border: #67e8f9;
+      --status-success-bg: #ecfdf5;
+      --status-success-border: #86efac;
+      --status-failed-bg: #fff7ed;
+      --status-failed-border: #fdba74;
+      --status-debug-bg: #f8fafc;
+      --status-debug-border: #e2e8f0;
+    }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: "Segoe UI", Helvetica, Arial, sans-serif;
       background: #f8f9fa;
       color: #212529;
       margin: 0;
@@ -40,8 +62,8 @@
     .status-cancelled { background: #e5e7eb; }
     button, .btn-local {
       border: 1px solid transparent;
-      border-radius: 4px;
-      padding: 6px 12px;
+      border-radius: 10px;
+      padding: 8px 14px;
       background: #28a745;
       color: #fff;
       cursor: pointer;
@@ -50,6 +72,10 @@
     }
     button.secondary, .btn-local.secondary { background: #007bff; }
     button.warn, .btn-local.warn { background: #fd7e14; }
+    button:disabled, .btn-local:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
     .row {
       display: flex;
       gap: 8px;
@@ -126,6 +152,248 @@
     .capture-status-text {
       font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
+    .hero-card {
+      background: var(--hero-bg);
+      border: 1px solid var(--hero-border);
+      border-radius: 18px;
+      box-shadow: var(--hero-shadow);
+      padding: 24px;
+    }
+    .hero-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.25fr) minmax(300px, 0.95fr);
+      gap: 20px;
+      align-items: stretch;
+    }
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .hero-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hero-title {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.1;
+      color: var(--ink-strong);
+    }
+    .hero-subtitle {
+      margin: 0;
+      max-width: 650px;
+      color: var(--ink-soft);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .hero-meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: var(--ink-strong);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .hero-actions button {
+      min-width: 170px;
+      min-height: 46px;
+      font-weight: 700;
+      box-shadow: 0 10px 18px rgba(15, 118, 110, 0.18);
+    }
+    .hero-actions button.primary-action {
+      background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-dark) 100%);
+    }
+    .hero-actions button.secondary-action {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      box-shadow: 0 10px 18px rgba(30, 64, 175, 0.18);
+    }
+    .hero-link-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(30, 64, 175, 0.18);
+      background: rgba(255, 255, 255, 0.84);
+      color: var(--accent-secondary-ink);
+      font-weight: 600;
+    }
+    .hero-link-button:hover {
+      text-decoration: none;
+      color: var(--accent-secondary-ink);
+      background: #ffffff;
+    }
+    .hero-status-card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 100%;
+    }
+    .status-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0f766e;
+    }
+    .capture-status-panel {
+      border-radius: 14px;
+      border: 1px solid var(--status-idle-border);
+      background: var(--status-idle-bg);
+      padding: 16px;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .capture-status-panel.running {
+      border-color: var(--status-running-border);
+      background: var(--status-running-bg);
+    }
+    .capture-status-panel.success {
+      border-color: var(--status-success-border);
+      background: var(--status-success-bg);
+    }
+    .capture-status-panel.failed {
+      border-color: var(--status-failed-border);
+      background: var(--status-failed-bg);
+    }
+    .capture-status-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .capture-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--ink-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .capture-status-label {
+      font-size: 12px;
+      color: var(--ink-soft);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .capture-status-headline {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.3;
+      color: var(--ink-strong);
+    }
+    .capture-status-summary {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .capture-status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .capture-status-item {
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(255, 255, 255, 0.7);
+      padding: 10px 12px;
+    }
+    .capture-status-item-label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+    }
+    .capture-status-item-value {
+      display: block;
+      font-size: 14px;
+      color: var(--ink-strong);
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      word-break: break-word;
+    }
+    .debug-card {
+      border-style: dashed;
+      border-color: var(--status-debug-border);
+      background: var(--status-debug-bg);
+    }
+    .debug-details summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 700;
+      color: var(--ink-strong);
+      outline: none;
+    }
+    .debug-details summary::-webkit-details-marker {
+      display: none;
+    }
+    .debug-summary-copy {
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 400;
+    }
+    .debug-details[open] .debug-summary-copy {
+      display: none;
+    }
+    .debug-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .debug-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .debug-panel h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+    .debug-panel .row {
+      margin-bottom: 8px;
+    }
+    .debug-empty {
+      color: #64748b;
+    }
     @keyframes capture-spin {
       to { transform: rotate(360deg); }
     }
@@ -171,6 +439,38 @@
       font-size: 12px;
       line-height: 1.45;
     }
+    @media (max-width: 960px) {
+      .hero-layout {
+        grid-template-columns: 1fr;
+      }
+      .hero-title {
+        font-size: 28px;
+      }
+      .capture-status-grid,
+      .debug-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 640px) {
+      .wrap {
+        padding: 0 10px;
+      }
+      .hero-card {
+        padding: 18px;
+      }
+      .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .hero-actions button,
+      .hero-link-button {
+        width: 100%;
+      }
+      .capture-status-top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   </style>
 </head>
 <body>
@@ -182,29 +482,62 @@
     </div>
   </nav>
   <div class="wrap">
-    <div class="card">
-      <h1>NW-Diff v2 Control Panel</h1>
-      <p class="muted-note">Hosts loaded: <strong>{{ hosts|length }}</strong></p>
-      <div class="row">
-        <button id="captureAllOrigin" title="Capture origin configs from all hosts">Capture Origin All</button>
-        <button id="captureAllDest" class="secondary" title="Capture destination configs from all hosts">Capture Dest All</button>
-        <button class="secondary" onclick="openLogsPage()" title="Open the logs page">Logs</button>
-        <button class="secondary" onclick="runTopWorkerStatus()" title="Load current worker status">Worker Status</button>
-        <button class="secondary" onclick="runTopReadinessStatus()" title="Run readiness checks and show status">Readiness</button>
-        <button class="secondary" onclick="runTopContractStatus()" title="Run API contract status check">Contract Check</button>
+    <div class="card hero-card">
+      <div class="hero-layout">
+        <div class="hero-copy">
+          <div class="hero-title-row">
+            <div>
+              <h1 class="hero-title">NW-Diff v2 Control Panel</h1>
+              <p class="hero-subtitle">Capture origin and destination snapshots, keep the current task in view, and leave operational diagnostics in a separate debug workspace.</p>
+            </div>
+            <div class="hero-meta">
+              <span class="hero-meta-pill">Hosts loaded <strong>{{ hosts|length }}</strong></span>
+              <a class="hero-link-button" href="/v2/logs" target="_blank" rel="noopener noreferrer">Logs</a>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <button id="captureAllOrigin" class="primary-action" title="Capture origin configs from all hosts">Capture Origin All</button>
+            <button id="captureAllDest" class="secondary-action" title="Capture destination configs from all hosts">Capture Dest All</button>
+          </div>
+        </div>
+        <div class="hero-status-card">
+          <div class="status-kicker">Current Progress</div>
+          <div id="captureStatusPanel" class="capture-status-panel">
+            <div class="capture-status-top">
+              <span id="captureStatusBadge" class="capture-status-badge">
+                <span id="captureStatusSpinner" class="capture-spinner" aria-hidden="true"></span>
+                <span id="captureStatusLabel">Idle</span>
+              </span>
+              <span class="capture-status-label">Latest capture status</span>
+            </div>
+            <p id="captureStatusHeadline" class="capture-status-headline">Ready to start a batch capture</p>
+            <p id="captureStatusSummary" class="capture-status-summary">Use one of the main actions to queue a capture across all configured hosts.</p>
+            <div class="capture-status-grid">
+              <div class="capture-status-item">
+                <span class="capture-status-item-label">Task ID</span>
+                <span id="captureStatusTaskId" class="capture-status-item-value">-</span>
+              </div>
+              <div class="capture-status-item">
+                <span class="capture-status-item-label">Base</span>
+                <span id="captureStatusBase" class="capture-status-item-value">-</span>
+              </div>
+              <div class="capture-status-item">
+                <span class="capture-status-item-label">Mode</span>
+                <span id="captureStatusMode" class="capture-status-item-value">-</span>
+              </div>
+              <div class="capture-status-item">
+                <span class="capture-status-item-label">Hosts</span>
+                <span id="captureStatusHosts" class="capture-status-item-value">(all hosts)</span>
+              </div>
+            </div>
+          </div>
+          <div id="topActionStatus" class="muted-note">No capture action has been triggered yet.</div>
+        </div>
       </div>
-      <div id="topActionStatus" class="task-box" style="margin-top:8px;"></div>
-      <div id="workerStatus" class="task-box" style="margin-top:8px;"></div>
-      <div id="readinessStatus" class="task-box" style="margin-top:8px;"></div>
-      <div id="contractStatus" class="task-box" style="margin-top:8px;"></div>
     </div>
 
     <div class="card">
       <h2>Hosts</h2>
-      <div id="captureStatusLine" class="capture-status-line">
-        <span id="captureStatusSpinner" class="capture-spinner" aria-hidden="true"></span>
-        <span id="captureStatusText" class="capture-status-text">Status: Idle</span>
-      </div>
       <div class="row" style="margin-bottom:8px;">
         <input id="summaryHostSearch" type="text" placeholder="host contains..." style="width:220px;">
         <input id="summaryLimit" type="text" value="50" style="width:80px;">
@@ -329,15 +662,46 @@
       <div id="compareHtml" class="compare-html diff-content"></div>
     </div>
 
-    <div class="card">
-      <h2>Lock Status</h2>
-      <div class="row">
-        <input id="lockReleaseHosts" type="text" placeholder="host1,host2" style="width:240px;">
-        <button class="warn" onclick="releaseLocks()" title="Release locks for listed hosts">Release Hosts</button>
-        <button class="secondary" onclick="loadLockStatus()" title="Reload current lock status">Reload Locks</button>
-        <button class="warn" onclick="cleanupLocks()" title="Remove stale host locks">Cleanup Stale Locks</button>
-      </div>
-      <div id="lockStatus" class="task-box" style="margin-top:8px;"></div>
+    <div class="card debug-card">
+      <details class="debug-details">
+        <summary>
+          <span>Debug</span>
+          <span class="debug-summary-copy">Operational diagnostics and lock management</span>
+        </summary>
+        <div class="debug-grid">
+          <div class="debug-panel">
+            <h3>Worker Status</h3>
+            <div class="row">
+              <button class="secondary" onclick="runTopWorkerStatus()" title="Load current worker status">Load Worker Status</button>
+            </div>
+            <div id="workerStatus" class="task-box debug-empty">Run the check to load worker counters.</div>
+          </div>
+          <div class="debug-panel">
+            <h3>Readiness</h3>
+            <div class="row">
+              <button class="secondary" onclick="runTopReadinessStatus()" title="Run readiness checks and show status">Run Readiness</button>
+            </div>
+            <div id="readinessStatus" class="task-box debug-empty">Run the check to inspect queue, lock, and contract readiness.</div>
+          </div>
+          <div class="debug-panel">
+            <h3>Contract Check</h3>
+            <div class="row">
+              <button class="secondary" onclick="runTopContractStatus()" title="Run API contract status check">Run Contract Check</button>
+            </div>
+            <div id="contractStatus" class="task-box debug-empty">Run the check to compare registered routes against the required contract.</div>
+          </div>
+          <div class="debug-panel">
+            <h3>Lock Status</h3>
+            <div class="row">
+              <input id="lockReleaseHosts" type="text" placeholder="host1,host2" style="width:240px;">
+              <button class="warn" onclick="releaseLocks()" title="Release locks for listed hosts">Release Hosts</button>
+              <button class="secondary" onclick="loadLockStatus()" title="Reload current lock status">Reload Locks</button>
+              <button class="warn" onclick="cleanupLocks()" title="Remove stale host locks">Cleanup Stale Locks</button>
+            </div>
+            <div id="lockStatus" class="task-box debug-empty">Run the check to load current lock information.</div>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -398,12 +762,39 @@
       }).format(new Date(parsed * 1000));
     }
 
-    function setCaptureStatus(text, isRunning = false) {
-      const line = document.getElementById('captureStatusLine');
-      const textEl = document.getElementById('captureStatusText');
-      if (!line || !textEl) return;
-      textEl.textContent = text;
-      line.classList.toggle('running', Boolean(isRunning));
+    function statusTone(status, isRunning) {
+      if (isRunning) return 'running';
+      const normalized = String(status || '').toLowerCase();
+      if (normalized === 'completed') return 'success';
+      if (normalized === 'failed' || normalized === 'cancelled') return 'failed';
+      return 'idle';
+    }
+
+    function setCaptureStatus(statusPayload, isRunning = false) {
+      const panel = document.getElementById('captureStatusPanel');
+      const spinner = document.getElementById('captureStatusSpinner');
+      const label = document.getElementById('captureStatusLabel');
+      const headline = document.getElementById('captureStatusHeadline');
+      const summary = document.getElementById('captureStatusSummary');
+      const taskId = document.getElementById('captureStatusTaskId');
+      const base = document.getElementById('captureStatusBase');
+      const mode = document.getElementById('captureStatusMode');
+      const hosts = document.getElementById('captureStatusHosts');
+      if (!panel || !spinner || !label || !headline || !summary || !taskId || !base || !mode || !hosts) return;
+
+      const payload = (statusPayload && typeof statusPayload === 'object') ? statusPayload : {};
+      const status = String(payload.status || 'idle');
+      const tone = statusTone(status, isRunning);
+      panel.classList.remove('idle', 'running', 'success', 'failed');
+      panel.classList.add(tone);
+      spinner.style.display = isRunning ? 'inline-block' : 'none';
+      label.textContent = payload.label || status.charAt(0).toUpperCase() + status.slice(1);
+      headline.textContent = payload.headline || 'Ready to start a batch capture';
+      summary.textContent = payload.summary || 'Use one of the main actions to queue a capture across all configured hosts.';
+      taskId.textContent = payload.taskId || '-';
+      base.textContent = payload.base || '-';
+      mode.textContent = payload.mode || '-';
+      hosts.textContent = payload.hosts || '(all hosts)';
     }
 
     function stopCaptureStatusPolling() {
@@ -424,7 +815,23 @@
       const mode = String((data && data.mode) || 'unknown');
       const hosts = Array.isArray(data && data.hosts) ? data.hosts : [];
       const hostLabel = hosts.length > 0 ? hosts.join(', ') : '(all hosts)';
-      return 'Status: ' + status + ' | mode=' + mode + ' | base=' + base + ' | hosts=' + hostLabel;
+      const normalized = status.toLowerCase();
+      let headline = 'Current task is ' + status;
+      if (normalized === 'queued') headline = 'Capture request queued';
+      if (normalized === 'running') headline = 'Capture is running';
+      if (normalized === 'completed') headline = 'Capture completed';
+      if (normalized === 'failed') headline = 'Capture failed';
+      if (normalized === 'cancelled') headline = 'Capture cancelled';
+      return {
+        status,
+        label: status,
+        headline,
+        summary: 'mode=' + mode + ' | base=' + base + ' | hosts=' + hostLabel,
+        taskId: String((data && data.task_id) || ''),
+        base,
+        mode,
+        hosts: hostLabel
+      };
     }
 
     async function pollCaptureStatus(taskId) {
@@ -445,7 +852,16 @@
 
     function startCaptureStatusPolling(taskId) {
       stopCaptureStatusPolling();
-      setCaptureStatus('Status: Running | task=' + taskId, true);
+      setCaptureStatus({
+        status: 'queued',
+        label: 'Queued',
+        headline: 'Capture request queued',
+        summary: 'Waiting for task execution to begin.',
+        taskId,
+        base: '-',
+        mode: 'batch',
+        hosts: '(all hosts)'
+      }, true);
       pollCaptureStatus(taskId);
       captureStatusTimer = setInterval(() => pollCaptureStatus(taskId), 1200);
     }
@@ -571,13 +987,34 @@
 
     async function captureSingle(host, base) {
       try {
-        setCaptureStatus('Status: Running | mode=single | base=' + base + ' | hosts=' + host, true);
+        setTopActionStatus('[Capture ' + base + ' ' + host + '] started');
+        setCaptureStatus({
+          status: 'running',
+          label: 'Running',
+          headline: 'Starting single-host capture',
+          summary: 'mode=single | base=' + base + ' | hosts=' + host,
+          taskId: '-',
+          base,
+          mode: 'single',
+          hosts: host
+        }, true);
         const data = await api('/api/v2/captures', 'POST', { mode: 'single', base, hosts: [host] });
         document.getElementById('taskId').value = data.task_id;
+        setTopActionStatus('[Capture ' + base + ' ' + host + '] queued task_id=' + data.task_id + ' status=queued');
         startCaptureStatusPolling(data.task_id);
         await checkTask();
       } catch (err) {
-        setCaptureStatus('Status: Failed to start | ' + formatError(err), false);
+        setTopActionStatus('[Capture ' + base + ' ' + host + '] failed: ' + err.message);
+        setCaptureStatus({
+          status: 'failed',
+          label: 'Failed',
+          headline: 'Failed to start single-host capture',
+          summary: formatError(err),
+          taskId: '-',
+          base,
+          mode: 'single',
+          hosts: host
+        }, false);
         alert('Capture failed: ' + err.message);
       }
     }
@@ -598,7 +1035,16 @@
         await checkTask();
       } catch (err) {
         setTopActionStatus('[' + actionLabel + '] failed: ' + err.message);
-        setCaptureStatus('Status: Failed to start | ' + formatError(err), false);
+        setCaptureStatus({
+          status: 'failed',
+          label: 'Failed',
+          headline: actionLabel + ' failed to start',
+          summary: formatError(err),
+          taskId: '-',
+          base,
+          mode: 'batch',
+          hosts: '(all hosts)'
+        }, false);
         alert('Capture-all failed: ' + err.message);
       } finally {
         if (button) button.disabled = false;
@@ -1184,12 +1630,17 @@
       setLiveConsoleFollow(isNearConsoleBottom(view));
       renderLiveConsoleMeta();
     });
-    loadWorkerStatus().catch(() => {});
-    loadReadinessStatus().catch(() => {});
-    loadLockStatus();
-    loadContractStatus().catch(() => {});
     loadHostSummary();
-    setCaptureStatus('Status: Idle', false);
+    setCaptureStatus({
+      status: 'idle',
+      label: 'Idle',
+      headline: 'Ready to start a batch capture',
+      summary: 'Use one of the main actions to queue a capture across all configured hosts.',
+      taskId: '-',
+      base: '-',
+      mode: '-',
+      hosts: '(all hosts)'
+    }, false);
     setLiveConsoleFollow(true);
     renderLiveConsoleMeta();
     setCompareDisplayMode('full');
