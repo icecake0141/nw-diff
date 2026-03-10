@@ -562,7 +562,9 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert '<select id="diffHost">' in response.text
         assert '<select id="cmpHost1">' in response.text
         assert '<select id="cmpHost2">' in response.text
-        assert response.text.find("<h2>Compare</h2>") < response.text.find(">Debug</span>")
+        compare_heading = response.text.find("<h2>Compare</h2>")
+        debug_heading = response.text.find(">Debug</span>")
+        assert compare_heading < debug_heading
         assert 'id="compareDisplayModeToggle"' in response.text
         assert "Display: Full (click for Compact)" in response.text
         assert "<h2>Host Diff Summary</h2>" not in response.text
@@ -571,7 +573,7 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert 'class="compare-html diff-content"' in response.text
         assert "<h2>Lock Status</h2>" not in response.text
         assert '<details class="debug-details">' in response.text
-        assert 'Run the check to load current lock information.' in response.text
+        assert "Run the check to load current lock information." in response.text
         assert (
             "document.getElementById('workerStatus').textContent = JSON.stringify("
             not in response.text
