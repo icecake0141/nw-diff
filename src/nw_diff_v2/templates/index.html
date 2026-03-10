@@ -1,11 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NW-Diff v2 Control Panel</title>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <style>
+{% extends "base.html" %}
+
+{% block title %}NW-Diff v2 Control Panel{% endblock %}
+
+{% block page_css %}
     :root {
       --hero-bg: linear-gradient(135deg, #f5f8ff 0%, #eefbf6 100%);
       --hero-border: #d7e6df;
@@ -471,18 +468,20 @@
         align-items: flex-start;
       }
     }
-  </style>
-</head>
-<body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+{% endblock %}
+
+{% block navbar %}
+  <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
     <a class="navbar-brand" href="/v2">Nwdiff v2</a>
     <div class="navbar-nav">
-      <a class="nav-link" href="/v2">Control Panel</a>
+      <a class="nav-link active" href="/v2">Control Panel</a>
       <a class="nav-link" href="/v2/logs">Logs</a>
     </div>
   </nav>
-  <div class="wrap">
-    <div class="card hero-card">
+{% endblock %}
+
+{% block content %}
+    <div class="panel-card hero-card">
       <div class="hero-layout">
         <div class="hero-copy">
           <div class="hero-title-row">
@@ -536,8 +535,14 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>Hosts</h2>
+    <div class="panel-card subtle-panel">
+      <div class="section-header">
+        <div class="section-heading">
+          <span class="section-kicker">Inventory</span>
+          <h2 class="section-title">Hosts</h2>
+          <p class="section-supporting">Filter configured devices and refresh the latest host diff summary.</p>
+        </div>
+      </div>
       <div class="row" style="margin-bottom:8px;">
         <input id="summaryHostSearch" type="text" placeholder="host contains..." style="width:220px;">
         <input id="summaryLimit" type="text" value="50" style="width:80px;">
@@ -551,8 +556,14 @@
       <div id="hostSummaryTableWrap"></div>
     </div>
 
-    <div class="card">
-      <h2>Live Console</h2>
+    <div class="panel-card">
+      <div class="section-header">
+        <div class="section-heading">
+          <span class="section-kicker">Runtime</span>
+          <h2 class="section-title">Live Console</h2>
+          <p class="section-supporting">Track task activity, tail logs, and cancel active work from one console.</p>
+        </div>
+      </div>
       <div class="row">
         <input id="taskId" type="text" placeholder="Task ID">
         <button class="warn" onclick="cancelTask()" title="Request cancellation for selected task">Cancel Task</button>
@@ -584,8 +595,14 @@
       <pre id="liveConsoleView" class="live-console"></pre>
     </div>
 
-    <div class="card">
-      <h2>Export</h2>
+    <div class="panel-card subtle-panel">
+      <div class="section-header">
+        <div class="section-heading">
+          <span class="section-kicker">Artifacts</span>
+          <h2 class="section-title">Export</h2>
+          <p class="section-supporting">Open captured JSON or HTML artifacts for a selected host without leaving the control surface.</p>
+        </div>
+      </div>
       <div class="row">
         <select id="exportHost">
           <option value="">-- Select host --</option>
@@ -600,8 +617,14 @@
       <div id="exportDiffView" class="task-box" style="margin-top:8px;"></div>
     </div>
 
-    <div class="card">
-      <h2>Compare</h2>
+    <div class="panel-card">
+      <div class="section-header">
+        <div class="section-heading">
+          <span class="section-kicker">Analysis</span>
+          <h2 class="section-title">Compare</h2>
+          <p class="section-supporting">Run host-to-host and origin-to-destination comparisons with the same display controls used elsewhere.</p>
+        </div>
+      </div>
       <div class="row" style="margin-bottom:8px;">
         <select id="diffHost">
           <option value="">-- Select host --</option>
@@ -645,7 +668,7 @@
       <div id="compareHtml" class="compare-html diff-content"></div>
     </div>
 
-    <div class="card debug-card">
+    <div class="panel-card diagnostic-panel debug-card">
       <details class="debug-details">
         <summary>
           <span>Debug</span>
@@ -686,8 +709,9 @@
         </div>
       </details>
     </div>
-  </div>
+{% endblock %}
 
+{% block scripts %}
   <script>
     let streamSource = null;
     let streamTaskId = '';
@@ -1605,5 +1629,4 @@
     renderLiveConsoleMeta();
     setCompareDisplayMode('full');
   </script>
-</body>
-</html>
+{% endblock %}

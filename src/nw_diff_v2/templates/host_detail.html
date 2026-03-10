@@ -11,122 +11,136 @@ You may obtain a copy of the License at
 This file was created or modified with the assistance of an AI (Large Language Model).
 Review required for correctness, security, and licensing.
 -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NW-Diff v2 Host Detail</title>
-  <style>
-    body {
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background: #f3f6fb;
-      color: #1f2937;
-      margin: 0;
-      padding: 20px;
+{% extends "base.html" %}
+
+{% block title %}NW-Diff v2 Host Detail{% endblock %}
+
+{% block page_css %}
+  .host-detail-page {
+    max-width: 1440px;
+  }
+  .host-detail-summary {
+    margin-top: 10px;
+  }
+  .result-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 251, 253, 0.97) 100%);
+  }
+  .result-card h3 {
+    margin: 0 0 10px;
+    font-size: 20px;
+    line-height: 1.35;
+  }
+  .result-card p {
+    margin: 0 0 8px;
+    color: var(--ink-soft);
+  }
+  .status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #e5e7eb;
+    color: #1f2937;
+  }
+  .changed {
+    background: #fde68a;
+  }
+  .identical {
+    background: #bfdbfe;
+  }
+  details.diff-details {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 10px;
+    margin-top: 12px;
+  }
+  details.diff-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--ink-strong);
+  }
+  .diff-content {
+    padding-top: 8px;
+  }
+  .diff-content.full {
+    max-height: none;
+    overflow: visible;
+  }
+  .diff-content.compact {
+    max-height: 360px;
+    overflow: auto;
+  }
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .summary-table th,
+  .summary-table td {
+    border: 1px solid var(--border-soft);
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .summary-table th {
+    width: 240px;
+    background: var(--surface-subtle);
+    font-weight: 700;
+  }
+  @media (max-width: 640px) {
+    #commandContains {
+      width: 100% !important;
     }
-    .wrap {
-      width: 100%;
-      max-width: none;
-      margin: 0 auto;
-      padding: 0 12px;
-      box-sizing: border-box;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid #d9e2ef;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 14px;
-    }
-    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    button {
-      border: none;
-      border-radius: 8px;
-      padding: 8px 12px;
-      background: #0a5bdc;
-      color: #fff;
-      cursor: pointer;
-    }
-    button.secondary { background: #2563eb; }
-    .status {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-      background: #e5e7eb;
-    }
-    .changed { background: #fde68a; }
-    .identical { background: #bfdbfe; }
-    .task-box { font-family: Menlo, Monaco, monospace; white-space: pre-wrap; font-size: 12px; }
-    input, select {
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 6px 8px;
-    }
-    details {
-      border-top: 1px solid #e5e7eb;
-      padding-top: 8px;
-    }
-    .diff-content {
-      padding-top: 8px;
-    }
-    .diff-content.full {
-      max-height: none;
-      overflow: visible;
-    }
-    .diff-content.compact {
-      max-height: 360px;
-      overflow: auto;
-    }
-    .summary-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    .summary-table th,
-    .summary-table td {
-      border: 1px solid #d9e2ef;
-      padding: 6px 8px;
-      text-align: left;
-      vertical-align: top;
-    }
-    .summary-table th {
-      width: 240px;
-      background: #f8fafc;
-      font-weight: 700;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Host Detail: {{ hostname }}</h1>
-      <div class="row">
-        <a href="/v2">Back to v2</a>
-        <select id="view">
-          <option value="inline">inline</option>
-          <option value="sidebyside" selected>sidebyside</option>
-        </select>
-        <button class="secondary" id="diffModeToggle" onclick="toggleDiffMode()" title="Toggle between full and context diff mode">Context View</button>
-        <button class="secondary" id="displayModeToggle" onclick="toggleDisplayMode()" title="Toggle diff display between full and compact">Display: Full (click for Compact)</button>
-        <select id="statusFilter">
-          <option value="">all</option>
-          <option value="changed">changed</option>
-          <option value="identical">identical</option>
-          <option value="unavailable">unavailable</option>
-          <option value="not_found">not_found</option>
-        </select>
-        <input id="commandContains" type="text" placeholder="command contains..." style="width:220px;">
-        <button onclick="loadDetail()" title="Reload host detail data">Reload</button>
-        <button class="secondary" onclick="expandAll()" title="Expand all diff sections">Expand All</button>
-        <button class="secondary" onclick="collapseAll()" title="Collapse all diff sections">Collapse All</button>
-      </div>
-      <div id="summary" class="task-box" style="margin-top:8px;"></div>
+  }
+{% endblock %}
+
+{% block navbar %}
+  <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+    <a class="navbar-brand" href="/v2">Nwdiff v2</a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="/v2">Control Panel</a>
+      <a class="nav-link" href="/v2/logs">Logs</a>
     </div>
-    <div id="results"></div>
+  </nav>
+{% endblock %}
+
+{% block wrap_class %}host-detail-page{% endblock %}
+
+{% block content %}
+  <div class="panel-card subtle-panel">
+    <div class="section-header">
+      <div class="section-heading">
+        <span class="section-kicker">Host Inspection</span>
+        <h1 class="section-title">Host Detail: {{ hostname }}</h1>
+        <p class="section-supporting">Review command-level diff results while keeping filters and display controls in one workspace.</p>
+      </div>
+      <a class="btn-local secondary" href="/v2">Back to v2</a>
+    </div>
+    <div class="row">
+      <select id="view">
+        <option value="inline">inline</option>
+        <option value="sidebyside" selected>sidebyside</option>
+      </select>
+      <button class="secondary" id="diffModeToggle" onclick="toggleDiffMode()" title="Toggle between full and context diff mode">Context View</button>
+      <button class="secondary" id="displayModeToggle" onclick="toggleDisplayMode()" title="Toggle diff display between full and compact">Display: Full (click for Compact)</button>
+      <select id="statusFilter">
+        <option value="">all</option>
+        <option value="changed">changed</option>
+        <option value="identical">identical</option>
+        <option value="unavailable">unavailable</option>
+        <option value="not_found">not_found</option>
+      </select>
+      <input id="commandContains" type="text" placeholder="command contains..." style="width:220px;">
+      <button onclick="loadDetail()" title="Reload host detail data">Reload</button>
+      <button class="secondary" onclick="expandAll()" title="Expand all diff sections">Expand All</button>
+      <button class="secondary" onclick="collapseAll()" title="Collapse all diff sections">Collapse All</button>
+    </div>
+    <div id="summary" class="task-box host-detail-summary"></div>
   </div>
+  <div id="results"></div>
+{% endblock %}
+
+{% block scripts %}
   <script>
     const hostname = {{ hostname|tojson }};
     let diffMode = 'full';
@@ -186,7 +200,7 @@ Review required for correctness, security, and licensing.
             ? 'changed'
             : (item.diff_status === 'identical' ? 'identical' : '');
           return [
-            '<div class="card">',
+            '<div class="panel-card result-card">',
             '<h3>' + escapeHtml(item.command) + '</h3>',
             '<p><span class="status ' + statusClass + '">' + escapeHtml(item.diff_status) + '</span></p>',
             '<p>origin: ' + escapeHtml(item.origin_status) + ' / mtime: ' + escapeHtml(formatBrowserTime(item.origin_mtime)) + '</p>',
@@ -283,5 +297,4 @@ Review required for correctness, security, and licensing.
     updateDisplayModeButton();
     loadDetail();
   </script>
-</body>
-</html>
+{% endblock %}

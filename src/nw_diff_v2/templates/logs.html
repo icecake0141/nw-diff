@@ -1,52 +1,61 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NW-Diff v2 Logs</title>
-  <style>
-    body {
-      font-family: Menlo, Monaco, monospace;
-      background: #f8fafc;
-      color: #0f172a;
-      margin: 0;
-      padding: 20px;
+{% extends "base.html" %}
+
+{% block title %}NW-Diff v2 Logs{% endblock %}
+
+{% block page_css %}
+  .logs-page {
+    max-width: 1320px;
+  }
+  .logs-toolbar {
+    margin-bottom: 14px;
+  }
+  .logs-meta {
+    margin-bottom: 12px;
+    color: var(--ink-soft);
+    font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+  }
+  pre {
+    margin: 0;
+    background: #0b1220;
+    color: #e2e8f0;
+    border: 1px solid #233047;
+    border-radius: 12px;
+    padding: 14px;
+    overflow: auto;
+    max-height: 70vh;
+  }
+  @media (max-width: 640px) {
+    #taskId,
+    #limit {
+      width: 100% !important;
     }
-    .card {
-      background: #fff;
-      border: 1px solid #d9e2ef;
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 12px;
-    }
-    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    input, select {
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 6px 8px;
-    }
-    button {
-      border: none;
-      border-radius: 8px;
-      padding: 7px 10px;
-      background: #0a5bdc;
-      color: #fff;
-      cursor: pointer;
-    }
-    pre {
-      background: #0b1220;
-      color: #e2e8f0;
-      border-radius: 8px;
-      padding: 12px;
-      overflow: auto;
-      max-height: 70vh;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="row">
-      <a href="/v2">Back to v2</a>
+  }
+{% endblock %}
+
+{% block navbar %}
+  <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+    <a class="navbar-brand" href="/v2">Nwdiff v2</a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="/v2">Control Panel</a>
+      <a class="nav-link active" href="/v2/logs">Logs</a>
+    </div>
+  </nav>
+{% endblock %}
+
+{% block wrap_class %}logs-page{% endblock %}
+
+{% block content %}
+  <div class="panel-card subtle-panel">
+    <div class="section-header">
+      <div class="section-heading">
+        <span class="section-kicker">Diagnostics</span>
+        <h1 class="section-title">NW-Diff v2 Logs</h1>
+        <p class="section-supporting">Filter application or task logs without leaving the v2 workspace.</p>
+      </div>
+      <a class="btn-local secondary" href="/v2">Back to v2</a>
+    </div>
+    <div class="row logs-toolbar">
       <select id="source">
         <option value="app">app</option>
         <option value="task">task</option>
@@ -59,10 +68,21 @@
       <button onclick="loadLogs()" title="Load logs with current filters">Load</button>
     </div>
   </div>
-  <div class="card">
-    <div id="meta"></div>
+
+  <div class="panel-card">
+    <div class="section-header">
+      <div class="section-heading">
+        <span class="section-kicker">Output</span>
+        <h2 class="section-title">Log Stream</h2>
+        <p class="section-supporting">The structured metadata stays visible above the raw text output.</p>
+      </div>
+    </div>
+    <div id="meta" class="logs-meta"></div>
     <pre id="logText"></pre>
   </div>
+{% endblock %}
+
+{% block scripts %}
   <script>
     async function loadLogs() {
       const source = document.getElementById('source').value;
@@ -90,5 +110,4 @@
     }
     loadLogs();
   </script>
-</body>
-</html>
+{% endblock %}

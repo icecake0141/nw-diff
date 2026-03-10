@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NW-Diff v2{% endblock %}</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    :root {
+      --page-bg: linear-gradient(180deg, #f5f8ff 0%, #f6fbf8 48%, #f8fafc 100%);
+      --surface-base: rgba(255, 255, 255, 0.92);
+      --surface-muted: #f8fbfd;
+      --surface-subtle: #f3f7fb;
+      --border-soft: #d9e4ec;
+      --border-strong: #c7d6e2;
+      --shadow-soft: 0 14px 32px rgba(15, 23, 42, 0.06);
+      --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --ink-strong: #162133;
+      --ink-soft: #526072;
+      --ink-muted: #64748b;
+      --accent-primary: #0f766e;
+      --accent-primary-dark: #0b5d57;
+      --accent-secondary: #1d4ed8;
+      --accent-secondary-dark: #1e40af;
+      --accent-secondary-ink: #17406d;
+      --focus-ring: rgba(29, 78, 216, 0.18);
+      --nav-bg: #162133;
+      --nav-link: rgba(255, 255, 255, 0.8);
+      --nav-link-active: #ffffff;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--page-bg);
+      color: var(--ink-strong);
+      margin: 0;
+      min-height: 100vh;
+    }
+    a {
+      color: var(--accent-secondary);
+    }
+    a:hover {
+      color: var(--accent-secondary-dark);
+    }
+    .app-navbar {
+      background: var(--nav-bg);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
+    }
+    .app-navbar .navbar-brand {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .app-navbar .nav-link {
+      color: var(--nav-link);
+    }
+    .app-navbar .nav-link:hover,
+    .app-navbar .nav-link.active {
+      color: var(--nav-link-active);
+    }
+    .wrap {
+      width: 100%;
+      max-width: 1600px;
+      margin: 24px auto 40px;
+      padding: 0 12px;
+    }
+    .panel-card {
+      background: var(--surface-base);
+      border: 1px solid var(--border-soft);
+      border-radius: 16px;
+      box-shadow: var(--shadow-soft);
+      padding: 20px;
+      margin-bottom: 18px;
+      backdrop-filter: blur(10px);
+    }
+    .panel-card.subtle-panel {
+      background: linear-gradient(180deg, rgba(248, 251, 253, 0.96) 0%, rgba(255, 255, 255, 0.96) 100%);
+    }
+    .panel-card.diagnostic-panel {
+      background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(241, 245, 249, 0.96) 100%);
+      border-color: #dbe4ee;
+    }
+    .section-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .section-heading {
+      min-width: 0;
+    }
+    .section-kicker {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent-primary);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .section-title {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+      color: var(--ink-strong);
+    }
+    .section-supporting {
+      margin: 6px 0 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    button, .btn-local {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 8px 14px;
+      background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-dark) 100%);
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1.5;
+      font-weight: 600;
+      box-shadow: 0 10px 18px rgba(15, 118, 110, 0.15);
+    }
+    button.secondary, .btn-local.secondary {
+      background: linear-gradient(135deg, var(--accent-secondary) 0%, var(--accent-secondary-dark) 100%);
+      box-shadow: 0 10px 18px rgba(30, 64, 175, 0.14);
+    }
+    button.warn, .btn-local.warn {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      box-shadow: 0 10px 18px rgba(234, 88, 12, 0.16);
+    }
+    button:disabled, .btn-local:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+      box-shadow: none;
+    }
+    input[type="text"], select, textarea {
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.94);
+      color: var(--ink-strong);
+      min-height: 40px;
+    }
+    input[type="text"]:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(29, 78, 216, 0.55);
+      box-shadow: 0 0 0 4px var(--focus-ring);
+    }
+    input[type="checkbox"] {
+      accent-color: var(--accent-secondary);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      text-align: left;
+      border: 1px solid var(--border-soft);
+      padding: 8px;
+      vertical-align: top;
+    }
+    thead th {
+      background: #243244;
+      color: #fff;
+      font-weight: 600;
+    }
+    .muted-note {
+      color: var(--ink-muted);
+      font-size: 0.95rem;
+    }
+    .task-box {
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      font-size: 12px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    @media (max-width: 960px) {
+      .panel-card {
+        padding: 18px;
+      }
+      .section-title {
+        font-size: 22px;
+      }
+    }
+    @media (max-width: 640px) {
+      .wrap {
+        margin-top: 18px;
+        padding: 0 10px;
+      }
+      .panel-card {
+        padding: 16px;
+        border-radius: 14px;
+      }
+      button, .btn-local, input[type="text"], select, textarea {
+        width: 100%;
+      }
+      .section-header {
+        margin-bottom: 14px;
+      }
+    }
+    {% block page_css %}{% endblock %}
+  </style>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% block navbar %}{% endblock %}
+  <div class="wrap {% block wrap_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
