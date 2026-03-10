@@ -1090,7 +1090,7 @@
 
     function openHostDetail(host) {
       if (!host) return;
-      window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');
+      window.location.assign('/v2/hosts/' + encodeURIComponent(host));
     }
 
     function openLogsPage() {
