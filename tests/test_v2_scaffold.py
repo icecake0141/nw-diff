@@ -1390,7 +1390,10 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
     with TestClient(app) as client:
         response = client.get("/v2/hosts/router1")
         assert response.status_code == 200
-        assert "Host Detail: router1" in response.text
+        assert "Host Detail" in response.text
+        assert ">router1</h1>" in response.text
+        assert "Filters and Summary" in response.text
+        assert "Command Results" in response.text
         assert (
             '<option value="sidebyside" selected>sidebyside</option>' in response.text
         )
@@ -1398,6 +1401,7 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
         assert "Display: Full (click for Compact)" in response.text
         assert "summary-table" in response.text
         assert "diff-content" in response.text
+        assert "Back to Control Panel" in response.text
 
 
 def test_v2_logs_api_app_source(tmp_path: Path, monkeypatch) -> None:
@@ -1478,6 +1482,9 @@ def test_v2_logs_api_task_source_and_page(tmp_path: Path, monkeypatch) -> None:
         assert page.status_code == 200
         assert "NW-Diff v2 Logs" in page.text
         assert "contains text" in page.text
+        assert "Filters" in page.text
+        assert "Log Output" in page.text
+        assert "Back to Control Panel" in page.text
 
 
 def test_v2_task_list_endpoint(tmp_path: Path, monkeypatch) -> None:
