@@ -592,10 +592,7 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "Stop Auto Refresh" not in response.text
         assert "Retry</button>" not in response.text
         assert "Live</button>" not in response.text
-        assert (
-            'title="Select this task and open its live console"'
-            in response.text
-        )
+        assert 'title="Select this task and open its live console"' in response.text
         assert (
             'title="Request cancellation for this task" onclick="quickCancel('
             in response.text
