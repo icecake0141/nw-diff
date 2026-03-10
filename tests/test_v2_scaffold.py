@@ -1380,6 +1380,34 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
         assert "diff-content" in response.text
 
 
+def test_v2_index_host_detail_uses_same_tab_navigation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2.db"
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+
+    with TestClient(app) as client:
+        response = client.get("/v2")
+        assert response.status_code == 200
+        assert (
+            "window.location.assign('/v2/hosts/' + encodeURIComponent(host));"
+            in response.text
+        )
+        assert (
+            "window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');"
+            not in response.text
+        )
+
+
 def test_v2_logs_api_app_source(tmp_path: Path, monkeypatch) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
