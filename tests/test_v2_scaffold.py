@@ -562,7 +562,7 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert '<select id="diffHost">' in response.text
         assert '<select id="cmpHost1">' in response.text
         assert '<select id="cmpHost2">' in response.text
-        compare_heading = response.text.find("<h2>Compare</h2>")
+        compare_heading = response.text.find(">Compare</h2>")
         debug_heading = response.text.find(">Debug</span>")
         assert compare_heading < debug_heading
         assert 'id="compareDisplayModeToggle"' in response.text
@@ -570,7 +570,9 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "<h2>Host Diff Summary</h2>" not in response.text
         assert "Origin Capture Status" in response.text
         assert "Dest Capture Status" in response.text
-        assert 'class="compare-html diff-content"' in response.text
+        assert 'id="compareHtml"' in response.text
+        diff_placeholder = "Diff output will appear here after " "running a comparison."
+        assert diff_placeholder in response.text
         assert "<h2>Lock Status</h2>" not in response.text
         assert '<details class="debug-details">' in response.text
         assert "Run the check to load current lock information." in response.text
