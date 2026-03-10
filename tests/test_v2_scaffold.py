@@ -1402,7 +1402,10 @@ def test_v2_index_host_detail_uses_same_tab_navigation(
             "window.location.assign('/v2/hosts/' + encodeURIComponent(host));"
             in response.text
         )
-        assert "window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');" not in response.text
+        assert (
+            "window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');"
+            not in response.text
+        )
 
 
 def test_v2_logs_api_app_source(tmp_path: Path, monkeypatch) -> None:
