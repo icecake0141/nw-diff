@@ -535,10 +535,21 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         response = client.get("/v2")
         assert response.status_code == 200
         assert "NW-Diff v2 Control Panel" in response.text
+        assert "Current Progress" in response.text
+        assert "Ready to start a batch capture" in response.text
+        assert "Capture Origin All" in response.text
+        assert "Capture Dest All" in response.text
+        assert ">Logs</a>" in response.text
+        assert "<summary>" in response.text
+        assert ">Debug</span>" in response.text
         assert "Lock Status" in response.text
         assert "Readiness" in response.text
+        assert "Worker Status" in response.text
+        assert "Contract Check" in response.text
         assert "host1,host2" in response.text
         assert "topActionStatus" in response.text
+        assert 'id="captureStatusPanel"' in response.text
+        assert 'id="captureStatusHeadline"' in response.text
         assert "taskQuickSummary" in response.text
         assert "compareSummary" in response.text
         assert "Live Console" in response.text
@@ -551,15 +562,16 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert '<select id="diffHost">' in response.text
         assert '<select id="cmpHost1">' in response.text
         assert '<select id="cmpHost2">' in response.text
-        assert response.text.find("<h2>Compare</h2>") < response.text.find(
-            "<h2>Lock Status</h2>"
-        )
+        assert response.text.find("<h2>Compare</h2>") < response.text.find(">Debug</span>")
         assert 'id="compareDisplayModeToggle"' in response.text
         assert "Display: Full (click for Compact)" in response.text
         assert "<h2>Host Diff Summary</h2>" not in response.text
         assert "Origin Capture Status" in response.text
         assert "Dest Capture Status" in response.text
         assert 'class="compare-html diff-content"' in response.text
+        assert "<h2>Lock Status</h2>" not in response.text
+        assert '<details class="debug-details">' in response.text
+        assert 'Run the check to load current lock information.' in response.text
         assert (
             "document.getElementById('workerStatus').textContent = JSON.stringify("
             not in response.text
@@ -585,6 +597,10 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "formatContractStatus(" in response.text
         assert "formatLockStatus(" in response.text
         assert "formatHostSummaryStatus(" in response.text
+        assert "loadWorkerStatus().catch(() => {});" not in response.text
+        assert "loadReadinessStatus().catch(() => {});" not in response.text
+        assert "loadContractStatus().catch(() => {});" not in response.text
+        assert "loadLockStatus();" not in response.text
 
 
 def test_v2_batch_skip_locked_policy(tmp_path: Path, monkeypatch) -> None:
