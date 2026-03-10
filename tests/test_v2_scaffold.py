@@ -571,7 +571,9 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "Origin Capture Status" in response.text
         assert "Dest Capture Status" in response.text
         assert 'id="compareHtml"' in response.text
-        diff_placeholder = "Diff output will appear here after " "running a comparison."
+        diff_placeholder = (
+            "Diff output will appear here after " + "running a comparison."
+        )
         assert diff_placeholder in response.text
         assert "<h2>Lock Status</h2>" not in response.text
         assert '<details class="debug-details">' in response.text
