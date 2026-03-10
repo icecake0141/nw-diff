@@ -652,17 +652,13 @@
       <div class="panel-header">
         <div class="panel-heading">
           <h2 class="panel-title">Task Inspector</h2>
-          <p class="panel-description">Track queued and running work, inspect task payloads, and open or tail streams without leaving the control panel.</p>
+          <p class="panel-description">Track queued and running work, keep the selected task in focus, and hand off live output to the dedicated console below.</p>
         </div>
       </div>
       <div class="panel-toolbar">
         <input id="taskId" type="text" placeholder="Task ID">
-        <button class="warn" onclick="checkTask()" title="Load selected task details">Check</button>
-        <button class="secondary" onclick="openStream()" title="Open task stream in a new tab">Open Stream</button>
         <button class="warn" onclick="cancelTask()" title="Request cancellation for selected task">Cancel Task</button>
-        <button class="secondary" onclick="startLiveStream()" title="Start live stream in this page">Live Stream</button>
-        <button onclick="stopLiveStream()" title="Stop the live stream">Stop Live</button>
-        <button onclick="loadRecentTasks()" title="Load recent tasks list">Recent Tasks</button>
+        <input id="tailLines" type="text" value="20" style="width:80px;" />
       </div>
       <div class="panel-toolbar secondary">
         <select id="statusFilter">
@@ -678,29 +674,11 @@
           <input id="runningOnly" type="checkbox" />
           running only
         </label>
-        <input id="refreshSec" type="text" value="5" style="width:80px;" />
-        <button onclick="startAutoRefresh()" title="Start periodic recent-task refresh">Start Auto Refresh</button>
-        <button class="warn" onclick="stopAutoRefresh()" title="Stop periodic recent-task refresh">Stop Auto Refresh</button>
-        <input id="tailLines" type="text" value="20" style="width:80px;" />
       </div>
-      <div id="taskQuickSummary" class="panel-summary muted">Select a task to inspect status, payload, and stream metadata.</div>
-      <div class="panel-grid two-column" style="margin-top:12px;">
-        <div class="panel-surface">
-          <h3 class="panel-surface-title">Task Detail</h3>
-          <div id="taskView" class="task-box empty-state">Task detail will appear here.</div>
-        </div>
-        <div class="panel-surface">
-          <h3 class="panel-surface-title">Recent Task Payload</h3>
-          <div id="taskListView" class="task-box empty-state">Recent task payload will appear here after loading.</div>
-        </div>
-      </div>
+      <div id="taskQuickSummary" class="panel-summary muted">Select a task to open its live console and review recent task status.</div>
       <div class="panel-surface" style="margin-top:12px;">
-        <h3 class="panel-surface-title">Recent Tasks Table</h3>
+        <h3 class="panel-surface-title">Recent Task Table</h3>
         <div id="taskTableWrap"></div>
-      </div>
-      <div class="panel-surface" style="margin-top:12px;">
-        <h3 class="panel-surface-title">Embedded Stream</h3>
-        <div id="streamView" class="task-box empty-state">Open a task stream to mirror messages here.</div>
       </div>
     </div>
 
@@ -712,8 +690,6 @@
         </div>
       </div>
       <div class="panel-toolbar console-toolbar">
-        <button class="secondary" onclick="startLiveConsole()">Start</button>
-        <button onclick="stopLiveStream()">Stop</button>
         <button class="warn" onclick="clearLiveConsole()">Clear</button>
         <button class="secondary" id="liveConsoleFollowButton" onclick="toggleLiveConsoleFollow()">Follow: ON</button>
         <span id="liveConsoleFollowState" class="console-state">follow=on</span>
@@ -856,6 +832,7 @@
     let captureStatusTimer = null;
     let taskPageOffset = 0;
     const taskPageSize = 10;
+    const RECENT_TASK_REFRESH_MS = 5000;
     const MAX_CONSOLE_LINES = 2000;
     const CONSOLE_STICKY_THRESHOLD_PX = 16;
     let compareDisplayMode = 'full';
@@ -1153,7 +1130,7 @@
         document.getElementById('taskId').value = data.task_id;
         setTopActionStatus('[Capture ' + base + ' ' + host + '] queued task_id=' + data.task_id + ' status=queued');
         startCaptureStatusPolling(data.task_id);
-        await checkTask();
+        await selectTask(data.task_id);
       } catch (err) {
         setTopActionStatus('[Capture ' + base + ' ' + host + '] failed: ' + err.message);
         setCaptureStatus({
@@ -1178,12 +1155,21 @@
       if (button) button.disabled = true;
       setTopActionStatus('[' + actionLabel + '] started');
       try {
-        setCaptureStatus('Status: Running | mode=batch | base=' + base + ' | hosts=(all)', true);
+        setCaptureStatus({
+          status: 'running',
+          label: 'Running',
+          headline: actionLabel + ' started',
+          summary: 'mode=batch | base=' + base + ' | hosts=(all hosts)',
+          taskId: '-',
+          base,
+          mode: 'batch',
+          hosts: '(all hosts)'
+        }, true);
         const data = await api('/api/v2/captures', 'POST', { mode: 'batch', base, hosts: [] });
         setTopActionStatus('[' + actionLabel + '] queued task_id=' + data.task_id + ' status=queued');
         document.getElementById('taskId').value = data.task_id;
         startCaptureStatusPolling(data.task_id);
-        await checkTask();
+        await selectTask(data.task_id);
       } catch (err) {
         setTopActionStatus('[' + actionLabel + '] failed: ' + err.message);
         setCaptureStatus({
@@ -1215,10 +1201,12 @@
           'hosts=' + (data.hosts || []).join(','),
           'cancel_requested=' + Boolean(data.cancel_requested)
         ].join(' | ');
-        document.getElementById('taskView').textContent = JSON.stringify(data, null, 2);
+        renderLiveConsoleMeta();
+        return data;
       } catch (err) {
         document.getElementById('taskQuickSummary').textContent = '';
-        document.getElementById('taskView').textContent = err.message;
+        renderLiveConsoleMeta();
+        throw err;
       }
     }
 
@@ -1331,10 +1319,8 @@
         if (runningOnly) parts.push('running_only=true');
         if (hostSearch) parts.push('host_contains=' + encodeURIComponent(hostSearch));
         const data = await api('/api/v2/tasks?' + parts.join('&'));
-        document.getElementById('taskListView').textContent = JSON.stringify(data, null, 2);
         renderTaskTable(data);
       } catch (err) {
-        document.getElementById('taskListView').textContent = err.message;
         document.getElementById('taskTableWrap').innerHTML = '';
       }
     }
@@ -1434,10 +1420,7 @@
 
     function startAutoRefresh() {
       stopAutoRefresh();
-      const sec = Number(document.getElementById('refreshSec').value || '5');
-      const interval = Number.isFinite(sec) && sec > 0 ? sec : 5;
-      loadRecentTasks();
-      refreshTimer = setInterval(loadRecentTasks, interval * 1000);
+      refreshTimer = setInterval(loadRecentTasks, RECENT_TASK_REFRESH_MS);
     }
 
     function stopAutoRefresh() {
@@ -1474,10 +1457,8 @@
           '<td>' + escapeHtml(t.base) + '</td>',
           '<td>' + escapeHtml(hosts) + '</td>',
           '<td>',
-          '<button title="Select this task in Task Inspector" onclick="selectTask(&quot;' + escapeHtml(t.task_id) + '&quot;)">Select</button> ',
-          '<button class="warn" title="Request cancellation for this task" onclick="quickCancel(&quot;' + escapeHtml(t.task_id) + '&quot;)">Cancel</button> ',
-          '<button class="secondary" title="Retry this task" onclick="quickRetry(&quot;' + escapeHtml(t.task_id) + '&quot;)">Retry</button> ',
-          '<button class="secondary" title="Start live stream for this task" onclick="quickLive(&quot;' + escapeHtml(t.task_id) + '&quot;)">Live</button>',
+          '<button title="Select this task and open its live console" onclick="selectTask(&quot;' + escapeHtml(t.task_id) + '&quot;)">Select</button> ',
+          '<button class="warn" title="Request cancellation for this task" onclick="quickCancel(&quot;' + escapeHtml(t.task_id) + '&quot;)">Cancel</button>',
           '</td>',
           '</tr>'
         ].join('');
@@ -1496,31 +1477,23 @@
       ].join('');
     }
 
-    function selectTask(taskId) {
+    async function selectTask(taskId) {
       document.getElementById('taskId').value = taskId;
-      checkTask();
+      try {
+        await checkTask();
+        startLiveConsole();
+      } catch (err) {
+        const message = formatError(err);
+        stopLiveStream();
+        streamTaskId = taskId;
+        document.getElementById('taskQuickSummary').textContent = message;
+        clearLiveConsole();
+      }
     }
 
     function quickCancel(taskId) {
       document.getElementById('taskId').value = taskId;
       cancelTask();
-    }
-
-    function quickLive(taskId) {
-      document.getElementById('taskId').value = taskId;
-      startLiveConsole();
-    }
-
-    async function quickRetry(taskId) {
-      document.getElementById('taskId').value = taskId;
-      try {
-        const data = await api('/api/v2/tasks/' + taskId + '/retry', 'POST');
-        document.getElementById('taskId').value = data.task_id;
-        await checkTask();
-        await loadRecentTasks();
-      } catch (err) {
-        alert('Retry failed: ' + err.message);
-      }
     }
 
     function escapeHtml(value) {
@@ -1571,12 +1544,6 @@
       ].join(' | ');
     }
 
-    function appendLegacyStreamLine(line) {
-      const streamView = document.getElementById('streamView');
-      if (!streamView) return;
-      streamView.textContent += String(line) + '\n';
-    }
-
     function appendLiveConsoleLine(line) {
       const view = document.getElementById('liveConsoleView');
       if (!view) return;
@@ -1599,20 +1566,13 @@
       renderLiveConsoleMeta();
     }
 
-    function openStream() {
-      const taskId = document.getElementById('taskId').value.trim();
-      if (!taskId) return;
-      const tail = Number(document.getElementById('tailLines').value || '0');
-      const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 0;
-      window.open('/api/v2/tasks/' + taskId + '/stream?tail_lines=' + safeTail, '_blank');
-    }
-
     async function cancelTask() {
       const taskId = document.getElementById('taskId').value.trim();
       if (!taskId) return;
       try {
-        const data = await api('/api/v2/tasks/' + taskId + '/cancel', 'POST');
-        document.getElementById('taskView').textContent = JSON.stringify(data, null, 2);
+        await api('/api/v2/tasks/' + taskId + '/cancel', 'POST');
+        await checkTask();
+        await loadRecentTasks();
       } catch (err) {
         alert('Cancel failed: ' + err.message);
       }
@@ -1622,35 +1582,25 @@
       const taskId = document.getElementById('taskId').value.trim();
       if (!taskId) return;
       stopLiveStream();
-      const streamView = document.getElementById('streamView');
-      if (streamView) streamView.textContent = '';
       clearLiveConsole();
       streamTaskId = taskId;
       setLiveConsoleFollow(true);
       const tail = Number(document.getElementById('tailLines').value || '0');
       const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 0;
-      appendLegacyStreamLine('[stream] connect task=' + taskId + ' tail=' + safeTail);
       appendLiveConsoleLine('[stream] connect task=' + taskId + ' tail=' + safeTail);
       streamSource = new EventSource('/api/v2/tasks/' + taskId + '/stream?tail_lines=' + safeTail);
       streamSource.onmessage = function(event) {
-        appendLegacyStreamLine(event.data);
         appendLiveConsoleLine(event.data);
       };
       streamSource.addEventListener('status', function(event) {
-        appendLegacyStreamLine('[status] ' + event.data);
         appendLiveConsoleLine('[status] ' + event.data);
         stopLiveStream();
       });
       streamSource.onerror = function() {
-        appendLegacyStreamLine('[stream error]');
         appendLiveConsoleLine('[stream error]');
         stopLiveStream();
       };
       renderLiveConsoleMeta();
-    }
-
-    function startLiveStream() {
-      startLiveConsole();
     }
 
     function stopLiveStream() {
@@ -1687,7 +1637,7 @@
 
     function openHostDetail(host) {
       if (!host) return;
-      window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');
+      window.location.assign('/v2/hosts/' + encodeURIComponent(host));
     }
 
     function openLogsPage() {
@@ -1774,6 +1724,16 @@
     document.getElementById('statusFilter').addEventListener('change', () => { taskPageOffset = 0; loadRecentTasks(); });
     document.getElementById('runningOnly').addEventListener('change', () => { taskPageOffset = 0; loadRecentTasks(); });
     document.getElementById('hostSearch').addEventListener('input', () => { taskPageOffset = 0; loadRecentTasks(); });
+    document.getElementById('taskId').addEventListener('change', (event) => {
+      const taskId = event.target.value.trim();
+      if (taskId) selectTask(taskId);
+    });
+    document.getElementById('taskId').addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const taskId = event.target.value.trim();
+      if (taskId) selectTask(taskId);
+    });
     document.getElementById('summaryHostSearch').addEventListener('input', loadHostSummary);
     document.getElementById('summaryPrioritizeFailed').addEventListener('change', loadHostSummary);
     document.getElementById('liveConsoleView').addEventListener('scroll', () => {
@@ -1792,6 +1752,8 @@
       mode: '-',
       hosts: '(all hosts)'
     }, false);
+    loadRecentTasks();
+    startAutoRefresh();
     setLiveConsoleFollow(true);
     renderLiveConsoleMeta();
     setCompareDisplayMode('full');

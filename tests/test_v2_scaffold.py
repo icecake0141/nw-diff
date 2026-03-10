@@ -555,9 +555,14 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "Live Console" in response.text
         assert 'id="liveConsoleView"' in response.text
         assert 'id="liveConsoleFollowButton"' in response.text
+        assert 'id="taskTableWrap"' in response.text
         assert "function startLiveConsole()" in response.text
         assert "function toggleLiveConsoleFollow()" in response.text
+        assert "async function selectTask(taskId)" in response.text
+        assert "await checkTask();" in response.text
+        assert "startLiveConsole();" in response.text
         assert "MAX_CONSOLE_LINES = 2000" in response.text
+        assert "RECENT_TASK_REFRESH_MS = 5000" in response.text
         assert '<select id="exportHost">' in response.text
         assert '<select id="diffHost">' in response.text
         assert '<select id="cmpHost1">' in response.text
@@ -568,6 +573,7 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert 'id="compareDisplayModeToggle"' in response.text
         assert "Display: Full (click for Compact)" in response.text
         assert "<h2>Host Diff Summary</h2>" not in response.text
+        assert "<h2>Task Inspector</h2>" not in response.text
         assert "Origin Capture Status" in response.text
         assert "Dest Capture Status" in response.text
         assert 'id="compareHtml"' in response.text
@@ -578,6 +584,25 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "<h2>Lock Status</h2>" not in response.text
         assert '<details class="debug-details">' in response.text
         assert "Run the check to load current lock information." in response.text
+        assert 'id="taskView"' not in response.text
+        assert 'id="streamView"' not in response.text
+        assert 'id="taskListView"' not in response.text
+        assert "function startLiveStream()" not in response.text
+        assert "Open Stream" not in response.text
+        assert "Live Stream" not in response.text
+        assert "Stop Live" not in response.text
+        assert "Recent Tasks" not in response.text
+        assert "Start Auto Refresh" not in response.text
+        assert "Stop Auto Refresh" not in response.text
+        assert "Retry</button>" not in response.text
+        assert "Live</button>" not in response.text
+        assert 'title="Select this task and open its live console"' in response.text
+        assert (
+            'title="Request cancellation for this task" onclick="quickCancel('
+            in response.text
+        )
+        assert "loadRecentTasks();" in response.text
+        assert "startAutoRefresh();" in response.text
         assert (
             "document.getElementById('workerStatus').textContent = JSON.stringify("
             not in response.text
@@ -1404,6 +1429,34 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
         assert "summary-table" in response.text
         assert "diff-content" in response.text
         assert "Back to Control Panel" in response.text
+
+
+def test_v2_index_host_detail_uses_same_tab_navigation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2.db"
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+
+    with TestClient(app) as client:
+        response = client.get("/v2")
+        assert response.status_code == 200
+        assert (
+            "window.location.assign('/v2/hosts/' + encodeURIComponent(host));"
+            in response.text
+        )
+        assert (
+            "window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');"
+            not in response.text
+        )
 
 
 def test_v2_logs_api_app_source(tmp_path: Path, monkeypatch) -> None:
