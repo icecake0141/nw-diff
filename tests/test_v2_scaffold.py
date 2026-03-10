@@ -567,7 +567,7 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert '<select id="diffHost">' in response.text
         assert '<select id="cmpHost1">' in response.text
         assert '<select id="cmpHost2">' in response.text
-        compare_heading = response.text.find("<h2>Compare</h2>")
+        compare_heading = response.text.find(">Compare</h2>")
         debug_heading = response.text.find(">Debug</span>")
         assert compare_heading < debug_heading
         assert 'id="compareDisplayModeToggle"' in response.text
@@ -576,7 +576,11 @@ def test_v2_ui_index_renders(tmp_path: Path, monkeypatch) -> None:
         assert "<h2>Task Inspector</h2>" not in response.text
         assert "Origin Capture Status" in response.text
         assert "Dest Capture Status" in response.text
-        assert 'class="compare-html diff-content"' in response.text
+        assert 'id="compareHtml"' in response.text
+        diff_placeholder = (
+            "Diff output will appear here after " + "running a comparison."
+        )
+        assert diff_placeholder in response.text
         assert "<h2>Lock Status</h2>" not in response.text
         assert '<details class="debug-details">' in response.text
         assert "Run the check to load current lock information." in response.text
@@ -1413,7 +1417,10 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
     with TestClient(app) as client:
         response = client.get("/v2/hosts/router1")
         assert response.status_code == 200
-        assert "Host Detail: router1" in response.text
+        assert "Host Detail" in response.text
+        assert ">router1</h1>" in response.text
+        assert "Filters and Summary" in response.text
+        assert "Command Results" in response.text
         assert (
             '<option value="sidebyside" selected>sidebyside</option>' in response.text
         )
@@ -1421,6 +1428,7 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
         assert "Display: Full (click for Compact)" in response.text
         assert "summary-table" in response.text
         assert "diff-content" in response.text
+        assert "Back to Control Panel" in response.text
 
 
 def test_v2_index_host_detail_uses_same_tab_navigation(
@@ -1529,6 +1537,9 @@ def test_v2_logs_api_task_source_and_page(tmp_path: Path, monkeypatch) -> None:
         assert page.status_code == 200
         assert "NW-Diff v2 Logs" in page.text
         assert "contains text" in page.text
+        assert "Filters" in page.text
+        assert "Log Output" in page.text
+        assert "Back to Control Panel" in page.text
 
 
 def test_v2_task_list_endpoint(tmp_path: Path, monkeypatch) -> None:

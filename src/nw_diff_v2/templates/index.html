@@ -38,9 +38,10 @@
     .card {
       background: #fff;
       border: 1px solid #dee2e6;
-      border-radius: 4px;
-      padding: 16px;
-      margin-bottom: 16px;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
     }
     h1 { margin-top: 0; font-size: 28px; }
     table { width: 100%; border-collapse: collapse; background: #fff; }
@@ -109,9 +110,9 @@
       white-space: pre-wrap;
       font-size: 12px;
       background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 4px;
-      padding: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
     }
     input[type="text"] {
       border: 1px solid #ced4da;
@@ -128,6 +129,92 @@
     .muted-note {
       color: #6c757d;
       font-size: 0.95rem;
+    }
+    .panel-card {
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+      border-color: #dbe4ee;
+    }
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .panel-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 240px;
+    }
+    .panel-title {
+      margin: 0;
+      font-size: 22px;
+      color: var(--ink-strong);
+    }
+    .panel-description {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.55;
+      max-width: 760px;
+    }
+    .panel-toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .panel-toolbar.secondary {
+      padding-top: 2px;
+    }
+    .panel-summary {
+      border-radius: 12px;
+      border: 1px solid #dbe4ee;
+      background: linear-gradient(180deg, #f8fbff 0%, #fdfefe 100%);
+      padding: 12px 14px;
+      color: #334155;
+      min-height: 48px;
+    }
+    .panel-summary.muted {
+      color: #64748b;
+    }
+    .panel-grid {
+      display: grid;
+      gap: 14px;
+    }
+    .panel-grid.two-column {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .panel-surface {
+      border: 1px solid #dbe4ee;
+      border-radius: 14px;
+      background: #ffffff;
+      padding: 12px;
+    }
+    .panel-surface-title {
+      margin: 0 0 10px;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .panel-surface .task-box,
+    .panel-surface .panel-summary {
+      margin: 0;
+    }
+    .panel-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .table-shell {
+      border: 1px solid #dbe4ee;
+      border-radius: 14px;
+      background: #ffffff;
+      padding: 12px;
     }
     .capture-status-line {
       display: flex;
@@ -394,12 +481,14 @@
     .debug-empty {
       color: #64748b;
     }
+    .empty-state {
+      color: #64748b;
+    }
     @keyframes capture-spin {
       to { transform: rotate(360deg); }
     }
     .compare-html {
-      border-top: 1px solid #e5e7eb;
-      margin-top: 8px;
+      min-height: 120px;
     }
     .diff-content {
       padding-top: 8px;
@@ -447,7 +536,8 @@
         font-size: 28px;
       }
       .capture-status-grid,
-      .debug-grid {
+      .debug-grid,
+      .panel-grid.two-column {
         grid-template-columns: 1fr;
       }
     }
@@ -536,9 +626,14 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>Hosts</h2>
-      <div class="row" style="margin-bottom:8px;">
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Hosts</h2>
+          <p class="panel-description">Review capture coverage by host, filter the list quickly, and launch per-host actions without opening a separate workflow.</p>
+        </div>
+      </div>
+      <div class="panel-toolbar">
         <input id="summaryHostSearch" type="text" placeholder="host contains..." style="width:220px;">
         <input id="summaryLimit" type="text" value="50" style="width:80px;">
         <label style="font-size:12px; display:flex; align-items:center; gap:4px;">
@@ -547,18 +642,25 @@
         </label>
         <button onclick="loadHostSummary()" title="Reload host diff summary">Reload Summary</button>
       </div>
-      <div id="hostSummaryView" class="task-box"></div>
-      <div id="hostSummaryTableWrap"></div>
+      <div id="hostSummaryView" class="panel-summary muted">Summary will appear after the host list loads.</div>
+      <div class="table-shell" style="margin-top:12px;">
+        <div id="hostSummaryTableWrap"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Live Console</h2>
-      <div class="row">
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Task Inspector</h2>
+          <p class="panel-description">Track queued and running work, keep the selected task in focus, and hand off live output to the dedicated console below.</p>
+        </div>
+      </div>
+      <div class="panel-toolbar">
         <input id="taskId" type="text" placeholder="Task ID">
         <button class="warn" onclick="cancelTask()" title="Request cancellation for selected task">Cancel Task</button>
         <input id="tailLines" type="text" value="20" style="width:80px;" />
       </div>
-      <div class="row" style="margin-top: 8px;">
+      <div class="panel-toolbar secondary">
         <select id="statusFilter">
           <option value="">All Statuses</option>
           <option value="queued">Queued</option>
@@ -573,20 +675,37 @@
           running only
         </label>
       </div>
-      <div id="taskQuickSummary" class="task-box" style="margin-top:8px;"></div>
-      <div id="taskTableWrap" style="margin-top:8px;"></div>
-      <div class="console-toolbar">
+      <div id="taskQuickSummary" class="panel-summary muted">Select a task to open its live console and review recent task status.</div>
+      <div class="panel-surface" style="margin-top:12px;">
+        <h3 class="panel-surface-title">Recent Task Table</h3>
+        <div id="taskTableWrap"></div>
+      </div>
+    </div>
+
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Live Console</h2>
+          <p class="panel-description">Follow stream output in-page with a persistent console view, sticky follow mode, and a compact activity summary.</p>
+        </div>
+      </div>
+      <div class="panel-toolbar console-toolbar">
         <button class="warn" onclick="clearLiveConsole()">Clear</button>
         <button class="secondary" id="liveConsoleFollowButton" onclick="toggleLiveConsoleFollow()">Follow: ON</button>
         <span id="liveConsoleFollowState" class="console-state">follow=on</span>
       </div>
-      <div id="liveConsoleMeta" class="console-state" style="margin-bottom:8px;"></div>
+      <div id="liveConsoleMeta" class="panel-summary console-state muted" style="margin-bottom:12px;"></div>
       <pre id="liveConsoleView" class="live-console"></pre>
     </div>
 
-    <div class="card">
-      <h2>Export</h2>
-      <div class="row">
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Export</h2>
+          <p class="panel-description">Open host-level artifacts in JSON or HTML, or load the diff export inline for quick inspection.</p>
+        </div>
+      </div>
+      <div class="panel-toolbar">
         <select id="exportHost">
           <option value="">-- Select host --</option>
           {% for h in hosts %}
@@ -597,12 +716,20 @@
         <button onclick="loadExportDiffJson()" title="Load exported diff JSON for selected host">Diff JSON</button>
         <button class="secondary" onclick="openExportHtml()" title="Open exported host HTML in a new tab">HTML</button>
       </div>
-      <div id="exportDiffView" class="task-box" style="margin-top:8px;"></div>
+      <div class="panel-surface">
+        <h3 class="panel-surface-title">Exported Diff Payload</h3>
+        <div id="exportDiffView" class="task-box empty-state">Choose a host and load the diff export to inspect it here.</div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Compare</h2>
-      <div class="row" style="margin-bottom:8px;">
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Compare</h2>
+          <p class="panel-description">Run host diffs or file-to-file comparisons in one place, then switch between a compact and full diff view.</p>
+        </div>
+      </div>
+      <div class="panel-toolbar">
         <select id="diffHost">
           <option value="">-- Select host --</option>
           {% for h in hosts %}
@@ -616,7 +743,7 @@
         <button onclick="runHostDiff()" title="Run origin vs destination diff for selected host">Host Diff (origin vs dest)</button>
         <button class="secondary" id="compareDisplayModeToggle" onclick="toggleCompareDisplayMode()" title="Toggle compare output between full and compact">Display: Full (click for Compact)</button>
       </div>
-      <div class="row" style="margin-bottom:8px;">
+      <div class="panel-toolbar secondary">
         <select id="cmpHost1">
           <option value="">-- Select host1 (exact) --</option>
           {% for h in hosts %}
@@ -640,12 +767,20 @@
         </select>
         <button class="secondary" onclick="runFileCompare()" title="Compare command output between two hosts">Compare Files</button>
       </div>
-      <div id="compareView" class="task-box"></div>
-      <div id="compareSummary" class="task-box" style="margin-top:8px;"></div>
-      <div id="compareHtml" class="compare-html diff-content"></div>
+      <div id="compareSummary" class="panel-summary muted">Run a comparison to populate the summary and diff output.</div>
+      <div class="panel-grid two-column" style="margin-top:12px;">
+        <div class="panel-surface">
+          <h3 class="panel-surface-title">Compare Metadata</h3>
+          <div id="compareView" class="task-box empty-state">Comparison metadata will appear here.</div>
+        </div>
+        <div class="panel-surface">
+          <h3 class="panel-surface-title">Diff Output</h3>
+          <div id="compareHtml" class="compare-html diff-content empty-state">Diff output will appear here after running a comparison.</div>
+        </div>
+      </div>
     </div>
 
-    <div class="card debug-card">
+    <div class="card panel-card debug-card">
       <details class="debug-details">
         <summary>
           <span>Debug</span>
@@ -829,7 +964,16 @@
           stopCaptureStatusPolling();
         }
       } catch (err) {
-        setCaptureStatus('Status: Error while loading task=' + taskId + ' | ' + formatError(err), false);
+        setCaptureStatus({
+          status: 'failed',
+          label: 'Error',
+          headline: 'Failed to refresh capture status',
+          summary: 'task=' + taskId + ' | ' + formatError(err),
+          taskId,
+          base: '-',
+          mode: '-',
+          hosts: '(unknown)'
+        }, false);
         stopCaptureStatusPolling();
       }
     }
@@ -1011,7 +1155,16 @@
       if (button) button.disabled = true;
       setTopActionStatus('[' + actionLabel + '] started');
       try {
-        setCaptureStatus('Status: Running | mode=batch | base=' + base + ' | hosts=(all)', true);
+        setCaptureStatus({
+          status: 'running',
+          label: 'Running',
+          headline: actionLabel + ' started',
+          summary: 'mode=batch | base=' + base + ' | hosts=(all hosts)',
+          taskId: '-',
+          base,
+          mode: 'batch',
+          hosts: '(all hosts)'
+        }, true);
         const data = await api('/api/v2/captures', 'POST', { mode: 'batch', base, hosts: [] });
         setTopActionStatus('[' + actionLabel + '] queued task_id=' + data.task_id + ' status=queued');
         document.getElementById('taskId').value = data.task_id;
