@@ -1431,7 +1431,7 @@ def test_v2_host_detail_page_renders(tmp_path: Path, monkeypatch) -> None:
         assert "Back to Control Panel" in response.text
 
 
-def test_v2_index_host_detail_uses_same_tab_navigation(
+def test_v2_index_host_detail_renders_standard_link(
     tmp_path: Path, monkeypatch
 ) -> None:
     hosts_csv = tmp_path / "hosts.csv"
@@ -1450,13 +1450,14 @@ def test_v2_index_host_detail_uses_same_tab_navigation(
         response = client.get("/v2")
         assert response.status_code == 200
         assert (
-            "window.location.assign('/v2/hosts/' + encodeURIComponent(host));"
+            'href="/v2/hosts/\' + encodeURIComponent(r.host) + \'">Detail</a>'
             in response.text
         )
         assert (
             "window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');"
             not in response.text
         )
+        assert 'onclick="openHostDetail(' not in response.text
 
 
 def test_v2_logs_api_app_source(tmp_path: Path, monkeypatch) -> None:
