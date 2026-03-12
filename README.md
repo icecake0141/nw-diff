@@ -69,15 +69,19 @@ cp command_profiles/device_commands.override.yaml.sample \
 ```bash
 export DEVICE_PASSWORD=your_device_password
 export NW_DIFF_ENV=development
-export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 # Optional: custom override path
 # export COMMAND_PROFILES_OVERRIDE_YAML=command_profiles/device_commands.override.yaml
+# Required only when NW_DIFF_ENV is not dev/development/local/test
+# export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 ```
 
 7. Start v2 API/UI:
 ```bash
-uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
+./scripts/start-v2.sh
 ```
+- The script prints required startup variables before launch.
+- Sensitive values are masked.
+- Direct `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src` startup remains supported.
 
 8. Open:
 - <http://127.0.0.1:5000/v2>
@@ -157,15 +161,19 @@ cp command_profiles/device_commands.override.yaml.sample \
 ```bash
 export DEVICE_PASSWORD=your_device_password
 export NW_DIFF_ENV=development
-export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 # 任意: 上書きファイルのパスを変更
 # export COMMAND_PROFILES_OVERRIDE_YAML=command_profiles/device_commands.override.yaml
+# `NW_DIFF_ENV` が dev/development/local/test 以外のときのみ必須
+# export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 ```
 
 7. v2 API/UI を起動:
 ```bash
-uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
+./scripts/start-v2.sh
 ```
+- 起動前に必須環境変数の状態を表示します。
+- センシティブな値はマスク表示されます。
+- 直接 `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src` を実行する方法も後方互換として利用できます。
 
 8. 動作確認:
 - <http://127.0.0.1:5000/v2>
@@ -176,5 +184,5 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 - `docker-compose.yml` runs v2 by default.
 - `docker-compose.yml` can be used with Docker Compose and Podman Compose compatible runtimes (best-effort).
 - Breaking change: legacy v1 paths were removed.
-- If you used `run_app.py` or `src/nw_diff`, switch to `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src`.
+- If you used `run_app.py` or `src/nw_diff`, switch to `./scripts/start-v2.sh` or `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src`.
 - See migration notes in `docs/V2_MIGRATION.md`.
