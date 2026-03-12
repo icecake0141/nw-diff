@@ -60,13 +60,17 @@ cp hosts.csv.sample hosts.csv
 ```bash
 export DEVICE_PASSWORD=your_device_password
 export NW_DIFF_ENV=development
-export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+# `NW_DIFF_ENV` が dev/development/local/test 以外のときのみ必須
+# export NW_DIFF_API_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 ```
 
 6. v2 API/UI を起動:
 ```bash
-uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
+./scripts/start-v2.sh
 ```
+- 起動前に必須環境変数の状態を表示します。
+- センシティブな値はマスク表示されます。
+- 直接 `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src` を実行する方法も後方互換として利用できます。
 
 7. 動作確認:
 - <http://127.0.0.1:5000/v2>
@@ -102,5 +106,5 @@ uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
 - `docker-compose.yml` は v2 を標準起動します。
 - `docker-compose.yml` は Docker Compose と Podman Compose 互換ランタイムで利用できます（best-effort）。
 - 破壊的変更: 旧 v1 パスは削除済みです。
-- `run_app.py` や `src/nw_diff` を使っていた場合は、`uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src` に切り替えてください。
+- `run_app.py` や `src/nw_diff` を使っていた場合は、`./scripts/start-v2.sh` または `uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src` に切り替えてください。
 - 移行メモは `docs/V2_MIGRATION.md` を参照してください。

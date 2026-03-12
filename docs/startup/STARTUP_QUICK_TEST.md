@@ -33,8 +33,10 @@ cp hosts.csv.sample hosts.csv
 export DEVICE_PASSWORD=dummy
 export NW_DIFF_ENV=development
 
-uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
+./scripts/start-v2.sh
 ```
+
+The startup script prints required variables and masks sensitive values before launch.
 
 ### Success Check
 - Open [http://127.0.0.1:5000/v2](http://127.0.0.1:5000/v2).
@@ -64,8 +66,10 @@ cp hosts.csv.sample hosts.csv
 export DEVICE_PASSWORD=dummy
 export NW_DIFF_ENV=development
 
-uvicorn nw_diff_v2.main:app --host 127.0.0.1 --port 5000 --app-dir src
+./scripts/start-v2.sh
 ```
+
+起動スクリプトは実行前に必須変数を表示し、センシティブな値はマスクします。
 
 ### 成功確認
 - [http://127.0.0.1:5000/v2](http://127.0.0.1:5000/v2) を開く。
