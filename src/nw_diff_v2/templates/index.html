@@ -58,7 +58,7 @@
     .status-completed { background: #bbf7d0; }
     .status-failed { background: #fecaca; }
     .status-cancelled { background: #e5e7eb; }
-    button, .btn-local {
+    button, .btn-local, .action-link {
       border: 1px solid transparent;
       border-radius: 10px;
       padding: 8px 14px;
@@ -67,12 +67,20 @@
       cursor: pointer;
       font-size: 14px;
       line-height: 1.5;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
     }
-    button.secondary, .btn-local.secondary { background: #007bff; }
-    button.warn, .btn-local.warn { background: #fd7e14; }
+    button.secondary, .btn-local.secondary, .action-link.secondary { background: #007bff; }
+    button.warn, .btn-local.warn, .action-link.warn { background: #fd7e14; }
     button:disabled, .btn-local:disabled {
       cursor: not-allowed;
       opacity: 0.65;
+    }
+    .action-link:hover,
+    .action-link:focus {
+      color: #fff;
+      text-decoration: none;
     }
     .row {
       display: flex;
@@ -1402,7 +1410,7 @@
         '<td><div class="host-summary-actions">' +
           '<button title="Capture origin config for this host" onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;origin&quot;)">Origin</button>' +
           '<button class="secondary" title="Capture destination config for this host" onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;dest&quot;)">Dest</button>' +
-          '<button class="secondary" title="Open detailed diff view for this host" onclick="openHostDetail(&quot;' + escapeHtml(r.host) + '&quot;)">Detail</button>' +
+          '<a class="action-link secondary" title="Open detailed diff view for this host" href="/v2/hosts/' + encodeURIComponent(r.host) + '">Detail</a>' +
           '</div></td>',
         '</tr>'
       ].join('')).join('');
@@ -1633,11 +1641,6 @@
       } catch (err) {
         box.textContent = err.message;
       }
-    }
-
-    function openHostDetail(host) {
-      if (!host) return;
-      window.location.assign('/v2/hosts/' + encodeURIComponent(host));
     }
 
     function openLogsPage() {
