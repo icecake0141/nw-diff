@@ -1450,7 +1450,7 @@ def test_v2_index_host_detail_renders_standard_link(
         response = client.get("/v2")
         assert response.status_code == 200
         assert (
-            'href="/v2/hosts/\' + encodeURIComponent(r.host) + \'">Detail</a>'
+            "href=\"/v2/hosts/' + encodeURIComponent(r.host) + '\">Detail</a>"
             in response.text
         )
         assert (
