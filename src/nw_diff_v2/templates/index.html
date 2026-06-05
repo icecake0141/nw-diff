@@ -1,29 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NW-Diff v2</title>
-  <style>
-    body {
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      background: linear-gradient(180deg, #f6f8fb 0%, #ebf0f7 100%);
-      color: #1f2937;
-      margin: 0;
-      padding: 24px;
+{% extends "base.html" %}
+
+{% block title %}NW-Diff v2 Control Panel{% endblock %}
+
+{% block page_css %}
+    :root {
+      --hero-bg: linear-gradient(135deg, #f5f8ff 0%, #eefbf6 100%);
+      --hero-border: #d7e6df;
+      --hero-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+      --ink-strong: #162133;
+      --ink-soft: #4a5568;
+      --surface-soft: #f8fbfd;
+      --accent-primary: #0f766e;
+      --accent-primary-dark: #0b5d57;
+      --accent-secondary: #dbeafe;
+      --accent-secondary-ink: #17406d;
+      --status-idle-bg: #eef2ff;
+      --status-idle-border: #c7d2fe;
+      --status-running-bg: #ecfeff;
+      --status-running-border: #67e8f9;
+      --status-success-bg: #ecfdf5;
+      --status-success-border: #86efac;
+      --status-failed-bg: #fff7ed;
+      --status-failed-border: #fdba74;
+      --status-debug-bg: #f8fafc;
+      --status-debug-border: #e2e8f0;
     }
-    .wrap { max-width: 1080px; margin: 0 auto; }
+    body {
+      font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #f8f9fa;
+      color: #212529;
+      margin: 0;
+    }
+    .wrap { width: 100%; max-width: 1600px; margin: 24px auto; padding: 0 12px; }
     .card {
       background: #fff;
-      border: 1px solid #d9e2ef;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+      border: 1px solid #dee2e6;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
     }
-    h1 { margin-top: 0; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; border-bottom: 1px solid #e5e7eb; padding: 8px; }
+    h1 { margin-top: 0; font-size: 28px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { text-align: left; border: 1px solid #dee2e6; padding: 8px; vertical-align: top; }
+    thead th { background: #343a40; color: #fff; font-weight: 600; }
     .mini-table th, .mini-table td { padding: 6px; font-size: 12px; }
     .status-pill {
       display: inline-block;
@@ -38,113 +58,616 @@
     .status-completed { background: #bbf7d0; }
     .status-failed { background: #fecaca; }
     .status-cancelled { background: #e5e7eb; }
-    button {
-      border: none;
-      border-radius: 8px;
-      padding: 8px 12px;
-      background: #0a5bdc;
+    button, .btn-local, .action-link {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 8px 14px;
+      background: #28a745;
       color: #fff;
       cursor: pointer;
+      font-size: 14px;
+      line-height: 1.5;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
     }
-    button.secondary { background: #2563eb; }
-    button.warn { background: #d97706; }
-    .row { display: flex; gap: 8px; align-items: center; }
-    .task-box { font-family: Menlo, Monaco, monospace; white-space: pre-wrap; font-size: 12px; }
+    button.secondary, .btn-local.secondary, .action-link.secondary { background: #007bff; }
+    button.warn, .btn-local.warn, .action-link.warn { background: #fd7e14; }
+    button:disabled, .btn-local:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+    .action-link:hover,
+    .action-link:focus {
+      color: #fff;
+      text-decoration: none;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .hosts-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+    .host-summary-table {
+      min-width: 1100px;
+      table-layout: fixed;
+    }
+    .host-summary-table th:nth-child(1), .host-summary-table td:nth-child(1) { width: 14%; }
+    .host-summary-table th:nth-child(2), .host-summary-table td:nth-child(2) { width: 13%; }
+    .host-summary-table th:nth-child(3), .host-summary-table td:nth-child(3) { width: 13%; }
+    .host-summary-table th:nth-child(4), .host-summary-table td:nth-child(4) { width: 22%; }
+    .host-summary-table th:nth-child(5), .host-summary-table td:nth-child(5) { width: 22%; }
+    .host-summary-table th:nth-child(6), .host-summary-table td:nth-child(6) { width: 16%; }
+    .host-summary-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .task-box {
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      font-size: 12px;
+      background: #f8f9fa;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+    }
     input[type="text"] {
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
       padding: 8px;
       width: 240px;
     }
     select {
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
       padding: 8px;
       width: 180px;
     }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>NW-Diff v2 Control Panel</h1>
-      <p>Hosts loaded: <strong>{{ hosts|length }}</strong></p>
-      <div class="row">
-        <button id="captureAllOrigin">Capture All Origin</button>
-        <button id="captureAllDest" class="secondary">Capture All Dest</button>
-        <button class="secondary" onclick="openLogsPage()">Logs</button>
-        <button class="secondary" onclick="loadWorkerStatus()">Worker Status</button>
-        <button class="secondary" onclick="loadReadinessStatus()">Readiness</button>
-        <button class="secondary" onclick="loadContractStatus()">Contract Check</button>
-      </div>
-      <div id="workerStatus" class="task-box" style="margin-top:8px;"></div>
-      <div id="readinessStatus" class="task-box" style="margin-top:8px;"></div>
-      <div id="contractStatus" class="task-box" style="margin-top:8px;"></div>
-    </div>
+    .muted-note {
+      color: #6c757d;
+      font-size: 0.95rem;
+    }
+    .panel-card {
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+      border-color: #dbe4ee;
+    }
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .panel-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 240px;
+    }
+    .panel-title {
+      margin: 0;
+      font-size: 22px;
+      color: var(--ink-strong);
+    }
+    .panel-description {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.55;
+      max-width: 760px;
+    }
+    .panel-toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .panel-toolbar.secondary {
+      padding-top: 2px;
+    }
+    .panel-summary {
+      border-radius: 12px;
+      border: 1px solid #dbe4ee;
+      background: linear-gradient(180deg, #f8fbff 0%, #fdfefe 100%);
+      padding: 12px 14px;
+      color: #334155;
+      min-height: 48px;
+    }
+    .panel-summary.muted {
+      color: #64748b;
+    }
+    .panel-grid {
+      display: grid;
+      gap: 14px;
+    }
+    .panel-grid.two-column {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .panel-surface {
+      border: 1px solid #dbe4ee;
+      border-radius: 14px;
+      background: #ffffff;
+      padding: 12px;
+    }
+    .panel-surface-title {
+      margin: 0 0 10px;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .panel-surface .task-box,
+    .panel-surface .panel-summary {
+      margin: 0;
+    }
+    .panel-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .table-shell {
+      border: 1px solid #dbe4ee;
+      border-radius: 14px;
+      background: #ffffff;
+      padding: 12px;
+    }
+    .capture-status-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: #374151;
+    }
+    .capture-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #d1d5db;
+      border-top-color: #0ea5e9;
+      border-radius: 50%;
+      animation: capture-spin 0.8s linear infinite;
+      display: none;
+    }
+    .capture-status-line.running .capture-spinner {
+      display: inline-block;
+    }
+    .capture-status-text {
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .hero-card {
+      background: var(--hero-bg);
+      border: 1px solid var(--hero-border);
+      border-radius: 18px;
+      box-shadow: var(--hero-shadow);
+      padding: 24px;
+    }
+    .hero-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.25fr) minmax(300px, 0.95fr);
+      gap: 20px;
+      align-items: stretch;
+    }
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .hero-title-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hero-title {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.1;
+      color: var(--ink-strong);
+    }
+    .hero-subtitle {
+      margin: 0;
+      max-width: 650px;
+      color: var(--ink-soft);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .hero-meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: var(--ink-strong);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .hero-actions button {
+      min-width: 170px;
+      min-height: 46px;
+      font-weight: 700;
+      box-shadow: 0 10px 18px rgba(15, 118, 110, 0.18);
+    }
+    .hero-actions button.primary-action {
+      background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-dark) 100%);
+    }
+    .hero-actions button.secondary-action {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      box-shadow: 0 10px 18px rgba(30, 64, 175, 0.18);
+    }
+    .hero-link-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(30, 64, 175, 0.18);
+      background: rgba(255, 255, 255, 0.84);
+      color: var(--accent-secondary-ink);
+      font-weight: 600;
+    }
+    .hero-link-button:hover {
+      text-decoration: none;
+      color: var(--accent-secondary-ink);
+      background: #ffffff;
+    }
+    .hero-status-card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 100%;
+    }
+    .status-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0f766e;
+    }
+    .capture-status-panel {
+      border-radius: 14px;
+      border: 1px solid var(--status-idle-border);
+      background: var(--status-idle-bg);
+      padding: 16px;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .capture-status-panel.running {
+      border-color: var(--status-running-border);
+      background: var(--status-running-bg);
+    }
+    .capture-status-panel.success {
+      border-color: var(--status-success-border);
+      background: var(--status-success-bg);
+    }
+    .capture-status-panel.failed {
+      border-color: var(--status-failed-border);
+      background: var(--status-failed-bg);
+    }
+    .capture-status-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .capture-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--ink-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .capture-status-label {
+      font-size: 12px;
+      color: var(--ink-soft);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .capture-status-headline {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.3;
+      color: var(--ink-strong);
+    }
+    .capture-status-summary {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .capture-status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .capture-status-item {
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(255, 255, 255, 0.7);
+      padding: 10px 12px;
+    }
+    .capture-status-item-label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+    }
+    .capture-status-item-value {
+      display: block;
+      font-size: 14px;
+      color: var(--ink-strong);
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      word-break: break-word;
+    }
+    .debug-card {
+      border-style: dashed;
+      border-color: var(--status-debug-border);
+      background: var(--status-debug-bg);
+    }
+    .debug-details summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 700;
+      color: var(--ink-strong);
+      outline: none;
+    }
+    .debug-details summary::-webkit-details-marker {
+      display: none;
+    }
+    .debug-summary-copy {
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 400;
+    }
+    .debug-details[open] .debug-summary-copy {
+      display: none;
+    }
+    .debug-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .debug-panel {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .debug-panel h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+    .debug-panel .row {
+      margin-bottom: 8px;
+    }
+    .debug-empty {
+      color: #64748b;
+    }
+    .empty-state {
+      color: #64748b;
+    }
+    @keyframes capture-spin {
+      to { transform: rotate(360deg); }
+    }
+    .compare-html {
+      min-height: 120px;
+    }
+    .diff-content {
+      padding-top: 8px;
+    }
+    .diff-content.full {
+      max-height: none;
+      overflow: visible;
+    }
+    .diff-content.compact {
+      max-height: 360px;
+      overflow: auto;
+    }
+    .console-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .console-state {
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: #334155;
+    }
+    .live-console {
+      margin: 0;
+      background: #0b1220;
+      color: #d1e4ff;
+      border: 1px solid #233047;
+      border-radius: 6px;
+      padding: 12px;
+      min-height: 220px;
+      max-height: 420px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    @media (max-width: 960px) {
+      .hero-layout {
+        grid-template-columns: 1fr;
+      }
+      .hero-title {
+        font-size: 28px;
+      }
+      .capture-status-grid,
+      .debug-grid,
+      .panel-grid.two-column {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 640px) {
+      .wrap {
+        padding: 0 10px;
+      }
+      .hero-card {
+        padding: 18px;
+      }
+      .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .hero-actions button,
+      .hero-link-button {
+        width: 100%;
+      }
+      .capture-status-top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+{% endblock %}
 
-    <div class="card">
-      <h2>Lock Status</h2>
-      <div class="row">
-        <input id="lockReleaseHosts" type="text" placeholder="host1,host2" style="width:240px;">
-        <button class="warn" onclick="releaseLocks()">Release Hosts</button>
-        <button class="secondary" onclick="loadLockStatus()">Reload Locks</button>
-        <button class="warn" onclick="cleanupLocks()">Cleanup Stale Locks</button>
-      </div>
-      <div id="lockStatus" class="task-box" style="margin-top:8px;"></div>
+{% block navbar %}
+  <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+    <a class="navbar-brand" href="/v2">Nwdiff v2</a>
+    <div class="navbar-nav">
+      <a class="nav-link active" href="/v2">Control Panel</a>
+      <a class="nav-link" href="/v2/logs">Logs</a>
     </div>
+  </nav>
+{% endblock %}
 
-    <div class="card">
-      <h2>Hosts</h2>
-      <table>
-        <thead>
-          <tr><th>Host</th><th>IP</th><th>Model</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-          {% for h in hosts %}
-          <tr>
-            <td>{{ h.host }}</td>
-            <td>{{ h.ip }}</td>
-            <td>{{ h.model }}</td>
-            <td>
-              <div class="row">
-                <button onclick="captureSingle('{{ h.host }}', 'origin')">Origin</button>
-                <button class="secondary" onclick="captureSingle('{{ h.host }}', 'dest')">Dest</button>
-                <button class="secondary" onclick="openHostDetail('{{ h.host }}')">Detail</button>
+{% block content %}
+    <div class="panel-card hero-card">
+      <div class="hero-layout">
+        <div class="hero-copy">
+          <div class="hero-title-row">
+            <div>
+              <h1 class="hero-title">NW-Diff v2 Control Panel</h1>
+              <p class="hero-subtitle">Capture origin and destination snapshots, keep the current task in view, and leave operational diagnostics in a separate debug workspace.</p>
+            </div>
+            <div class="hero-meta">
+              <span class="hero-meta-pill">Hosts loaded <strong>{{ hosts|length }}</strong></span>
+              <a class="hero-link-button" href="/v2/logs" target="_blank" rel="noopener noreferrer">Logs</a>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <button id="captureAllOrigin" class="primary-action" title="Capture origin configs from all hosts">Capture Origin All</button>
+            <button id="captureAllDest" class="secondary-action" title="Capture destination configs from all hosts">Capture Dest All</button>
+          </div>
+        </div>
+        <div class="hero-status-card">
+          <div class="status-kicker">Current Progress</div>
+          <div id="captureStatusPanel" class="capture-status-panel">
+            <div class="capture-status-top">
+              <span id="captureStatusBadge" class="capture-status-badge">
+                <span id="captureStatusSpinner" class="capture-spinner" aria-hidden="true"></span>
+                <span id="captureStatusLabel">Idle</span>
+              </span>
+              <span class="capture-status-label">Latest capture status</span>
+            </div>
+            <p id="captureStatusHeadline" class="capture-status-headline">Ready to start a batch capture</p>
+            <p id="captureStatusSummary" class="capture-status-summary">Use one of the main actions to queue a capture across all configured hosts.</p>
+            <div class="capture-status-grid">
+              <div class="capture-status-item">
+                <span class="capture-status-item-label">Task ID</span>
+                <span id="captureStatusTaskId" class="capture-status-item-value">-</span>
               </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+              <div class="capture-status-item">
+                <span class="capture-status-item-label">Base</span>
+                <span id="captureStatusBase" class="capture-status-item-value">-</span>
+              </div>
+              <div class="capture-status-item">
+                <span class="capture-status-item-label">Mode</span>
+                <span id="captureStatusMode" class="capture-status-item-value">-</span>
+              </div>
+              <div class="capture-status-item">
+                <span class="capture-status-item-label">Hosts</span>
+                <span id="captureStatusHosts" class="capture-status-item-value">(all hosts)</span>
+              </div>
+            </div>
+          </div>
+          <div id="topActionStatus" class="muted-note">No capture action has been triggered yet.</div>
+        </div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Host Diff Summary</h2>
-      <div class="row" style="margin-bottom:8px;">
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Hosts</h2>
+          <p class="panel-description">Review capture coverage by host, filter the list quickly, and launch per-host actions without opening a separate workflow.</p>
+        </div>
+      </div>
+      <div class="panel-toolbar">
         <input id="summaryHostSearch" type="text" placeholder="host contains..." style="width:220px;">
         <input id="summaryLimit" type="text" value="50" style="width:80px;">
         <label style="font-size:12px; display:flex; align-items:center; gap:4px;">
           <input id="summaryPrioritizeFailed" type="checkbox" checked />
           failed first
         </label>
-        <button onclick="loadHostSummary()">Reload Summary</button>
+        <button onclick="loadHostSummary()" title="Reload host diff summary">Reload Summary</button>
       </div>
-      <div id="hostSummaryView" class="task-box"></div>
-      <div id="hostSummaryTableWrap"></div>
+      <div id="hostSummaryView" class="panel-summary muted">Summary will appear after the host list loads.</div>
+      <div class="table-shell" style="margin-top:12px;">
+        <div id="hostSummaryTableWrap"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Task Inspector</h2>
-      <div class="row">
-        <input id="taskId" type="text" placeholder="Task ID">
-        <button class="warn" onclick="checkTask()">Check</button>
-        <button class="secondary" onclick="openStream()">Open Stream</button>
-        <button class="warn" onclick="cancelTask()">Cancel Task</button>
-        <button class="secondary" onclick="startLiveStream()">Live Stream</button>
-        <button onclick="stopLiveStream()">Stop Live</button>
-        <button onclick="loadRecentTasks()">Recent Tasks</button>
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Task Inspector</h2>
+          <p class="panel-description">Track queued and running work, keep the selected task in focus, and hand off live output to the dedicated console below.</p>
+        </div>
       </div>
-      <div class="row" style="margin-top: 8px;">
+      <div class="panel-toolbar">
+        <input id="taskId" type="text" placeholder="Task ID">
+        <button class="warn" onclick="cancelTask()" title="Request cancellation for selected task">Cancel Task</button>
+        <input id="tailLines" type="text" value="20" style="width:80px;" />
+      </div>
+      <div class="panel-toolbar secondary">
         <select id="statusFilter">
           <option value="">All Statuses</option>
           <option value="queued">Queued</option>
@@ -158,42 +681,88 @@
           <input id="runningOnly" type="checkbox" />
           running only
         </label>
-        <input id="refreshSec" type="text" value="5" style="width:80px;" />
-        <button onclick="startAutoRefresh()">Start Auto Refresh</button>
-        <button class="warn" onclick="stopAutoRefresh()">Stop Auto Refresh</button>
-        <input id="tailLines" type="text" value="20" style="width:80px;" />
       </div>
-      <div id="taskQuickSummary" class="task-box" style="margin-top:8px;"></div>
-      <div id="taskView" class="task-box"></div>
-      <div id="taskListView" class="task-box"></div>
-      <div id="taskTableWrap"></div>
-      <div id="streamView" class="task-box"></div>
+      <div id="taskQuickSummary" class="panel-summary muted">Select a task to open its live console and review recent task status.</div>
+      <div class="panel-surface" style="margin-top:12px;">
+        <h3 class="panel-surface-title">Recent Task Table</h3>
+        <div id="taskTableWrap"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Export</h2>
-      <div class="row">
-        <input id="exportHost" type="text" placeholder="hostname">
-        <button onclick="openExportJson()">JSON</button>
-        <button onclick="loadExportDiffJson()">Diff JSON</button>
-        <button class="secondary" onclick="openExportHtml()">HTML</button>
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Live Console</h2>
+          <p class="panel-description">Follow stream output in-page with a persistent console view, sticky follow mode, and a compact activity summary.</p>
+        </div>
       </div>
-      <div id="exportDiffView" class="task-box" style="margin-top:8px;"></div>
+      <div class="panel-toolbar console-toolbar">
+        <button class="warn" onclick="clearLiveConsole()">Clear</button>
+        <button class="secondary" id="liveConsoleFollowButton" onclick="toggleLiveConsoleFollow()">Follow: ON</button>
+        <span id="liveConsoleFollowState" class="console-state">follow=on</span>
+      </div>
+      <div id="liveConsoleMeta" class="panel-summary console-state muted" style="margin-bottom:12px;"></div>
+      <pre id="liveConsoleView" class="live-console"></pre>
     </div>
 
-    <div class="card">
-      <h2>Compare</h2>
-      <div class="row" style="margin-bottom:8px;">
-        <input id="diffHost" type="text" placeholder="hostname">
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Export</h2>
+          <p class="panel-description">Open host-level artifacts in JSON or HTML, or load the diff export inline for quick inspection.</p>
+        </div>
+      </div>
+      <div class="panel-toolbar">
+        <select id="exportHost">
+          <option value="">-- Select host --</option>
+          {% for h in hosts %}
+          <option value="{{ h.host }}">{{ h.host }}</option>
+          {% endfor %}
+        </select>
+        <button onclick="openExportJson()" title="Open exported host JSON in a new tab">JSON</button>
+        <button onclick="loadExportDiffJson()" title="Load exported diff JSON for selected host">Diff JSON</button>
+        <button class="secondary" onclick="openExportHtml()" title="Open exported host HTML in a new tab">HTML</button>
+      </div>
+      <div class="panel-surface">
+        <h3 class="panel-surface-title">Exported Diff Payload</h3>
+        <div id="exportDiffView" class="task-box empty-state">Choose a host and load the diff export to inspect it here.</div>
+      </div>
+    </div>
+
+    <div class="card panel-card">
+      <div class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title">Compare</h2>
+          <p class="panel-description">Run host diffs or file-to-file comparisons in one place, then switch between a compact and full diff view.</p>
+        </div>
+      </div>
+      <div class="panel-toolbar">
+        <select id="diffHost">
+          <option value="">-- Select host --</option>
+          {% for h in hosts %}
+          <option value="{{ h.host }}">{{ h.host }}</option>
+          {% endfor %}
+        </select>
         <select id="diffView">
           <option value="inline">inline</option>
           <option value="sidebyside">sidebyside</option>
         </select>
-        <button onclick="runHostDiff()">Host Diff (origin vs dest)</button>
+        <button onclick="runHostDiff()" title="Run origin vs destination diff for selected host">Host Diff (origin vs dest)</button>
+        <button class="secondary" id="compareDisplayModeToggle" onclick="toggleCompareDisplayMode()" title="Toggle compare output between full and compact">Display: Full (click for Compact)</button>
       </div>
-      <div class="row" style="margin-bottom:8px;">
-        <input id="cmpHost1" type="text" placeholder="host1">
-        <input id="cmpHost2" type="text" placeholder="host2">
+      <div class="panel-toolbar secondary">
+        <select id="cmpHost1">
+          <option value="">-- Select host1 (exact) --</option>
+          {% for h in hosts %}
+          <option value="{{ h.host }}">{{ h.host }}</option>
+          {% endfor %}
+        </select>
+        <select id="cmpHost2">
+          <option value="">-- Select host2 (exact) --</option>
+          {% for h in hosts %}
+          <option value="{{ h.host }}">{{ h.host }}</option>
+          {% endfor %}
+        </select>
         <select id="cmpBase">
           <option value="origin">origin</option>
           <option value="dest">dest</option>
@@ -203,19 +772,78 @@
           <option value="sidebyside">sidebyside</option>
           <option value="inline">inline</option>
         </select>
-        <button class="secondary" onclick="runFileCompare()">Compare Files</button>
+        <button class="secondary" onclick="runFileCompare()" title="Compare command output between two hosts">Compare Files</button>
       </div>
-      <div id="compareView" class="task-box"></div>
-      <div id="compareSummary" class="task-box" style="margin-top:8px;"></div>
-      <div id="compareHtml" style="overflow:auto; max-height:360px; border-top:1px solid #e5e7eb; margin-top:8px; padding-top:8px;"></div>
+      <div id="compareSummary" class="panel-summary muted">Run a comparison to populate the summary and diff output.</div>
+      <div class="panel-grid two-column" style="margin-top:12px;">
+        <div class="panel-surface">
+          <h3 class="panel-surface-title">Compare Metadata</h3>
+          <div id="compareView" class="task-box empty-state">Comparison metadata will appear here.</div>
+        </div>
+        <div class="panel-surface">
+          <h3 class="panel-surface-title">Diff Output</h3>
+          <div id="compareHtml" class="compare-html diff-content empty-state">Diff output will appear here after running a comparison.</div>
+        </div>
+      </div>
     </div>
-  </div>
 
+    <div class="card panel-card diagnostic-panel debug-card">
+      <details class="debug-details">
+        <summary>
+          <span>Debug</span>
+          <span class="debug-summary-copy">Operational diagnostics and lock management</span>
+        </summary>
+        <div class="debug-grid">
+          <div class="debug-panel">
+            <h3>Worker Status</h3>
+            <div class="row">
+              <button class="secondary" onclick="runTopWorkerStatus()" title="Load current worker status">Load Worker Status</button>
+            </div>
+            <div id="workerStatus" class="task-box debug-empty">Run the check to load worker counters.</div>
+          </div>
+          <div class="debug-panel">
+            <h3>Readiness</h3>
+            <div class="row">
+              <button class="secondary" onclick="runTopReadinessStatus()" title="Run readiness checks and show status">Run Readiness</button>
+            </div>
+            <div id="readinessStatus" class="task-box debug-empty">Run the check to inspect queue, lock, and contract readiness.</div>
+          </div>
+          <div class="debug-panel">
+            <h3>Contract Check</h3>
+            <div class="row">
+              <button class="secondary" onclick="runTopContractStatus()" title="Run API contract status check">Run Contract Check</button>
+            </div>
+            <div id="contractStatus" class="task-box debug-empty">Run the check to compare registered routes against the required contract.</div>
+          </div>
+          <div class="debug-panel">
+            <h3>Lock Status</h3>
+            <div class="row">
+              <input id="lockReleaseHosts" type="text" placeholder="host1,host2" style="width:240px;">
+              <button class="warn" onclick="releaseLocks()" title="Release locks for listed hosts">Release Hosts</button>
+              <button class="secondary" onclick="loadLockStatus()" title="Reload current lock status">Reload Locks</button>
+              <button class="warn" onclick="cleanupLocks()" title="Remove stale host locks">Cleanup Stale Locks</button>
+            </div>
+            <div id="lockStatus" class="task-box debug-empty">Run the check to load current lock information.</div>
+          </div>
+        </div>
+      </details>
+    </div>
+{% endblock %}
+
+{% block scripts %}
   <script>
     let streamSource = null;
+    let streamTaskId = '';
+    let liveConsoleLines = [];
+    let liveConsoleFollow = true;
     let refreshTimer = null;
+    let captureStatusTimer = null;
     let taskPageOffset = 0;
     const taskPageSize = 10;
+    const RECENT_TASK_REFRESH_MS = 5000;
+    const MAX_CONSOLE_LINES = 2000;
+    const CONSOLE_STICKY_THRESHOLD_PX = 16;
+    let compareDisplayMode = 'full';
 
     async function api(path, method = 'GET', body = null) {
       const options = { method, headers: {} };
@@ -229,23 +857,342 @@
       return data;
     }
 
+    function toNumber(value, fallback = 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function joinParts(parts) {
+      return (parts || [])
+        .filter((part) => String(part ?? '').trim().length > 0)
+        .join(' | ');
+    }
+
+    function formatError(err) {
+      return 'Error: ' + (err && err.message ? err.message : String(err));
+    }
+
+    function setTopActionStatus(message) {
+      document.getElementById('topActionStatus').textContent = String(message || '');
+    }
+
+    function formatBrowserTime(epochSeconds) {
+      const parsed = Number(epochSeconds);
+      if (!Number.isFinite(parsed) || parsed <= 0) return '-';
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(new Date(parsed * 1000));
+    }
+
+    function statusTone(status, isRunning) {
+      if (isRunning) return 'running';
+      const normalized = String(status || '').toLowerCase();
+      if (normalized === 'completed') return 'success';
+      if (normalized === 'failed' || normalized === 'cancelled') return 'failed';
+      return 'idle';
+    }
+
+    function setCaptureStatus(statusPayload, isRunning = false) {
+      const panel = document.getElementById('captureStatusPanel');
+      const spinner = document.getElementById('captureStatusSpinner');
+      const label = document.getElementById('captureStatusLabel');
+      const headline = document.getElementById('captureStatusHeadline');
+      const summary = document.getElementById('captureStatusSummary');
+      const taskId = document.getElementById('captureStatusTaskId');
+      const base = document.getElementById('captureStatusBase');
+      const mode = document.getElementById('captureStatusMode');
+      const hosts = document.getElementById('captureStatusHosts');
+      if (!panel || !spinner || !label || !headline || !summary || !taskId || !base || !mode || !hosts) return;
+
+      const payload = (statusPayload && typeof statusPayload === 'object') ? statusPayload : {};
+      const status = String(payload.status || 'idle');
+      const tone = statusTone(status, isRunning);
+      panel.classList.remove('idle', 'running', 'success', 'failed');
+      panel.classList.add(tone);
+      spinner.style.display = isRunning ? 'inline-block' : 'none';
+      label.textContent = payload.label || status.charAt(0).toUpperCase() + status.slice(1);
+      headline.textContent = payload.headline || 'Ready to start a batch capture';
+      summary.textContent = payload.summary || 'Use one of the main actions to queue a capture across all configured hosts.';
+      taskId.textContent = payload.taskId || '-';
+      base.textContent = payload.base || '-';
+      mode.textContent = payload.mode || '-';
+      hosts.textContent = payload.hosts || '(all hosts)';
+    }
+
+    function stopCaptureStatusPolling() {
+      if (captureStatusTimer) {
+        clearInterval(captureStatusTimer);
+        captureStatusTimer = null;
+      }
+    }
+
+    function isTerminalTaskStatus(status) {
+      const normalized = String(status || '').toLowerCase();
+      return normalized === 'completed' || normalized === 'failed' || normalized === 'cancelled';
+    }
+
+    function summarizeTaskStatus(data) {
+      const status = String((data && data.status) || 'unknown');
+      const base = String((data && data.base) || 'unknown');
+      const mode = String((data && data.mode) || 'unknown');
+      const hosts = Array.isArray(data && data.hosts) ? data.hosts : [];
+      const hostLabel = hosts.length > 0 ? hosts.join(', ') : '(all hosts)';
+      const normalized = status.toLowerCase();
+      let headline = 'Current task is ' + status;
+      if (normalized === 'queued') headline = 'Capture request queued';
+      if (normalized === 'running') headline = 'Capture is running';
+      if (normalized === 'completed') headline = 'Capture completed';
+      if (normalized === 'failed') headline = 'Capture failed';
+      if (normalized === 'cancelled') headline = 'Capture cancelled';
+      return {
+        status,
+        label: status,
+        headline,
+        summary: 'mode=' + mode + ' | base=' + base + ' | hosts=' + hostLabel,
+        taskId: String((data && data.task_id) || ''),
+        base,
+        mode,
+        hosts: hostLabel
+      };
+    }
+
+    async function pollCaptureStatus(taskId) {
+      if (!taskId) return;
+      try {
+        const data = await api('/api/v2/tasks/' + taskId);
+        const taskStatus = String((data && data.status) || '').toLowerCase();
+        const running = !isTerminalTaskStatus(taskStatus);
+        setCaptureStatus(summarizeTaskStatus(data), running);
+        if (!running) {
+          stopCaptureStatusPolling();
+        }
+      } catch (err) {
+        setCaptureStatus({
+          status: 'failed',
+          label: 'Error',
+          headline: 'Failed to refresh capture status',
+          summary: 'task=' + taskId + ' | ' + formatError(err),
+          taskId,
+          base: '-',
+          mode: '-',
+          hosts: '(unknown)'
+        }, false);
+        stopCaptureStatusPolling();
+      }
+    }
+
+    function startCaptureStatusPolling(taskId) {
+      stopCaptureStatusPolling();
+      setCaptureStatus({
+        status: 'queued',
+        label: 'Queued',
+        headline: 'Capture request queued',
+        summary: 'Waiting for task execution to begin.',
+        taskId,
+        base: '-',
+        mode: 'batch',
+        hosts: '(all hosts)'
+      }, true);
+      pollCaptureStatus(taskId);
+      captureStatusTimer = setInterval(() => pollCaptureStatus(taskId), 1200);
+    }
+
+    function formatWorkerStatus(data) {
+      return joinParts([
+        'queued=' + toNumber(data && data.queued, 0),
+        'running=' + toNumber(data && data.running, 0),
+        'completed=' + toNumber(data && data.completed, 0),
+        'failed=' + toNumber(data && data.failed, 0),
+        'cancelled=' + toNumber(data && data.cancelled, 0),
+        'locked_hosts=' + toNumber(data && data.locked_hosts, 0),
+        'total=' + toNumber(data && data.total, 0)
+      ]);
+    }
+
+    function formatReadinessStatus(data) {
+      const counts = (data && typeof data.counts === 'object' && data.counts) ? data.counts : {};
+      const checks = Array.isArray(data && data.checks) ? data.checks : [];
+      const head = joinParts([
+        'status=' + String((data && data.status) || 'unknown'),
+        'queued=' + toNumber(counts.queued, 0),
+        'running=' + toNumber(counts.running, 0),
+        'locked_hosts=' + toNumber(counts.locked_hosts, 0),
+        'total=' + toNumber(counts.total, 0)
+      ]);
+      const checkSummary = checks.length
+        ? 'checks=' + checks.map((check) => {
+          const name = String((check && check.name) || 'unknown');
+          return name + '=' + ((check && check.ok) ? 'ok' : 'ng');
+        }).join(', ')
+        : '';
+      return [head, checkSummary].filter((line) => line).join('\n');
+    }
+
+    function formatContractStatus(data) {
+      const missing = Array.isArray(data && data.missing)
+        ? data.missing.length
+        : toNumber(data && data.missing, 0);
+      const extra = Array.isArray(data && data.extra)
+        ? data.extra.length
+        : toNumber(data && data.extra, 0);
+      return joinParts([
+        'status=' + String((data && data.status) || 'unknown'),
+        'required_count=' + toNumber(data && data.required_count, 0),
+        'actual_count=' + toNumber(data && data.actual_count, 0),
+        'missing=' + missing,
+        'extra=' + extra
+      ]);
+    }
+
+    function formatLockStatus(data) {
+      const locks = Array.isArray(data && data.locks) ? data.locks : [];
+      const hosts = locks
+        .slice(0, 5)
+        .map((item) => String((item && item.host) || ''))
+        .filter((host) => host);
+      const more = Math.max(0, locks.length - hosts.length);
+      const hostLine = hosts.length > 0
+        ? 'hosts=' + hosts.join(', ') + (more > 0 ? ', +' + more + ' more' : '')
+        : 'hosts=none';
+      const head = joinParts([
+        'count=' + toNumber(data && data.count, locks.length),
+        'timeout_seconds=' + toNumber(data && data.timeout_seconds, 0)
+      ]);
+      return [head, hostLine].join('\n');
+    }
+
+    function formatLockMutationResult(data) {
+      if (Array.isArray(data && data.released) || Array.isArray(data && data.not_locked)) {
+        const released = Array.isArray(data.released) ? data.released : [];
+        const notLocked = Array.isArray(data.not_locked) ? data.not_locked : [];
+        return joinParts([
+          'released=' + released.length + (released.length ? ' (' + released.join(', ') + ')' : ''),
+          'not_locked=' + notLocked.length + (notLocked.length ? ' (' + notLocked.join(', ') + ')' : ''),
+          'remaining=' + toNumber(data && data.remaining, 0)
+        ]);
+      }
+      return joinParts([
+        'deleted=' + toNumber(data && data.deleted, 0),
+        'remaining=' + toNumber(data && data.remaining, 0),
+        'timeout_seconds=' + toNumber(data && data.timeout_seconds, 0)
+      ]);
+    }
+
+    function formatHostSummaryStatus(data) {
+      const rows = Array.isArray(data && data.rows) ? data.rows : [];
+      return joinParts([
+        'displayed=' + toNumber(data && data.count, rows.length),
+        'total_hosts=' + toNumber(data && data.total_hosts, rows.length)
+      ]);
+    }
+
+    function updateDisplayToggleLabel(buttonId, mode) {
+      const button = document.getElementById(buttonId);
+      if (!button) return;
+      button.textContent = mode === 'full'
+        ? 'Display: Full (click for Compact)'
+        : 'Display: Compact (click for Full)';
+    }
+
+    function applyDisplayMode(rootEl, mode) {
+      if (!rootEl) return;
+      rootEl.querySelectorAll('.diff-content').forEach((el) => {
+        el.classList.remove('full', 'compact');
+        el.classList.add(mode);
+      });
+      if (rootEl.classList && rootEl.classList.contains('diff-content')) {
+        rootEl.classList.remove('full', 'compact');
+        rootEl.classList.add(mode);
+      }
+    }
+
+    function setCompareDisplayMode(mode) {
+      compareDisplayMode = mode === 'compact' ? 'compact' : 'full';
+      updateDisplayToggleLabel('compareDisplayModeToggle', compareDisplayMode);
+      applyDisplayMode(document.getElementById('compareHtml'), compareDisplayMode);
+    }
+
+    function toggleCompareDisplayMode() {
+      setCompareDisplayMode(compareDisplayMode === 'full' ? 'compact' : 'full');
+    }
+
     async function captureSingle(host, base) {
       try {
+        setTopActionStatus('[Capture ' + base + ' ' + host + '] started');
+        setCaptureStatus({
+          status: 'running',
+          label: 'Running',
+          headline: 'Starting single-host capture',
+          summary: 'mode=single | base=' + base + ' | hosts=' + host,
+          taskId: '-',
+          base,
+          mode: 'single',
+          hosts: host
+        }, true);
         const data = await api('/api/v2/captures', 'POST', { mode: 'single', base, hosts: [host] });
         document.getElementById('taskId').value = data.task_id;
-        await checkTask();
+        setTopActionStatus('[Capture ' + base + ' ' + host + '] queued task_id=' + data.task_id + ' status=queued');
+        startCaptureStatusPolling(data.task_id);
+        await selectTask(data.task_id);
       } catch (err) {
+        setTopActionStatus('[Capture ' + base + ' ' + host + '] failed: ' + err.message);
+        setCaptureStatus({
+          status: 'failed',
+          label: 'Failed',
+          headline: 'Failed to start single-host capture',
+          summary: formatError(err),
+          taskId: '-',
+          base,
+          mode: 'single',
+          hosts: host
+        }, false);
         alert('Capture failed: ' + err.message);
       }
     }
 
     async function captureAll(base) {
+      const isOrigin = base === 'origin';
+      const actionLabel = isOrigin ? 'Capture Origin All' : 'Capture Dest All';
+      const buttonId = isOrigin ? 'captureAllOrigin' : 'captureAllDest';
+      const button = document.getElementById(buttonId);
+      if (button) button.disabled = true;
+      setTopActionStatus('[' + actionLabel + '] started');
       try {
+        setCaptureStatus({
+          status: 'running',
+          label: 'Running',
+          headline: actionLabel + ' started',
+          summary: 'mode=batch | base=' + base + ' | hosts=(all hosts)',
+          taskId: '-',
+          base,
+          mode: 'batch',
+          hosts: '(all hosts)'
+        }, true);
         const data = await api('/api/v2/captures', 'POST', { mode: 'batch', base, hosts: [] });
+        setTopActionStatus('[' + actionLabel + '] queued task_id=' + data.task_id + ' status=queued');
         document.getElementById('taskId').value = data.task_id;
-        await checkTask();
+        startCaptureStatusPolling(data.task_id);
+        await selectTask(data.task_id);
       } catch (err) {
+        setTopActionStatus('[' + actionLabel + '] failed: ' + err.message);
+        setCaptureStatus({
+          status: 'failed',
+          label: 'Failed',
+          headline: actionLabel + ' failed to start',
+          summary: formatError(err),
+          taskId: '-',
+          base,
+          mode: 'batch',
+          hosts: '(all hosts)'
+        }, false);
         alert('Capture-all failed: ' + err.message);
+      } finally {
+        if (button) button.disabled = false;
       }
     }
 
@@ -262,71 +1209,91 @@
           'hosts=' + (data.hosts || []).join(','),
           'cancel_requested=' + Boolean(data.cancel_requested)
         ].join(' | ');
-        document.getElementById('taskView').textContent = JSON.stringify(data, null, 2);
+        renderLiveConsoleMeta();
+        return data;
       } catch (err) {
         document.getElementById('taskQuickSummary').textContent = '';
-        document.getElementById('taskView').textContent = err.message;
+        renderLiveConsoleMeta();
+        throw err;
       }
     }
 
     async function loadWorkerStatus() {
       try {
         const data = await api('/api/v2/system/worker');
-        document.getElementById('workerStatus').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('workerStatus').textContent = formatWorkerStatus(data);
+        return data;
       } catch (err) {
-        document.getElementById('workerStatus').textContent = err.message;
+        document.getElementById('workerStatus').textContent = formatError(err);
+        throw err;
       }
     }
 
     async function loadContractStatus() {
       try {
         const data = await api('/api/v2/system/contract');
-        document.getElementById('contractStatus').textContent = JSON.stringify(
-          {
-            status: data.status,
-            required_count: data.required_count,
-            actual_count: data.actual_count,
-            missing: data.missing.length,
-            extra: data.extra.length
-          },
-          null,
-          2
-        );
+        document.getElementById('contractStatus').textContent = formatContractStatus(data);
+        return data;
       } catch (err) {
-        document.getElementById('contractStatus').textContent = err.message;
+        document.getElementById('contractStatus').textContent = formatError(err);
+        throw err;
       }
     }
 
     async function loadReadinessStatus() {
       try {
         const data = await api('/api/v2/system/readiness');
-        document.getElementById('readinessStatus').textContent = JSON.stringify(
-          {
-            status: data.status,
-            counts: data.counts,
-            checks: data.checks
-          },
-          null,
-          2
-        );
+        document.getElementById('readinessStatus').textContent = formatReadinessStatus(data);
+        return data;
       } catch (err) {
-        document.getElementById('readinessStatus').textContent = err.message;
+        document.getElementById('readinessStatus').textContent = formatError(err);
+        throw err;
+      }
+    }
+
+    async function runTopWorkerStatus() {
+      setTopActionStatus('[Worker Status] started');
+      try {
+        await loadWorkerStatus();
+        setTopActionStatus('[Worker Status] success');
+      } catch (err) {
+        setTopActionStatus('[Worker Status] failed: ' + err.message);
+      }
+    }
+
+    async function runTopReadinessStatus() {
+      setTopActionStatus('[Readiness] started');
+      try {
+        await loadReadinessStatus();
+        setTopActionStatus('[Readiness] success');
+      } catch (err) {
+        setTopActionStatus('[Readiness] failed: ' + err.message);
+      }
+    }
+
+    async function runTopContractStatus() {
+      setTopActionStatus('[Contract Check] started');
+      try {
+        await loadContractStatus();
+        setTopActionStatus('[Contract Check] success');
+      } catch (err) {
+        setTopActionStatus('[Contract Check] failed: ' + err.message);
       }
     }
 
     async function loadLockStatus() {
       try {
         const data = await api('/api/v2/system/locks');
-        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('lockStatus').textContent = formatLockStatus(data);
       } catch (err) {
-        document.getElementById('lockStatus').textContent = err.message;
+        document.getElementById('lockStatus').textContent = formatError(err);
       }
     }
 
     async function cleanupLocks() {
       try {
         const data = await api('/api/v2/system/locks/cleanup', 'POST');
-        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('lockStatus').textContent = formatLockMutationResult(data);
         await loadWorkerStatus();
         await loadReadinessStatus();
       } catch (err) {
@@ -342,7 +1309,7 @@
         .filter((item) => item.length > 0);
       try {
         const data = await api('/api/v2/system/locks/release', 'POST', { hosts });
-        document.getElementById('lockStatus').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('lockStatus').textContent = formatLockMutationResult(data);
         await loadWorkerStatus();
         await loadReadinessStatus();
       } catch (err) {
@@ -360,10 +1327,8 @@
         if (runningOnly) parts.push('running_only=true');
         if (hostSearch) parts.push('host_contains=' + encodeURIComponent(hostSearch));
         const data = await api('/api/v2/tasks?' + parts.join('&'));
-        document.getElementById('taskListView').textContent = JSON.stringify(data, null, 2);
         renderTaskTable(data);
       } catch (err) {
-        document.getElementById('taskListView').textContent = err.message;
         document.getElementById('taskTableWrap').innerHTML = '';
       }
     }
@@ -378,14 +1343,10 @@
       if (!prioritizeFailed) parts.push('prioritize_failed=false');
       try {
         const data = await api('/api/v2/hosts/summary?' + parts.join('&'));
-        document.getElementById('hostSummaryView').textContent = JSON.stringify(
-          { count: data.count, total_hosts: data.total_hosts },
-          null,
-          2
-        );
+        document.getElementById('hostSummaryView').textContent = formatHostSummaryStatus(data);
         renderHostSummaryTable(data.rows || []);
       } catch (err) {
-        document.getElementById('hostSummaryView').textContent = err.message;
+        document.getElementById('hostSummaryView').textContent = formatError(err);
         document.getElementById('hostSummaryTableWrap').innerHTML = '';
       }
     }
@@ -396,37 +1357,78 @@
         wrap.innerHTML = '<p>No summary data</p>';
         return;
       }
+      const formatLocalDateTime = (epochSec) => {
+        const value = Number(epochSec);
+        if (!Number.isFinite(value) || value <= 0) return '';
+        const date = new Date(value * 1000);
+        const pad = (n) => String(n).padStart(2, '0');
+        return [
+          date.getFullYear(),
+          '-',
+          pad(date.getMonth() + 1),
+          '-',
+          pad(date.getDate()),
+          ' ',
+          pad(date.getHours()),
+          ':',
+          pad(date.getMinutes()),
+          ':',
+          pad(date.getSeconds())
+        ].join('');
+      };
+      const formatCaptureStatus = (entry) => {
+        const status = String((entry && entry.status) || '');
+        if (status === 'running') return 'Running';
+        if (status === 'captured') {
+          const ts = formatLocalDateTime(entry.captured_at);
+          return ts ? ('Captured (' + ts + ')') : 'Captured';
+        }
+        return 'Not Captured';
+      };
+      const renderCommandStatuses = (commands, side) => {
+        if (!Array.isArray(commands) || commands.length === 0) {
+          return '<span class="text-muted">No command data</span>';
+        }
+        return commands.map((item) => {
+          const command = (item && item.command) ? item.command : item.command_key;
+          const sideEntry = item && item[side];
+          return [
+            '<div>',
+            '<code>' + escapeHtml(command) + '</code>: ',
+            escapeHtml(formatCaptureStatus(sideEntry)),
+            '</div>'
+          ].join('');
+        }).join('');
+      };
       const body = rows.map((r) => [
         '<tr>',
         '<td>' + escapeHtml(r.host) + '</td>',
         '<td>' + escapeHtml(r.ip) + '</td>',
         '<td>' + escapeHtml(r.model) + '</td>',
-        '<td>' + escapeHtml(r.total) + '</td>',
-        '<td>' + escapeHtml(r.changed) + '</td>',
-        '<td>' + escapeHtml(r.identical) + '</td>',
-        '<td>' + escapeHtml(r.unavailable) + '</td>',
-        '<td>' + escapeHtml(r.not_found) + '</td>',
-        '<td>' + escapeHtml(r.last_task_status) + '</td>',
-        '<td>' + escapeHtml(r.last_capture_at) + '</td>',
-        '<td><button class="secondary" onclick="openHostDetail(\\'' + escapeJs(r.host) + '\\')">Detail</button></td>',
+        '<td>' + renderCommandStatuses(r.commands, 'origin') + '</td>',
+        '<td>' + renderCommandStatuses(r.commands, 'dest') + '</td>',
+        '<td><div class="host-summary-actions">' +
+          '<button title="Capture origin config for this host" onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;origin&quot;)">Origin</button>' +
+          '<button class="secondary" title="Capture destination config for this host" onclick="captureSingle(&quot;' + escapeHtml(r.host) + '&quot;, &quot;dest&quot;)">Dest</button>' +
+          '<a class="action-link secondary" title="Open detailed diff view for this host" href="/v2/hosts/' + encodeURIComponent(r.host) + '">Detail</a>' +
+          '</div></td>',
         '</tr>'
       ].join('')).join('');
       wrap.innerHTML = [
-        '<table class="mini-table">',
-        '<thead><tr><th>Host</th><th>IP</th><th>Model</th><th>Total</th><th>Changed</th><th>Identical</th><th>Unavailable</th><th>Not Found</th><th>Last Task</th><th>Last Capture</th><th>Action</th></tr></thead>',
+        '<div class="hosts-table-wrap">',
+        '<table class="mini-table host-summary-table">',
+        '<thead><tr><th>Host</th><th>IP</th><th>Model</th><th>Origin Capture Status</th><th>Dest Capture Status</th><th>Actions</th></tr></thead>',
         '<tbody>',
         body,
         '</tbody>',
-        '</table>'
+        '</table>',
+        '</div>'
       ].join('');
     }
 
     function startAutoRefresh() {
       stopAutoRefresh();
-      const sec = Number(document.getElementById('refreshSec').value || '5');
-      const interval = Number.isFinite(sec) && sec > 0 ? sec : 5;
-      loadRecentTasks();
-      refreshTimer = setInterval(loadRecentTasks, interval * 1000);
+      refreshTimer = setInterval(loadRecentTasks, RECENT_TASK_REFRESH_MS);
     }
 
     function stopAutoRefresh() {
@@ -463,18 +1465,16 @@
           '<td>' + escapeHtml(t.base) + '</td>',
           '<td>' + escapeHtml(hosts) + '</td>',
           '<td>',
-          '<button onclick="selectTask(\\'' + escapeJs(t.task_id) + '\\')">Select</button> ',
-          '<button class="warn" onclick="quickCancel(\\'' + escapeJs(t.task_id) + '\\')">Cancel</button> ',
-          '<button class="secondary" onclick="quickRetry(\\'' + escapeJs(t.task_id) + '\\')">Retry</button> ',
-          '<button class="secondary" onclick="quickLive(\\'' + escapeJs(t.task_id) + '\\')">Live</button>',
+          '<button title="Select this task and open its live console" onclick="selectTask(&quot;' + escapeHtml(t.task_id) + '&quot;)">Select</button> ',
+          '<button class="warn" title="Request cancellation for this task" onclick="quickCancel(&quot;' + escapeHtml(t.task_id) + '&quot;)">Cancel</button>',
           '</td>',
           '</tr>'
         ].join('');
       }).join('');
       wrap.innerHTML = [
         '<div class="row" style="margin-bottom: 6px;">',
-        '<button onclick="prevTaskPage()">Prev</button>',
-        '<button class="secondary" onclick="nextTaskPage()">Next</button>',
+        '<button title="Show previous page of tasks" onclick="prevTaskPage()">Prev</button>',
+        '<button class="secondary" title="Show next page of tasks" onclick="nextTaskPage()">Next</button>',
         '<small>offset=' + taskPageOffset + ', limit=' + taskPageSize + '</small>',
         '</div>',
         '<table class="mini-table">',
@@ -485,31 +1485,23 @@
       ].join('');
     }
 
-    function selectTask(taskId) {
+    async function selectTask(taskId) {
       document.getElementById('taskId').value = taskId;
-      checkTask();
+      try {
+        await checkTask();
+        startLiveConsole();
+      } catch (err) {
+        const message = formatError(err);
+        stopLiveStream();
+        streamTaskId = taskId;
+        document.getElementById('taskQuickSummary').textContent = message;
+        clearLiveConsole();
+      }
     }
 
     function quickCancel(taskId) {
       document.getElementById('taskId').value = taskId;
       cancelTask();
-    }
-
-    function quickLive(taskId) {
-      document.getElementById('taskId').value = taskId;
-      startLiveStream();
-    }
-
-    async function quickRetry(taskId) {
-      document.getElementById('taskId').value = taskId;
-      try {
-        const data = await api('/api/v2/tasks/' + taskId + '/retry', 'POST');
-        document.getElementById('taskId').value = data.task_id;
-        await checkTask();
-        await loadRecentTasks();
-      } catch (err) {
-        alert('Retry failed: ' + err.message);
-      }
     }
 
     function escapeHtml(value) {
@@ -521,49 +1513,102 @@
         .replaceAll("'", '&#39;');
     }
 
-    function escapeJs(value) {
-      return String(value ?? '').replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+    function isNearConsoleBottom(el) {
+      if (!el) return true;
+      const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+      return gap <= CONSOLE_STICKY_THRESHOLD_PX;
     }
 
-    function openStream() {
-      const taskId = document.getElementById('taskId').value.trim();
-      if (!taskId) return;
-      const tail = Number(document.getElementById('tailLines').value || '0');
-      const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 0;
-      window.open('/api/v2/tasks/' + taskId + '/stream?tail_lines=' + safeTail, '_blank');
+    function setLiveConsoleFollow(next) {
+      liveConsoleFollow = Boolean(next);
+      const state = document.getElementById('liveConsoleFollowState');
+      const button = document.getElementById('liveConsoleFollowButton');
+      if (state) {
+        state.textContent = liveConsoleFollow ? 'follow=on' : 'follow=off';
+      }
+      if (button) {
+        button.textContent = liveConsoleFollow ? 'Follow: ON' : 'Follow: OFF';
+      }
+    }
+
+    function toggleLiveConsoleFollow() {
+      setLiveConsoleFollow(!liveConsoleFollow);
+      if (liveConsoleFollow) {
+        const view = document.getElementById('liveConsoleView');
+        if (view) view.scrollTop = view.scrollHeight;
+      }
+      renderLiveConsoleMeta();
+    }
+
+    function renderLiveConsoleMeta() {
+      const meta = document.getElementById('liveConsoleMeta');
+      if (!meta) return;
+      const labelTaskId = streamTaskId || document.getElementById('taskId').value.trim() || '-';
+      meta.textContent = [
+        'task=' + labelTaskId,
+        'lines=' + liveConsoleLines.length + '/' + MAX_CONSOLE_LINES,
+        'follow=' + (liveConsoleFollow ? 'on' : 'off'),
+        'stream=' + (streamSource ? 'connected' : 'stopped'),
+      ].join(' | ');
+    }
+
+    function appendLiveConsoleLine(line) {
+      const view = document.getElementById('liveConsoleView');
+      if (!view) return;
+      const stickToBottom = liveConsoleFollow && isNearConsoleBottom(view);
+      liveConsoleLines.push(String(line));
+      if (liveConsoleLines.length > MAX_CONSOLE_LINES) {
+        liveConsoleLines.splice(0, liveConsoleLines.length - MAX_CONSOLE_LINES);
+      }
+      view.textContent = liveConsoleLines.join('\n');
+      if (stickToBottom) {
+        view.scrollTop = view.scrollHeight;
+      }
+      renderLiveConsoleMeta();
+    }
+
+    function clearLiveConsole() {
+      liveConsoleLines = [];
+      const view = document.getElementById('liveConsoleView');
+      if (view) view.textContent = '';
+      renderLiveConsoleMeta();
     }
 
     async function cancelTask() {
       const taskId = document.getElementById('taskId').value.trim();
       if (!taskId) return;
       try {
-        const data = await api('/api/v2/tasks/' + taskId + '/cancel', 'POST');
-        document.getElementById('taskView').textContent = JSON.stringify(data, null, 2);
+        await api('/api/v2/tasks/' + taskId + '/cancel', 'POST');
+        await checkTask();
+        await loadRecentTasks();
       } catch (err) {
         alert('Cancel failed: ' + err.message);
       }
     }
 
-    function startLiveStream() {
+    function startLiveConsole() {
       const taskId = document.getElementById('taskId').value.trim();
       if (!taskId) return;
       stopLiveStream();
-      const streamView = document.getElementById('streamView');
-      streamView.textContent = '';
+      clearLiveConsole();
+      streamTaskId = taskId;
+      setLiveConsoleFollow(true);
       const tail = Number(document.getElementById('tailLines').value || '0');
       const safeTail = Number.isFinite(tail) && tail > 0 ? Math.floor(tail) : 0;
+      appendLiveConsoleLine('[stream] connect task=' + taskId + ' tail=' + safeTail);
       streamSource = new EventSource('/api/v2/tasks/' + taskId + '/stream?tail_lines=' + safeTail);
       streamSource.onmessage = function(event) {
-        streamView.textContent += event.data + '\n';
+        appendLiveConsoleLine(event.data);
       };
       streamSource.addEventListener('status', function(event) {
-        streamView.textContent += '[status] ' + event.data + '\n';
+        appendLiveConsoleLine('[status] ' + event.data);
         stopLiveStream();
       });
       streamSource.onerror = function() {
-        streamView.textContent += '[stream error]\n';
+        appendLiveConsoleLine('[stream error]');
         stopLiveStream();
       };
+      renderLiveConsoleMeta();
     }
 
     function stopLiveStream() {
@@ -571,6 +1616,7 @@
         streamSource.close();
         streamSource = null;
       }
+      renderLiveConsoleMeta();
     }
 
     function openExportJson() {
@@ -595,11 +1641,6 @@
       } catch (err) {
         box.textContent = err.message;
       }
-    }
-
-    function openHostDetail(host) {
-      if (!host) return;
-      window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');
     }
 
     function openLogsPage() {
@@ -631,6 +1672,7 @@
           ].join('');
         });
         htmlBox.innerHTML = blocks.join('<hr>');
+        applyDisplayMode(htmlBox, compareDisplayMode);
       } catch (err) {
         document.getElementById('compareSummary').textContent = '';
         viewBox.textContent = err.message;
@@ -645,6 +1687,14 @@
       const command = document.getElementById('cmpCommand').value.trim();
       const view = document.getElementById('cmpView').value;
       if (!host1 || !host2 || !command) return;
+      if (host1 === host2) {
+        const message = 'host1 and host2 must be different';
+        document.getElementById('compareSummary').textContent = message;
+        document.getElementById('compareView').textContent = message;
+        document.getElementById('compareHtml').innerHTML = '';
+        alert(message);
+        return;
+      }
       const viewBox = document.getElementById('compareView');
       const htmlBox = document.getElementById('compareHtml');
       try {
@@ -664,6 +1714,7 @@
           'status=' + data.status
         ].join(' | ');
         htmlBox.innerHTML = data.diff_html || '';
+        applyDisplayMode(htmlBox, compareDisplayMode);
       } catch (err) {
         document.getElementById('compareSummary').textContent = '';
         viewBox.textContent = err.message;
@@ -676,13 +1727,38 @@
     document.getElementById('statusFilter').addEventListener('change', () => { taskPageOffset = 0; loadRecentTasks(); });
     document.getElementById('runningOnly').addEventListener('change', () => { taskPageOffset = 0; loadRecentTasks(); });
     document.getElementById('hostSearch').addEventListener('input', () => { taskPageOffset = 0; loadRecentTasks(); });
+    document.getElementById('taskId').addEventListener('change', (event) => {
+      const taskId = event.target.value.trim();
+      if (taskId) selectTask(taskId);
+    });
+    document.getElementById('taskId').addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const taskId = event.target.value.trim();
+      if (taskId) selectTask(taskId);
+    });
     document.getElementById('summaryHostSearch').addEventListener('input', loadHostSummary);
     document.getElementById('summaryPrioritizeFailed').addEventListener('change', loadHostSummary);
-    loadWorkerStatus();
-    loadReadinessStatus();
-    loadLockStatus();
-    loadContractStatus();
+    document.getElementById('liveConsoleView').addEventListener('scroll', () => {
+      const view = document.getElementById('liveConsoleView');
+      setLiveConsoleFollow(isNearConsoleBottom(view));
+      renderLiveConsoleMeta();
+    });
     loadHostSummary();
+    setCaptureStatus({
+      status: 'idle',
+      label: 'Idle',
+      headline: 'Ready to start a batch capture',
+      summary: 'Use one of the main actions to queue a capture across all configured hosts.',
+      taskId: '-',
+      base: '-',
+      mode: '-',
+      hosts: '(all hosts)'
+    }, false);
+    loadRecentTasks();
+    startAutoRefresh();
+    setLiveConsoleFollow(true);
+    renderLiveConsoleMeta();
+    setCompareDisplayMode('full');
   </script>
-</body>
-</html>
+{% endblock %}

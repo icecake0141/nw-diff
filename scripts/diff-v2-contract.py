@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""Compare v2 contract snapshots and emit a readable summary."""
+"""
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+
+Compare v2 contract snapshots and emit a readable summary.
+"""
 
 from __future__ import annotations
 
@@ -42,9 +56,7 @@ def _to_markdown_lines(
         f"- actual removed: {len(actual_removed)}",
     ]
 
-    def _append_section(
-        title: str, rows: list[tuple[str, tuple[str, ...]]]
-    ) -> None:
+    def _append_section(title: str, rows: list[tuple[str, tuple[str, ...]]]) -> None:
         if not rows:
             return
         lines.append("")
@@ -118,20 +130,17 @@ def main() -> int:
         "baseline": str(baseline_path),
         "candidate": str(candidate_path),
         "required_added": [
-            {"path": path, "methods": list(methods)}
-            for path, methods in required_added
+            {"path": path, "methods": list(methods)} for path, methods in required_added
         ],
         "required_removed": [
             {"path": path, "methods": list(methods)}
             for path, methods in required_removed
         ],
         "actual_added": [
-            {"path": path, "methods": list(methods)}
-            for path, methods in actual_added
+            {"path": path, "methods": list(methods)} for path, methods in actual_added
         ],
         "actual_removed": [
-            {"path": path, "methods": list(methods)}
-            for path, methods in actual_removed
+            {"path": path, "methods": list(methods)} for path, methods in actual_removed
         ],
         "has_diff": bool(
             required_added or required_removed or actual_added or actual_removed

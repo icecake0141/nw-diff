@@ -22,6 +22,9 @@ import os
 import socket
 import subprocess
 import sys
+import importlib
+import secrets
+import shutil
 from pathlib import Path
 
 import pytest
@@ -75,13 +78,6 @@ class TestInstallationPrerequisites:
         assert sample_file.exists(), "hosts.csv.sample not found"
         assert sample_file.is_file(), "hosts.csv.sample is not a file"
 
-    def test_run_app_script_exists(self):
-        """Verify run_app.py exists and is executable."""
-        repo_root = Path(__file__).parent.parent
-        run_app = repo_root / "run_app.py"
-        assert run_app.exists(), "run_app.py not found"
-        assert run_app.is_file(), "run_app.py is not a file"
-
 
 class TestInstallationSteps:
     """Test that documented installation steps can be executed successfully."""
@@ -119,8 +115,6 @@ class TestInstallationSteps:
 
     def test_hosts_csv_can_be_created_from_sample(self, tmp_path):
         """Test that hosts.csv can be created from sample file."""
-        import shutil  # pylint: disable=import-outside-toplevel
-
         repo_root = Path(__file__).parent.parent
         sample_file = repo_root / "hosts.csv.sample"
         test_file = tmp_path / "hosts.csv"
@@ -146,8 +140,6 @@ class TestEnvironmentVariables:
     def test_api_token_generation(self):
         """Test that API token can be generated using documented method."""
         # This is the command documented in README
-        import secrets  # pylint: disable=import-outside-toplevel
-
         token = secrets.token_urlsafe(32)
         assert len(token) > 0, "Failed to generate token"
         assert isinstance(token, str), "Token should be a string"
@@ -166,20 +158,20 @@ class TestEnvironmentVariables:
 class TestApplicationStartup:
     """Test that the application can start with minimal configuration."""
 
-    def test_app_can_import(self):
-        """Test that the Flask app can be imported."""
+    def test_v2_app_can_import(self):
+        """Test that the default v2 FastAPI app can be imported."""
         # Add src to path
         repo_root = Path(__file__).parent.parent
         src_dir = repo_root / "src"
         sys.path.insert(0, str(src_dir))
 
         try:
-            from nw_diff.app import app  # pylint: disable=import-outside-toplevel
+            app = importlib.import_module("nw_diff_v2.main").app
 
-            assert app is not None, "Failed to import Flask app"
-            assert hasattr(app, "run"), "Flask app missing run method"
+            assert app is not None, "Failed to import v2 FastAPI app"
+            assert hasattr(app, "router"), "FastAPI app missing router"
         except ImportError as e:
-            pytest.fail(f"Failed to import app: {e}")
+            pytest.fail(f"Failed to import v2 app: {e}")
 
     def test_required_dependencies_importable(self):
         """Test that required dependencies can be imported."""

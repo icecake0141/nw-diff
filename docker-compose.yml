@@ -19,24 +19,25 @@ services:
     environment:
       - DEVICE_PASSWORD=${DEVICE_PASSWORD}
       - NW_DIFF_API_TOKEN=${NW_DIFF_API_TOKEN}
+      - ENV=${NW_DIFF_ENV:-development}
       - HOSTS_CSV=/app/hosts.csv
-      - APP_DEBUG=false
-      - FLASK_RUN_HOST=0.0.0.0
-      - FLASK_RUN_PORT=5000
+      - DB_URL=sqlite:///./data/nw_diff_v2.db
+      - ARTIFACT_ROOT=./artifacts_v2
+      - TASK_WORKER_ENABLED=true
+      - TASK_WORKER_THREADS=1
     volumes:
       # Mount hosts.csv from a secure location
       - ./hosts.csv:/app/hosts.csv:ro
       # Persistent data volumes
       - nw-diff-logs:/app/logs
-      - nw-diff-dest:/app/dest
-      - nw-diff-origin:/app/origin
-      - nw-diff-diff:/app/diff
-      - nw-diff-backup:/app/backup
+      - nw-diff-v2-db:/app/data
+      - nw-diff-v2-artifacts:/app/artifacts_v2
     networks:
       - nw-diff-network
     restart: unless-stopped
+    command: ["uvicorn", "nw_diff_v2.main:app", "--host", "0.0.0.0", "--port", "5000", "--app-dir", "src"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/').read()"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/v2').read()"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -65,10 +66,8 @@ services:
 
 volumes:
   nw-diff-logs:
-  nw-diff-dest:
-  nw-diff-origin:
-  nw-diff-diff:
-  nw-diff-backup:
+  nw-diff-v2-db:
+  nw-diff-v2-artifacts:
 
 networks:
   nw-diff-network:

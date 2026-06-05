@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""Render a human-readable cutover status message from evaluation JSON."""
+"""
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+
+Render a human-readable cutover status message from evaluation JSON.
+"""
 
 from __future__ import annotations
 
@@ -94,7 +108,11 @@ def main() -> int:
             with summary.open("a", encoding="utf-8") as fp:
                 fp.write(message + ("" if message.endswith("\n") else "\n"))
         return 0 if args.allow_missing else 1
-    message = _render_markdown(payload) if args.format == "markdown" else _render_text(payload)
+    message = (
+        _render_markdown(payload)
+        if args.format == "markdown"
+        else _render_text(payload)
+    )
     print(message)
 
     if args.output:

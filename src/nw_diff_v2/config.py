@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     artifact_root: str = "./artifacts_v2"
     app_log_path: str = "./logs/nw-diff.log"
     hosts_csv: str = "hosts.csv"
+    command_profiles_override_yaml: str = (
+        "command_profiles/device_commands.override.yaml"
+    )
     task_stream_sleep_seconds: float = 0.25
     task_stream_heartbeat_seconds: float = 10.0
     batch_conflict_policy: str = "all_or_nothing"

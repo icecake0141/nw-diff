@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-ca-certificates
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements.txt requirements-v2.txt ./
 
 # Install Python packages
 # Note: In CI environments with SSL interception, you may need to build with:
@@ -35,9 +35,9 @@ RUN if [ -n "$SKIP_PIP_SSL_VERIFY" ]; then \
             --trusted-host pypi.org \
             --trusted-host files.pythonhosted.org \
             --trusted-host pypi.python.org \
-            -r requirements.txt; \
+            -r requirements.txt -r requirements-v2.txt; \
     else \
-        pip install --no-cache-dir --user -r requirements.txt; \
+        pip install --no-cache-dir --user -r requirements.txt -r requirements-v2.txt; \
     fi
 
 # Production stage
@@ -54,13 +54,13 @@ COPY --from=builder /root/.local /home/nwdiff/.local
 
 # Copy application code
 COPY --chown=nwdiff:nwdiff src/ ./src/
-COPY --chown=nwdiff:nwdiff templates/ ./templates/
-COPY --chown=nwdiff:nwdiff run_app.py .
 COPY --chown=nwdiff:nwdiff hosts.csv.sample ./hosts.csv.sample
 
-# Create necessary directories with correct permissions
-RUN mkdir -p logs dest origin diff backup && \
-    chown -R nwdiff:nwdiff logs dest origin diff backup
+# Create necessary directories with correct permissions.
+# Pre-creating v2 runtime paths lets Docker initialize named volumes
+# with writable ownership for the non-root runtime user.
+RUN mkdir -p logs dest origin diff backup data artifacts_v2 && \
+    chown -R nwdiff:nwdiff logs dest origin diff backup data artifacts_v2
 
 # Switch to non-root user
 USER nwdiff
@@ -69,12 +69,12 @@ USER nwdiff
 ENV PATH=/home/nwdiff/.local/bin:$PATH
 ENV PYTHONPATH=/app/src
 
-# Expose Flask default port
+# Expose application port
 EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/').read()" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/v2').read()" || exit 1
 
 # Run the application
-CMD ["python", "run_app.py"]
+CMD ["uvicorn", "nw_diff_v2.main:app", "--host", "0.0.0.0", "--port", "5000", "--app-dir", "src"]

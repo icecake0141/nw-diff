@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from nw_diff.diff import compute_diff, compute_diff_status, generate_side_by_side_html
+from nw_diff_v2.domain.services.diff_service import (
+    compute_diff,
+    compute_diff_status,
+    generate_side_by_side_html,
+)
 from nw_diff_v2.api.error_messages import ERR_INVALID_HOSTNAME, ERR_INVALID_VIEW
+from nw_diff_v2.config import settings
 from nw_diff_v2.domain.models import CompareFilesRequest
+from nw_diff_v2.infra.repositories.host_repo import load_hosts
 from nw_diff_v2.infra.storage.files import (
     artifact_path,
     command_label_from_key,
@@ -29,9 +35,20 @@ def compare_files(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERR_INVALID_HOSTNAME,
         )
-    if not request.command or any(
-        token in request.command for token in ("..", "/", "\\")
-    ):
+
+    inventory_hosts = {row.host for row in load_hosts(settings.hosts_csv)}
+    invalid_hosts: list[str] = []
+    if request.host1 not in inventory_hosts:
+        invalid_hosts.append("Invalid host1: must exactly match an inventory host")
+    if request.host2 not in inventory_hosts:
+        invalid_hosts.append("Invalid host2: must exactly match an inventory host")
+    if invalid_hosts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=", ".join(invalid_hosts),
+        )
+
+    if not request.command or not request.command.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid command",

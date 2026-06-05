@@ -1,4 +1,18 @@
-"""SQLite-backed task repository for v2 capture jobs."""
+"""
+Copyright 2025 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+
+SQLite-backed task repository for v2 capture jobs.
+"""
 
 from __future__ import annotations
 
@@ -25,15 +39,16 @@ def _db_path() -> Path:
 def _connect() -> sqlite3.Connection:
     path = _db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(path, check_same_thread=False)
+    conn = sqlite3.connect(path, check_same_thread=False)
+    conn.execute("PRAGMA busy_timeout = 3000")
+    return conn
 
 
 def init_db() -> None:
     """Initialize DB schema once."""
     with _DB_INIT_LOCK:
         with _connect() as conn:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS capture_tasks (
                     id TEXT PRIMARY KEY,
                     status TEXT NOT NULL,
@@ -47,8 +62,7 @@ def init_db() -> None:
                     error TEXT,
                     result_json TEXT
                 )
-                """
-            )
+                """)
             conn.commit()
 
 
@@ -289,13 +303,11 @@ def count_tasks_by_status() -> dict[str, int]:
     """Return counts grouped by task status."""
     init_db()
     with _connect() as conn:
-        rows = conn.execute(
-            """
+        rows = conn.execute("""
             SELECT status, COUNT(*) AS cnt
             FROM capture_tasks
             GROUP BY status
-            """
-        ).fetchall()
+            """).fetchall()
     counts: dict[str, int] = {}
     for status, cnt in rows:
         counts[str(status)] = int(cnt)
