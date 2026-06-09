@@ -21,6 +21,15 @@ Review required for correctness, security, and licensing.
       name="description"
       content="A bilingual product tour for NW-Diff, showing capture, comparison, and operational diagnostics through the v2 web UI."
     />
+    <meta property="og:title" content="NW-Diff User Experience Tour" />
+    <meta
+      property="og:description"
+      content="Capture before and after network states, compare command output, and keep operational evidence in one workflow."
+    />
+    <meta property="og:image" content="https://icecake0141.github.io/nw-diff/assets/tour/control-panel.jpg" />
+    <meta property="og:url" content="https://icecake0141.github.io/nw-diff/tour/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="stylesheet" href="./tour.css" />
   </head>
   <body>
@@ -49,6 +58,20 @@ Review required for correctness, security, and licensing.
           <div class="hero-actions">
             <a class="primary-action" href="#screenshots" data-i18n="heroPrimary">Explore the UI</a>
             <a class="secondary-action" href="https://github.com/icecake0141/nw-diff#installation" data-i18n="heroSecondary">Read setup guide</a>
+          </div>
+          <div class="value-strip" aria-label="NW-Diff value summary">
+            <article>
+              <strong data-i18n="valueOneTitle">Before/after capture</strong>
+              <span data-i18n="valueOneText">Collect origin and destination snapshots across the inventory.</span>
+            </article>
+            <article>
+              <strong data-i18n="valueTwoTitle">Command-level diff</strong>
+              <span data-i18n="valueTwoText">Review device output by command with timestamps and status.</span>
+            </article>
+            <article>
+              <strong data-i18n="valueThreeTitle">Operational evidence</strong>
+              <span data-i18n="valueThreeText">Keep task history and logs close to the change review.</span>
+            </article>
           </div>
         </div>
         <figure class="hero-shot">
@@ -99,8 +122,17 @@ Review required for correctness, security, and licensing.
               Operators can start origin or destination captures, monitor the current task, filter hosts, and confirm
               per-command coverage without opening separate tooling.
             </p>
+            <ul class="callout-list">
+              <li data-i18n="controlCalloutOne">Batch actions are one click away during a change window.</li>
+              <li data-i18n="controlCalloutTwo">Host rows expose command coverage before opening detail.</li>
+            </ul>
           </div>
-          <img src="../assets/tour/control-panel.jpg" alt="Control panel with capture buttons, progress status, and host table" />
+          <div class="annotated-shot">
+            <img src="../assets/tour/control-panel.jpg" alt="Control panel with capture buttons, progress status, and host table" />
+            <span class="annotation control-a" data-i18n="annotateBatch">Batch capture</span>
+            <span class="annotation control-b" data-i18n="annotateProgress">Task progress</span>
+            <span class="annotation control-c" data-i18n="annotateCoverage">Per-command coverage</span>
+          </div>
         </article>
 
         <article class="shot-block reverse">
@@ -110,8 +142,17 @@ Review required for correctness, security, and licensing.
               The host view brings inventory metadata, capture actions, comparison summaries, and command output into
               a single evidence trail for one network device.
             </p>
+            <ul class="callout-list">
+              <li data-i18n="detailCalloutOne">Inventory metadata remains visible while reviewing output.</li>
+              <li data-i18n="detailCalloutTwo">Changed and identical commands can be scanned in one pass.</li>
+            </ul>
           </div>
-          <img src="../assets/tour/host-detail.jpg" alt="Host detail screen showing device metadata and command comparison results" />
+          <div class="annotated-shot">
+            <img src="../assets/tour/host-detail.jpg" alt="Host detail screen showing device metadata and command comparison results" />
+            <span class="annotation detail-a" data-i18n="annotateMetadata">Device metadata</span>
+            <span class="annotation detail-b" data-i18n="annotateCompare">Compare controls</span>
+            <span class="annotation detail-c" data-i18n="annotateResults">Command results</span>
+          </div>
         </article>
 
         <article class="shot-block">
@@ -121,8 +162,16 @@ Review required for correctness, security, and licensing.
               Runtime logs are close to the workflow, so failed captures and deployment checks can be investigated
               with context instead of switching to a terminal first.
             </p>
+            <ul class="callout-list">
+              <li data-i18n="logsCalloutOne">Filters keep noisy runtime output manageable.</li>
+              <li data-i18n="logsCalloutTwo">Log entries support handoff after failed captures.</li>
+            </ul>
           </div>
-          <img src="../assets/tour/logs.jpg" alt="NW-Diff logs page showing recent runtime entries" />
+          <div class="annotated-shot">
+            <img src="../assets/tour/logs.jpg" alt="NW-Diff logs page showing recent runtime entries" />
+            <span class="annotation logs-a" data-i18n="annotateFilters">Source filters</span>
+            <span class="annotation logs-b" data-i18n="annotateRuntime">Runtime trail</span>
+          </div>
         </article>
       </section>
 
