@@ -81,6 +81,7 @@ export NW_DIFF_ENV=development
 - 言語運用方針:
   - 原則として各ドキュメントは 1 ファイル内で英語 + 日本語訳を併記します。
   - トップガイドは `README.md`（英語中心）と `README_ja.md`（日本語中心）に分けて管理します。
+- [ユーザーエクスペリエンスツアー](https://icecake0141.github.io/nw-diff/tour/?lang=ja) - スクリーンショット付きの日本語/英語切替ウォークスルー
 - [トップ README（英語）](README.md)
 - [仕様（SPEC）](docs/SPEC.md)
 - [テスト手順](docs/TESTING.md)
