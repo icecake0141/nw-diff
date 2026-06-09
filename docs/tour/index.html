@@ -1,0 +1,151 @@
+<!--
+Copyright 2026 NW-Diff Contributors
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This file was created or modified with the assistance of an AI (Large Language Model).
+Review required for correctness, security, and licensing.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NW-Diff User Experience Tour</title>
+    <meta
+      name="description"
+      content="A bilingual product tour for NW-Diff, showing capture, comparison, and operational diagnostics through the v2 web UI."
+    />
+    <link rel="stylesheet" href="./tour.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="https://github.com/icecake0141/nw-diff">NW-Diff</a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#workflow" data-i18n="navWorkflow">Workflow</a>
+        <a href="#screenshots" data-i18n="navScreenshots">Screenshots</a>
+        <a href="#operate" data-i18n="navOperate">Operate</a>
+      </nav>
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button type="button" class="lang-button active" data-lang="en">EN</button>
+        <button type="button" class="lang-button" data-lang="ja">JA</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow" data-i18n="heroEyebrow">Network change verification, from capture to diff</p>
+          <h1 data-i18n="heroTitle">See every network change before it becomes an outage.</h1>
+          <p class="hero-text" data-i18n="heroText">
+            NW-Diff turns device snapshots into an operator-friendly review flow: capture the before state,
+            capture the after state, compare command output, and keep logs close when investigation is needed.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-action" href="#screenshots" data-i18n="heroPrimary">Explore the UI</a>
+            <a class="secondary-action" href="https://github.com/icecake0141/nw-diff#installation" data-i18n="heroSecondary">Read setup guide</a>
+          </div>
+        </div>
+        <figure class="hero-shot">
+          <img src="../assets/tour/control-panel.jpg" alt="NW-Diff v2 control panel showing host capture status" />
+          <figcaption data-i18n="heroCaption">The v2 control panel keeps batch actions, progress, and host coverage visible.</figcaption>
+        </figure>
+      </section>
+
+      <section id="workflow" class="workflow">
+        <div class="section-heading">
+          <p class="eyebrow" data-i18n="workflowEyebrow">Guided operating flow</p>
+          <h2 data-i18n="workflowTitle">A tour built around the way network teams review changes.</h2>
+        </div>
+        <div class="steps" aria-label="NW-Diff workflow">
+          <article class="step">
+            <span class="step-number">01</span>
+            <h3 data-i18n="stepOneTitle">Load the device inventory</h3>
+            <p data-i18n="stepOneText">Start from a CSV inventory and see every host, model, and capture state in one table.</p>
+          </article>
+          <article class="step">
+            <span class="step-number">02</span>
+            <h3 data-i18n="stepTwoTitle">Capture origin and destination</h3>
+            <p data-i18n="stepTwoText">Run before and after captures across all hosts or target a single device when the change window is narrow.</p>
+          </article>
+          <article class="step">
+            <span class="step-number">03</span>
+            <h3 data-i18n="stepThreeTitle">Compare command output</h3>
+            <p data-i18n="stepThreeText">Open host detail to inspect per-command deltas, timestamps, and unchanged output without leaving the UI.</p>
+          </article>
+          <article class="step">
+            <span class="step-number">04</span>
+            <h3 data-i18n="stepFourTitle">Trace operational evidence</h3>
+            <p data-i18n="stepFourText">Use logs and task history to confirm what ran, when it ran, and which device needs follow-up.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="screenshots" class="screenshots">
+        <div class="section-heading">
+          <p class="eyebrow" data-i18n="screensEyebrow">Product screenshots</p>
+          <h2 data-i18n="screensTitle">The interface stays focused on evidence, not decoration.</h2>
+        </div>
+
+        <article class="shot-block">
+          <div class="shot-copy">
+            <h3 data-i18n="controlTitle">Control panel for live coverage</h3>
+            <p data-i18n="controlText">
+              Operators can start origin or destination captures, monitor the current task, filter hosts, and confirm
+              per-command coverage without opening separate tooling.
+            </p>
+          </div>
+          <img src="../assets/tour/control-panel.jpg" alt="Control panel with capture buttons, progress status, and host table" />
+        </article>
+
+        <article class="shot-block reverse">
+          <div class="shot-copy">
+            <h3 data-i18n="detailTitle">Host detail for command-level review</h3>
+            <p data-i18n="detailText">
+              The host view brings inventory metadata, capture actions, comparison summaries, and command output into
+              a single evidence trail for one network device.
+            </p>
+          </div>
+          <img src="../assets/tour/host-detail.jpg" alt="Host detail screen showing device metadata and command comparison results" />
+        </article>
+
+        <article class="shot-block">
+          <div class="shot-copy">
+            <h3 data-i18n="logsTitle">Logs for investigation and handoff</h3>
+            <p data-i18n="logsText">
+              Runtime logs are close to the workflow, so failed captures and deployment checks can be investigated
+              with context instead of switching to a terminal first.
+            </p>
+          </div>
+          <img src="../assets/tour/logs.jpg" alt="NW-Diff logs page showing recent runtime entries" />
+        </article>
+      </section>
+
+      <section id="operate" class="operate">
+        <div class="section-heading">
+          <p class="eyebrow" data-i18n="operateEyebrow">Run it locally</p>
+          <h2 data-i18n="operateTitle">Start the v2 UI and follow the same tour with your devices.</h2>
+        </div>
+        <div class="command-panel">
+          <pre><code>cp hosts.csv.sample hosts.csv
+export DEVICE_PASSWORD=your_device_password
+export NW_DIFF_ENV=development
+./scripts/start-v2.sh</code></pre>
+          <p data-i18n="operateText">Open <a href="http://127.0.0.1:5000/v2">http://127.0.0.1:5000/v2</a> after startup.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span data-i18n="footerText">NW-Diff is an Apache-2.0 network capture and diff project.</span>
+      <a href="https://github.com/icecake0141/nw-diff">GitHub</a>
+    </footer>
+
+    <script src="./tour.js"></script>
+  </body>
+</html>

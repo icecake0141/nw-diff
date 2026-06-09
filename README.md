@@ -92,6 +92,7 @@ export NW_DIFF_ENV=development
 - Language policy:
   - Most docs are bilingual in a single file (English + Japanese section).
   - Top guides can be split as `README.md` (EN-focused) and `README_ja.md` (JA-focused).
+- [User experience tour](https://icecake0141.github.io/nw-diff/tour/) - bilingual EN/JA walkthrough with screenshots
 - [Main Japanese guide](README_ja.md)
 - [Spec](docs/SPEC.md)
 - [Testing](docs/TESTING.md)
