@@ -157,23 +157,3 @@ def _record_host_failure(
     append_task_log(task_id, f"Host capture failed: {hostname} ({exc})")
     results["hosts"].append({"host": hostname, "status": "failed", "error": str(exc)})
     results["failure_count"] += 1
-
-
-def launch_capture_task(
-    *,
-    task_id: str,
-    base: CaptureBase,
-    hosts: list[dict[str, Any]],
-    reserved_hosts: set[str],
-) -> None:
-    """
-    Compatibility hook for API layer.
-
-    Real execution is performed by the queue worker; this function only records
-    that the task is ready in queued state.
-    """
-    append_task_log(
-        task_id,
-        f"Task queued for {len(hosts)} host(s) on base={base.value}",
-    )
-    _ = reserved_hosts

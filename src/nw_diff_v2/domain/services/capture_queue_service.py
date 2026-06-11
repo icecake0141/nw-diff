@@ -7,10 +7,10 @@ from typing import Any
 
 from nw_diff_v2.config import settings
 from nw_diff_v2.domain.models import CaptureBase, CaptureMode, CaptureTaskStatus
-from nw_diff_v2.domain.services.capture_service import launch_capture_task
 from nw_diff_v2.domain.services.lock_service import release_hosts, try_lock_hosts
 from nw_diff_v2.infra.repositories.host_repo import load_hosts
 from nw_diff_v2.infra.repositories.task_repo import TaskRecord, create_task
+from nw_diff_v2.infra.storage.task_logs import append_task_log
 
 
 class CaptureRequestError(RuntimeError):
@@ -19,6 +19,21 @@ class CaptureRequestError(RuntimeError):
 
 class CaptureConflictError(RuntimeError):
     """Raised when a capture queue request conflicts with active locks."""
+
+
+def launch_capture_task(
+    *,
+    task_id: str,
+    base: CaptureBase,
+    hosts: list[dict[str, Any]],
+    reserved_hosts: set[str],
+) -> None:
+    """Record that a capture task is ready for queue workers."""
+    append_task_log(
+        task_id,
+        f"Task queued for {len(hosts)} host(s) on base={base.value}",
+    )
+    _ = reserved_hosts
 
 
 def _load_host_map() -> dict[str, dict[str, Any]]:
