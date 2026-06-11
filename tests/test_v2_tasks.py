@@ -21,6 +21,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "tests"))
 from nw_diff_v2.domain.models import CaptureTaskStatus
 from nw_diff_v2.domain.services.lock_service import release_hosts
 from nw_diff_v2.infra.repositories import task_repo
+from nw_diff_v2.infra.storage.task_logs import append_task_log
 from nw_diff_v2.main import app
 from v2_helpers import configure_v2_test_env, write_hosts_csv
 
@@ -73,6 +74,58 @@ def test_v2_task_list_endpoint(tmp_path: Path, monkeypatch) -> None:
         assert isinstance(payload, list)
         assert len(payload) >= 1
         assert payload[0]["task_id"] == create_response.json()["task_id"]
+
+
+def test_v2_task_stream_endpoint(tmp_path: Path, monkeypatch) -> None:
+    hosts_csv = write_hosts_csv(tmp_path, ["router1,10.0.0.1,admin,22,cisco"])
+    configure_v2_test_env(tmp_path, monkeypatch, hosts_csv=hosts_csv)
+
+    def _fake_launch_capture_task(
+        *, task_id, base, hosts, reserved_hosts
+    ):  # noqa: ANN001
+        del base, hosts
+
+        append_task_log(task_id, "line1")
+        append_task_log(task_id, "line2")
+        task_repo.update_task(
+            task_id,
+            status=CaptureTaskStatus.COMPLETED,
+            started_at=1.0,
+            finished_at=2.0,
+            result={"success_count": 1, "failure_count": 0},
+        )
+        release_hosts(reserved_hosts)
+
+    monkeypatch.setattr(CAPTURE_QUEUE_LAUNCH, _fake_launch_capture_task)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v2/captures",
+            json={"mode": "single", "base": "origin", "hosts": ["router1"]},
+        )
+        task_id = response.json()["task_id"]
+
+        stream_response = client.get(f"/api/v2/tasks/{task_id}/stream")
+        assert stream_response.status_code == 200
+        body = stream_response.text
+        assert "data: line1" in body
+        assert "data: line2" in body
+        assert "event: status" in body
+
+        tail_response = client.get(f"/api/v2/tasks/{task_id}/stream?tail_lines=1")
+        assert tail_response.status_code == 200
+        tail_body = tail_response.text
+        assert "data: line2" in tail_body
+        assert "data: line1" not in tail_body
+
+        resumed_response = client.get(
+            f"/api/v2/tasks/{task_id}/stream",
+            headers={"Last-Event-ID": "0"},
+        )
+        assert resumed_response.status_code == 200
+        resumed_body = resumed_response.text
+        assert "data: line2" in resumed_body
+        assert "data: line1" not in resumed_body
 
 
 def test_v2_task_cancel_endpoint_sets_flag(tmp_path: Path, monkeypatch) -> None:
