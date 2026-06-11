@@ -1,4 +1,4 @@
-"""Capture API endpoints (v2 scaffold)."""
+"""Capture API endpoints."""
 
 from __future__ import annotations
 

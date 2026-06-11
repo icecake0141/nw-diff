@@ -1,4 +1,4 @@
-"""Runtime configuration for the v2 scaffold."""
+"""Runtime configuration for the v2 application."""
 
 from __future__ import annotations
 

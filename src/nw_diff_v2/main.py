@@ -1,4 +1,4 @@
-"""FastAPI entrypoint for the v2 scaffold."""
+"""FastAPI entrypoint for the v2 application."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ async def lifespan(_: FastAPI):
     _worker_manager.stop()
 
 
-app = FastAPI(title="NW-Diff v2 Scaffold", lifespan=lifespan)
+app = FastAPI(title="NW-Diff v2", lifespan=lifespan)
 app.include_router(capture_router)
 app.include_router(compare_router)
 app.include_router(hosts_router)

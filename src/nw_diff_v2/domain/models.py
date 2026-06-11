@@ -1,4 +1,4 @@
-"""Domain models for the v2 scaffold."""
+"""Domain models for the v2 application."""
 
 from __future__ import annotations
 

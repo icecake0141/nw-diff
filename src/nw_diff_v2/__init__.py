@@ -1,1 +1,1 @@
-"""NW-Diff v2 reimplementation scaffold."""
+"""NW-Diff v2 application package."""
