@@ -6,12 +6,13 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 
 from nw_diff_v2.config import settings
 from nw_diff_v2.domain.models import CaptureBase, CaptureTaskStatus
 from nw_diff_v2.domain.services import command_profiles
 from nw_diff_v2.domain.services.capture_logging import append_command_preview_log
+from nw_diff_v2.domain.services.capture_results import CaptureTaskResult
 from nw_diff_v2.domain.services.lock_service import release_hosts
 from nw_diff_v2.infra.adapters.netmiko_adapter import DeviceCaptureError, NetmikoAdapter
 from nw_diff_v2.infra.repositories.task_repo import is_cancel_requested, update_task
@@ -55,7 +56,11 @@ def run_capture_task(
     append_task_log(task_id, f"Task started at {started:.3f} for {len(hosts)} host(s)")
     update_task(task_id, status=CaptureTaskStatus.RUNNING, started_at=started)
 
-    results: dict[str, Any] = {"hosts": [], "success_count": 0, "failure_count": 0}
+    results: CaptureTaskResult = {
+        "hosts": [],
+        "success_count": 0,
+        "failure_count": 0,
+    }
 
     try:
         for host_info in hosts:
@@ -68,7 +73,7 @@ def run_capture_task(
                     task_id,
                     status=CaptureTaskStatus.CANCELLED,
                     finished_at=time.time(),
-                    result=results,
+                    result=cast(dict[str, Any], results),
                 )
                 return
 
@@ -122,7 +127,7 @@ def run_capture_task(
             task_id,
             status=final_status,
             finished_at=time.time(),
-            result=results,
+            result=cast(dict[str, Any], results),
         )
         logger.info(
             "capture_task_finished task_id=%s status=%s", task_id, final_status.value
@@ -136,7 +141,7 @@ def run_capture_task(
             status=CaptureTaskStatus.FAILED,
             finished_at=time.time(),
             error=str(exc),
-            result=results,
+            result=cast(dict[str, Any], results),
         )
     finally:
         release_hosts(reserved_hosts)
@@ -145,7 +150,7 @@ def run_capture_task(
 
 
 def _record_host_failure(
-    task_id: str, hostname: str, results: dict[str, Any], exc: Exception
+    task_id: str, hostname: str, results: CaptureTaskResult, exc: Exception
 ) -> None:
     """Record a host-level capture failure and continue the task."""
     logger.warning(
