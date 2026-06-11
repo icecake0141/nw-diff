@@ -21,12 +21,28 @@ import sqlite3
 import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict
 
 from nw_diff_v2.config import settings
 from nw_diff_v2.domain.models import CaptureTaskStatus
 
 _DB_INIT_LOCK = threading.Lock()
+
+
+class TaskRecord(TypedDict):
+    """Repository representation of a capture task row."""
+
+    task_id: str
+    status: str
+    mode: str
+    base: str
+    hosts: list[str]
+    requested_at: float
+    started_at: Optional[float]
+    finished_at: Optional[float]
+    cancel_requested: bool
+    error: Optional[str]
+    result: Optional[dict[str, Any]]
 
 
 def _db_path() -> Path:
@@ -62,7 +78,8 @@ def init_db() -> None:
                     error TEXT,
                     result_json TEXT
                 )
-                """)
+                """
+            )
             conn.commit()
 
 
@@ -131,7 +148,7 @@ def update_task(
         conn.commit()
 
 
-def get_task(task_id: str) -> Optional[dict[str, Any]]:
+def get_task(task_id: str) -> Optional[TaskRecord]:
     """Fetch one task by id."""
     init_db()
     with _connect() as conn:
@@ -187,7 +204,7 @@ def list_tasks(
     offset: int = 0,
     status: str | None = None,
     host_contains: str | None = None,
-) -> list[dict[str, Any]]:
+) -> list[TaskRecord]:
     """Return recent tasks, optionally filtered by status."""
     init_db()
     clauses: list[str] = []
@@ -217,7 +234,7 @@ def list_tasks(
     return [_row_to_task(row) for row in rows]
 
 
-def claim_next_queued_task() -> Optional[dict[str, Any]]:
+def claim_next_queued_task() -> Optional[TaskRecord]:
     """Atomically claim the oldest queued task and mark it as running."""
     init_db()
     started_at = time.time()
@@ -260,7 +277,7 @@ def claim_next_queued_task() -> Optional[dict[str, Any]]:
         return _row_to_task(updated)
 
 
-def recover_orphaned_running_tasks() -> list[dict[str, Any]]:
+def recover_orphaned_running_tasks() -> list[TaskRecord]:
     """
     Mark tasks stuck in running state as failed.
 
@@ -314,7 +331,7 @@ def count_tasks_by_status() -> dict[str, int]:
     return counts
 
 
-def get_latest_task_for_host(host: str) -> Optional[dict[str, Any]]:
+def get_latest_task_for_host(host: str) -> Optional[TaskRecord]:
     """Return latest task containing the target host."""
     init_db()
     needle = f'"{host}"'
@@ -334,13 +351,20 @@ def get_latest_task_for_host(host: str) -> Optional[dict[str, Any]]:
     return _row_to_task(row)
 
 
-def _row_to_task(row: sqlite3.Row) -> dict[str, Any]:
+def _load_hosts_json(value: str) -> list[str]:
+    hosts = json.loads(value)
+    if not isinstance(hosts, list):
+        return []
+    return [str(host) for host in hosts]
+
+
+def _row_to_task(row: sqlite3.Row) -> TaskRecord:
     return {
         "task_id": row["id"],
         "status": row["status"],
         "mode": row["mode"],
         "base": row["base"],
-        "hosts": json.loads(row["hosts_json"]),
+        "hosts": _load_hosts_json(row["hosts_json"]),
         "requested_at": row["requested_at"],
         "started_at": row["started_at"],
         "finished_at": row["finished_at"],

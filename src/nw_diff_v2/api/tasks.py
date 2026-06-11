@@ -4,31 +4,33 @@ from __future__ import annotations
 
 import re
 import time
-import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from nw_diff_v2.api.error_messages import ERR_INVALID_TASK_ID, ERR_TASK_NOT_FOUND
+from nw_diff_v2.config import settings
 from nw_diff_v2.domain.models import (
     CaptureBase,
+    CaptureMode,
     CaptureTaskDetail,
     CaptureTaskResponse,
     CaptureTaskStatus,
     CaptureTaskSummary,
 )
-from nw_diff_v2.domain.services.capture_service import launch_capture_task
-from nw_diff_v2.domain.services.lock_service import release_hosts, try_lock_hosts
-from nw_diff_v2.infra.repositories.host_repo import load_hosts
+from nw_diff_v2.domain.services.capture_queue_service import (
+    CaptureConflictError,
+    CaptureRequestError,
+    queue_retry_request,
+)
 from nw_diff_v2.infra.repositories.task_repo import (
-    create_task,
+    TaskRecord,
     get_task,
     list_tasks,
     request_cancel,
 )
 from nw_diff_v2.infra.storage.task_logs import task_log_path
-from nw_diff_v2.config import settings
 from nw_diff_v2.security.auth import require_auth
 
 router = APIRouter(prefix="/api/v2/tasks", tags=["v2-tasks"])
@@ -41,6 +43,36 @@ def _ensure_valid_task_id(task_id: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERR_INVALID_TASK_ID,
         )
+
+
+def _to_task_summary(task: TaskRecord) -> CaptureTaskSummary:
+    return CaptureTaskSummary(
+        task_id=task["task_id"],
+        status=CaptureTaskStatus(task["status"]),
+        mode=CaptureMode(task["mode"]),
+        base=CaptureBase(task["base"]),
+        hosts=task["hosts"],
+        requested_at=task["requested_at"],
+        started_at=task["started_at"],
+        finished_at=task["finished_at"],
+        cancel_requested=task["cancel_requested"],
+    )
+
+
+def _to_task_detail(task: TaskRecord) -> CaptureTaskDetail:
+    return CaptureTaskDetail(
+        task_id=task["task_id"],
+        status=CaptureTaskStatus(task["status"]),
+        mode=CaptureMode(task["mode"]),
+        base=CaptureBase(task["base"]),
+        hosts=task["hosts"],
+        requested_at=task["requested_at"],
+        started_at=task["started_at"],
+        finished_at=task["finished_at"],
+        cancel_requested=task["cancel_requested"],
+        error=task["error"],
+        result=task["result"],
+    )
 
 
 @router.get("", response_model=list[CaptureTaskSummary])
@@ -65,20 +97,7 @@ def task_list(
         status=status_value,
         host_contains=host_value,
     )
-    return [
-        CaptureTaskSummary(
-            task_id=task["task_id"],
-            status=task["status"],
-            mode=task["mode"],
-            base=task["base"],
-            hosts=task["hosts"],
-            requested_at=task["requested_at"],
-            started_at=task["started_at"],
-            finished_at=task["finished_at"],
-            cancel_requested=task["cancel_requested"],
-        )
-        for task in tasks
-    ]
+    return [_to_task_summary(task) for task in tasks]
 
 
 @router.get("/{task_id}", response_model=CaptureTaskDetail)
@@ -90,19 +109,7 @@ def task_status(task_id: str, _: None = Depends(require_auth)) -> CaptureTaskDet
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND
         )
-    return CaptureTaskDetail(
-        task_id=task["task_id"],
-        status=task["status"],
-        mode=task["mode"],
-        base=task["base"],
-        hosts=task["hosts"],
-        requested_at=task["requested_at"],
-        started_at=task["started_at"],
-        finished_at=task["finished_at"],
-        cancel_requested=task["cancel_requested"],
-        error=task["error"],
-        result=task["result"],
-    )
+    return _to_task_detail(task)
 
 
 @router.post("/{task_id}/cancel", response_model=CaptureTaskDetail)
@@ -125,19 +132,7 @@ def task_cancel(task_id: str, _: None = Depends(require_auth)) -> CaptureTaskDet
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=ERR_TASK_NOT_FOUND
         )
-    return CaptureTaskDetail(
-        task_id=task["task_id"],
-        status=task["status"],
-        mode=task["mode"],
-        base=task["base"],
-        hosts=task["hosts"],
-        requested_at=task["requested_at"],
-        started_at=task["started_at"],
-        finished_at=task["finished_at"],
-        cancel_requested=task["cancel_requested"],
-        error=task["error"],
-        result=task["result"],
-    )
+    return _to_task_detail(task)
 
 
 @router.post("/{task_id}/retry", response_model=CaptureTaskResponse)
@@ -155,46 +150,23 @@ def task_retry(task_id: str, _: None = Depends(require_auth)) -> CaptureTaskResp
             detail=f"Task is still {task['status']}",
         )
 
-    target_hosts = set(task["hosts"])
-    host_rows = load_hosts(settings.hosts_csv)
-    host_map = {row.host: row.model_dump() for row in host_rows}
-    unknown_hosts = sorted(target_hosts.difference(host_map.keys()))
-    if unknown_hosts:
+    try:
+        new_task_id, queued_status, conflicts = queue_retry_request(task)
+    except CaptureRequestError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown host(s): {', '.join(unknown_hosts)}",
-        )
-
-    acquired, conflicts = try_lock_hosts(target_hosts)
-    if not acquired:
+            detail=str(exc),
+        ) from exc
+    except CaptureConflictError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Capture already running: {', '.join(sorted(conflicts))}",
-        )
-
-    new_task_id = uuid.uuid4().hex
-    target_host_rows = [host_map[host] for host in sorted(target_hosts)]
-    try:
-        create_task(
-            task_id=new_task_id,
-            mode=task["mode"],
-            base=task["base"],
-            hosts=sorted(target_hosts),
-        )
-        launch_capture_task(
-            task_id=new_task_id,
-            base=CaptureBase(task["base"]),
-            hosts=target_host_rows,
-            reserved_hosts=target_hosts,
-        )
-    except Exception:  # pylint: disable=broad-exception-caught
-        release_hosts(target_hosts)
-        raise
+            detail=str(exc),
+        ) from exc
 
     return CaptureTaskResponse(
         task_id=new_task_id,
-        status=CaptureTaskStatus.QUEUED,
-        conflicts=[],
+        status=queued_status,
+        conflicts=conflicts,
     )
 
 

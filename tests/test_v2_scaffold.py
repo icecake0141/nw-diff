@@ -24,6 +24,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from nw_diff_v2.config import Settings, settings
 from nw_diff_v2.domain.models import CaptureTaskStatus
+from nw_diff_v2.domain.services import capture_service
 from nw_diff_v2.domain.services.lock_service import release_hosts, try_lock_hosts
 from nw_diff_v2.domain.services.task_worker import process_one_queued_task
 from nw_diff_v2.infra.adapters.netmiko_adapter import NetmikoAdapter
@@ -34,6 +35,18 @@ from nw_diff_v2.infra.repositories.host_repo import load_hosts
 from nw_diff_v2.infra.storage.files import write_output
 from nw_diff_v2.main import app
 from nw_diff_v2.security.auth import require_auth
+
+CAPTURE_QUEUE_LAUNCH = (
+    "nw_diff_v2.domain.services.capture_queue_service.launch_capture_task"
+)
+CAPTURE_QUEUE_LOCK = "nw_diff_v2.domain.services.capture_queue_service.try_lock_hosts"
+
+
+@pytest.fixture(autouse=True)
+def reset_command_profiles(monkeypatch, tmp_path: Path) -> None:
+    missing = tmp_path / "missing-command-profiles.yaml"
+    monkeypatch.setattr(settings, "command_profiles_override_yaml", str(missing))
+    capture_service.validate_command_profile_config()
 
 
 def test_v2_host_repo_skips_invalid_rows(tmp_path: Path) -> None:
@@ -201,8 +214,10 @@ def test_v2_worker_processes_queued_task(tmp_path: Path, monkeypatch) -> None:
     task = task_repo.get_task("task-1")
     assert task is not None
     assert task["status"] == "completed"
-    assert task["result"]["success_count"] == 1
-    assert task["result"]["failure_count"] == 0
+    result = task["result"]
+    assert result is not None
+    assert result["success_count"] == 1
+    assert result["failure_count"] == 0
 
     from nw_diff_v2.infra.storage.task_logs import task_log_path
 
@@ -319,8 +334,10 @@ def test_v2_worker_maps_generic_linux_model_to_netmiko_linux(
     task = task_repo.get_task("task-linux-1")
     assert task is not None
     assert task["status"] == "completed"
-    assert task["result"]["success_count"] == 1
-    assert task["result"]["failure_count"] == 0
+    result = task["result"]
+    assert result is not None
+    assert result["success_count"] == 1
+    assert result["failure_count"] == 0
 
     reacquired, _ = try_lock_hosts({"linux01"})
     assert reacquired is True
@@ -434,7 +451,7 @@ def test_v2_capture_api_creates_task_and_status_endpoint(
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+        CAPTURE_QUEUE_LAUNCH, _fake_launch_capture_task
     )
 
     with TestClient(app) as client:
@@ -485,7 +502,7 @@ def test_v2_task_stream_endpoint(tmp_path: Path, monkeypatch) -> None:
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+        CAPTURE_QUEUE_LAUNCH, _fake_launch_capture_task
     )
 
     with TestClient(app) as client:
@@ -665,7 +682,7 @@ def test_v2_batch_skip_locked_policy(tmp_path: Path, monkeypatch) -> None:
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+        CAPTURE_QUEUE_LAUNCH, _fake_launch_capture_task
     )
 
     acquired, _ = try_lock_hosts({"router1"})
@@ -717,7 +734,7 @@ def test_v2_batch_skip_locked_reports_retry_conflicts(
             return False, {"router1"}
         return False, {"router2"}
 
-    monkeypatch.setattr("nw_diff_v2.api.capture.try_lock_hosts", _fake_try_lock_hosts)
+    monkeypatch.setattr(CAPTURE_QUEUE_LOCK, _fake_try_lock_hosts)
 
     with TestClient(app) as client:
         response = client.post(
@@ -760,7 +777,7 @@ def test_v2_capture_allows_parallel_on_different_host(
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+        CAPTURE_QUEUE_LAUNCH, _fake_launch_capture_task
     )
 
     acquired, _ = try_lock_hosts({"router1"})
@@ -1569,7 +1586,7 @@ def test_v2_task_list_endpoint(tmp_path: Path, monkeypatch) -> None:
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+        CAPTURE_QUEUE_LAUNCH, _fake_launch_capture_task
     )
 
     with TestClient(app) as client:
@@ -1983,7 +2000,7 @@ def test_v2_task_cancel_endpoint_sets_flag(tmp_path: Path, monkeypatch) -> None:
         del task_id, base, hosts, reserved_hosts
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task",
+        CAPTURE_QUEUE_LAUNCH,
         _noop_launch_capture_task,
     )
 
@@ -2096,7 +2113,7 @@ def test_v2_task_retry_creates_new_task(tmp_path: Path, monkeypatch) -> None:
         del task_id, base, hosts, reserved_hosts
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.tasks.launch_capture_task",
+        CAPTURE_QUEUE_LAUNCH,
         _noop_launch_capture_task,
     )
 
@@ -2176,10 +2193,10 @@ def test_v2_end_to_end_capture_diff_export_retry_flow(
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task", _fake_launch_capture_task
+        CAPTURE_QUEUE_LAUNCH, _fake_launch_capture_task
     )
     monkeypatch.setattr(
-        "nw_diff_v2.api.tasks.launch_capture_task", _fake_launch_capture_task
+        CAPTURE_QUEUE_LAUNCH, _fake_launch_capture_task
     )
 
     with TestClient(app) as client:
@@ -2259,7 +2276,7 @@ def test_v2_task_list_status_filter(tmp_path: Path, monkeypatch) -> None:
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task",
+        CAPTURE_QUEUE_LAUNCH,
         _fake_launch_capture_task,
     )
 
@@ -2369,7 +2386,7 @@ def test_v2_batch_mode_can_target_subset(tmp_path: Path, monkeypatch) -> None:
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task",
+        CAPTURE_QUEUE_LAUNCH,
         _fake_launch_capture_task,
     )
 
@@ -2420,7 +2437,7 @@ def test_v2_task_list_supports_offset(tmp_path: Path, monkeypatch) -> None:
         release_hosts(reserved_hosts)
 
     monkeypatch.setattr(
-        "nw_diff_v2.api.capture.launch_capture_task",
+        CAPTURE_QUEUE_LAUNCH,
         _fake_launch_capture_task,
     )
 
