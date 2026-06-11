@@ -12,6 +12,10 @@ _SAFE_RE = re.compile(r"[^a-zA-Z0-9._-]")
 ARTIFACT_SEP = "~"
 
 
+class ArtifactStorageError(RuntimeError):
+    """Raised when artifact storage cannot persist command output."""
+
+
 def _sanitize(value: str) -> str:
     return _SAFE_RE.sub("_", value)
 
@@ -28,7 +32,10 @@ def artifact_path(base: str, host: str, command: str) -> Path:
 def write_output(base: str, host: str, command: str, output: str) -> str:
     """Write command output and return written path."""
     path = artifact_path(base, host, command)
-    path.write_text(output, encoding="utf-8")
+    try:
+        path.write_text(output, encoding="utf-8")
+    except OSError as exc:
+        raise ArtifactStorageError(f"failed to write artifact {path}: {exc}") from exc
     return str(path)
 
 

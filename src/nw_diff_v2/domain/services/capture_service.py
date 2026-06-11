@@ -15,7 +15,7 @@ from nw_diff_v2.domain.services.capture_logging import append_command_preview_lo
 from nw_diff_v2.domain.services.lock_service import release_hosts
 from nw_diff_v2.infra.adapters.netmiko_adapter import DeviceCaptureError, NetmikoAdapter
 from nw_diff_v2.infra.repositories.task_repo import is_cancel_requested, update_task
-from nw_diff_v2.infra.storage.files import write_output
+from nw_diff_v2.infra.storage.files import ArtifactStorageError, write_output
 from nw_diff_v2.infra.storage.task_logs import append_task_log
 
 logger = logging.getLogger("nw-diff-v2")
@@ -109,17 +109,9 @@ def run_capture_task(
                 )
                 append_task_log(task_id, f"Host capture completed: {hostname}")
             except DeviceCaptureError as exc:
-                logger.warning(
-                    "capture_host_failed task_id=%s host=%s error=%s",
-                    task_id,
-                    hostname,
-                    exc,
-                )
-                append_task_log(task_id, f"Host capture failed: {hostname} ({exc})")
-                results["hosts"].append(
-                    {"host": hostname, "status": "failed", "error": str(exc)}
-                )
-                results["failure_count"] += 1
+                _record_host_failure(task_id, hostname, results, exc)
+            except ArtifactStorageError as exc:
+                _record_host_failure(task_id, hostname, results, exc)
 
         final_status = (
             CaptureTaskStatus.FAILED
@@ -150,6 +142,21 @@ def run_capture_task(
         release_hosts(reserved_hosts)
         logger.info("capture_task_lock_released task_id=%s", task_id)
         append_task_log(task_id, "Host locks released.")
+
+
+def _record_host_failure(
+    task_id: str, hostname: str, results: dict[str, Any], exc: Exception
+) -> None:
+    """Record a host-level capture failure and continue the task."""
+    logger.warning(
+        "capture_host_failed task_id=%s host=%s error=%s",
+        task_id,
+        hostname,
+        exc,
+    )
+    append_task_log(task_id, f"Host capture failed: {hostname} ({exc})")
+    results["hosts"].append({"host": hostname, "status": "failed", "error": str(exc)})
+    results["failure_count"] += 1
 
 
 def launch_capture_task(

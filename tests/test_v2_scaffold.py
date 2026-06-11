@@ -33,7 +33,7 @@ from nw_diff_v2.infra.repositories.lock_repo import force_set_lock
 from nw_diff_v2.infra.repositories import task_repo
 from nw_diff_v2.infra.repositories.task_repo import recover_orphaned_running_tasks
 from nw_diff_v2.infra.repositories.host_repo import load_hosts
-from nw_diff_v2.infra.storage.files import write_output
+from nw_diff_v2.infra.storage.files import ArtifactStorageError, write_output
 from nw_diff_v2.main import app
 from nw_diff_v2.security.auth import require_auth
 
@@ -226,6 +226,63 @@ def test_v2_worker_processes_queued_task(tmp_path: Path, monkeypatch) -> None:
     assert "CMD_START host=router1 command=show version" in task_log_text
     assert "CMD_PREVIEW host=router1 command=show version line=1: ok" in task_log_text
     assert "CMD_END host=router1 command=show version bytes=2" in task_log_text
+
+    reacquired, _ = try_lock_hosts({"router1"})
+    assert reacquired is True
+    release_hosts({"router1"})
+
+
+def test_v2_worker_records_artifact_storage_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "v2.db"
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
+    monkeypatch.setattr(settings, "artifact_root", str(tmp_path / "artifacts"))
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+    monkeypatch.setattr(settings, "task_worker_enabled", False)
+
+    acquired, conflicts = try_lock_hosts({"router1"})
+    assert acquired is True
+    assert conflicts == set()
+
+    task_repo.create_task(
+        task_id="task-artifact-failure",
+        mode="single",
+        base="origin",
+        hosts=["router1"],
+    )
+
+    def _fake_capture(self, **kwargs):  # noqa: ANN001
+        assert kwargs["host"] == "10.0.0.1"
+        return {"show version": "ok"}
+
+    def _fail_write_output(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise ArtifactStorageError("disk full")
+
+    monkeypatch.setattr(NetmikoAdapter, "capture_commands", _fake_capture)
+    monkeypatch.setattr(capture_service, "write_output", _fail_write_output)
+
+    processed = process_one_queued_task()
+    assert processed is True
+
+    task = task_repo.get_task("task-artifact-failure")
+    assert task is not None
+    assert task["status"] == "failed"
+    assert task["error"] is None
+    result = task["result"]
+    assert result is not None
+    assert result["success_count"] == 0
+    assert result["failure_count"] == 1
+    assert result["hosts"][0]["status"] == "failed"
+    assert "disk full" in result["hosts"][0]["error"]
 
     reacquired, _ = try_lock_hosts({"router1"})
     assert reacquired is True
