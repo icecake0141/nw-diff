@@ -50,6 +50,31 @@ def reset_command_profiles(monkeypatch, tmp_path: Path) -> None:
     capture_service.validate_command_profile_config()
 
 
+def _write_hosts_csv(tmp_path: Path, rows: list[str]) -> Path:
+    hosts_csv = tmp_path / "hosts.csv"
+    hosts_csv.write_text(
+        "host,ip,username,port,model\n" + "\n".join(rows) + "\n",
+        encoding="utf-8",
+    )
+    return hosts_csv
+
+
+def _configure_v2_test_env(
+    tmp_path: Path,
+    monkeypatch,
+    *,
+    hosts_csv: Path,
+    task_worker_enabled: bool = False,
+) -> None:
+    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
+    monkeypatch.setattr(settings, "db_url", f"sqlite:///{tmp_path / 'v2.db'}")
+    monkeypatch.setattr(settings, "artifact_root", str(tmp_path / "artifacts"))
+    monkeypatch.setattr(settings, "env", "development")
+    monkeypatch.setattr(settings, "device_password", "test_password")
+    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+    monkeypatch.setattr(settings, "task_worker_enabled", task_worker_enabled)
+
+
 def test_v2_host_repo_skips_invalid_rows(tmp_path: Path) -> None:
     hosts_csv = tmp_path / "hosts.csv"
     hosts_csv.write_text(
@@ -152,19 +177,11 @@ def test_v2_task_repo_uses_sqlite_busy_timeout(tmp_path: Path, monkeypatch) -> N
 
 
 def test_v2_startup_cleans_stale_locks(tmp_path: Path, monkeypatch) -> None:
-    hosts_csv = tmp_path / "hosts.csv"
-    hosts_csv.write_text(
-        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
-        encoding="utf-8",
+    hosts_csv = _write_hosts_csv(
+        tmp_path, ["router1,10.0.0.1,admin,22,cisco"]
     )
-    db_path = tmp_path / "v2_startup.db"
-    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
-    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
-    monkeypatch.setattr(settings, "env", "development")
-    monkeypatch.setattr(settings, "device_password", "test_password")
-    monkeypatch.setattr(settings, "nw_diff_api_token", None)
+    _configure_v2_test_env(tmp_path, monkeypatch, hosts_csv=hosts_csv)
     monkeypatch.setattr(settings, "host_lock_timeout_seconds", 0.01)
-    monkeypatch.setattr(settings, "task_worker_enabled", False)
 
     force_set_lock("router1", time.time() - 1.0)
 
@@ -176,21 +193,10 @@ def test_v2_startup_cleans_stale_locks(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_v2_worker_processes_queued_task(tmp_path: Path, monkeypatch) -> None:
-    hosts_csv = tmp_path / "hosts.csv"
-    hosts_csv.write_text(
-        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
-        encoding="utf-8",
+    hosts_csv = _write_hosts_csv(
+        tmp_path, ["router1,10.0.0.1,admin,22,cisco"]
     )
-    db_path = tmp_path / "v2.db"
-    artifact_root = tmp_path / "artifacts"
-
-    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
-    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
-    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
-    monkeypatch.setattr(settings, "env", "development")
-    monkeypatch.setattr(settings, "device_password", "test_password")
-    monkeypatch.setattr(settings, "nw_diff_api_token", None)
-    monkeypatch.setattr(settings, "task_worker_enabled", False)
+    _configure_v2_test_env(tmp_path, monkeypatch, hosts_csv=hosts_csv)
 
     acquired, conflicts = try_lock_hosts({"router1"})
     assert acquired is True
@@ -235,19 +241,10 @@ def test_v2_worker_processes_queued_task(tmp_path: Path, monkeypatch) -> None:
 def test_v2_worker_records_artifact_storage_failure(
     tmp_path: Path, monkeypatch
 ) -> None:
-    hosts_csv = tmp_path / "hosts.csv"
-    hosts_csv.write_text(
-        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
-        encoding="utf-8",
+    hosts_csv = _write_hosts_csv(
+        tmp_path, ["router1,10.0.0.1,admin,22,cisco"]
     )
-    db_path = tmp_path / "v2.db"
-    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
-    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
-    monkeypatch.setattr(settings, "artifact_root", str(tmp_path / "artifacts"))
-    monkeypatch.setattr(settings, "env", "development")
-    monkeypatch.setattr(settings, "device_password", "test_password")
-    monkeypatch.setattr(settings, "nw_diff_api_token", None)
-    monkeypatch.setattr(settings, "task_worker_enabled", False)
+    _configure_v2_test_env(tmp_path, monkeypatch, hosts_csv=hosts_csv)
 
     acquired, conflicts = try_lock_hosts({"router1"})
     assert acquired is True
@@ -292,21 +289,10 @@ def test_v2_worker_records_artifact_storage_failure(
 def test_v2_worker_logs_command_preview_with_limits(
     tmp_path: Path, monkeypatch
 ) -> None:
-    hosts_csv = tmp_path / "hosts.csv"
-    hosts_csv.write_text(
-        "host,ip,username,port,model\nrouter1,10.0.0.1,admin,22,cisco\n",
-        encoding="utf-8",
+    hosts_csv = _write_hosts_csv(
+        tmp_path, ["router1,10.0.0.1,admin,22,cisco"]
     )
-    db_path = tmp_path / "v2_preview.db"
-    artifact_root = tmp_path / "artifacts"
-
-    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
-    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
-    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
-    monkeypatch.setattr(settings, "env", "development")
-    monkeypatch.setattr(settings, "device_password", "test_password")
-    monkeypatch.setattr(settings, "nw_diff_api_token", None)
-    monkeypatch.setattr(settings, "task_worker_enabled", False)
+    _configure_v2_test_env(tmp_path, monkeypatch, hosts_csv=hosts_csv)
 
     acquired, conflicts = try_lock_hosts({"router1"})
     assert acquired is True
@@ -352,21 +338,10 @@ def test_v2_worker_logs_command_preview_with_limits(
 def test_v2_worker_maps_generic_linux_model_to_netmiko_linux(
     tmp_path: Path, monkeypatch
 ) -> None:
-    hosts_csv = tmp_path / "hosts.csv"
-    hosts_csv.write_text(
-        "host,ip,username,port,model\nlinux01,10.0.0.10,admin,22,Generic Linux\n",
-        encoding="utf-8",
+    hosts_csv = _write_hosts_csv(
+        tmp_path, ["linux01,10.0.0.10,admin,22,Generic Linux"]
     )
-    db_path = tmp_path / "v2_linux.db"
-    artifact_root = tmp_path / "artifacts"
-
-    monkeypatch.setattr(settings, "hosts_csv", str(hosts_csv))
-    monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
-    monkeypatch.setattr(settings, "artifact_root", str(artifact_root))
-    monkeypatch.setattr(settings, "env", "development")
-    monkeypatch.setattr(settings, "device_password", "test_password")
-    monkeypatch.setattr(settings, "nw_diff_api_token", None)
-    monkeypatch.setattr(settings, "task_worker_enabled", False)
+    _configure_v2_test_env(tmp_path, monkeypatch, hosts_csv=hosts_csv)
 
     acquired, conflicts = try_lock_hosts({"linux01"})
     assert acquired is True
