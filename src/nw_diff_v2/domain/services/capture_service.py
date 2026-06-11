@@ -13,7 +13,7 @@ from nw_diff_v2.domain.models import CaptureBase, CaptureTaskStatus
 from nw_diff_v2.domain.services import command_profiles
 from nw_diff_v2.domain.services.capture_logging import append_command_preview_log
 from nw_diff_v2.domain.services.lock_service import release_hosts
-from nw_diff_v2.infra.adapters.netmiko_adapter import NetmikoAdapter
+from nw_diff_v2.infra.adapters.netmiko_adapter import DeviceCaptureError, NetmikoAdapter
 from nw_diff_v2.infra.repositories.task_repo import is_cancel_requested, update_task
 from nw_diff_v2.infra.storage.files import write_output
 from nw_diff_v2.infra.storage.task_logs import append_task_log
@@ -108,7 +108,7 @@ def run_capture_task(
                     "capture_host_completed task_id=%s host=%s", task_id, hostname
                 )
                 append_task_log(task_id, f"Host capture completed: {hostname}")
-            except Exception as exc:  # pylint: disable=broad-exception-caught
+            except DeviceCaptureError as exc:
                 logger.warning(
                     "capture_host_failed task_id=%s host=%s error=%s",
                     task_id,

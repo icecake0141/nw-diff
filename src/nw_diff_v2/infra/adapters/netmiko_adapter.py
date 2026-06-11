@@ -5,6 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 
+class DeviceCaptureError(RuntimeError):
+    """Raised when a device command capture fails."""
+
+
 class NetmikoAdapter:  # pylint: disable=too-few-public-methods
     """Thin adapter around Netmiko for easier service-level mocking."""
 
@@ -38,6 +42,8 @@ class NetmikoAdapter:  # pylint: disable=too-few-public-methods
             for command in commands:
                 outputs[command] = connection.send_command(command, read_timeout=10)
             return outputs
+        except Exception as exc:
+            raise DeviceCaptureError(f"{host}:{port} capture failed: {exc}") from exc
         finally:
             if connection is not None:
                 try:

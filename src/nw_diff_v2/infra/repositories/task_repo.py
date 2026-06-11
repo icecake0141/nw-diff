@@ -20,11 +20,10 @@ import json
 import sqlite3
 import threading
 import time
-from pathlib import Path
 from typing import Any, Optional, TypedDict
 
-from nw_diff_v2.config import settings
 from nw_diff_v2.domain.models import CaptureTaskStatus
+from nw_diff_v2.infra.repositories.sqlite import connect
 
 _DB_INIT_LOCK = threading.Lock()
 
@@ -44,26 +43,10 @@ class TaskRecord(TypedDict):
     error: Optional[str]
     result: Optional[dict[str, Any]]
 
-
-def _db_path() -> Path:
-    db_url = settings.db_url
-    if not db_url.startswith("sqlite:///"):
-        raise RuntimeError("Only sqlite:/// DB URLs are supported in v2 scaffold")
-    return Path(db_url.replace("sqlite:///", "", 1))
-
-
-def _connect() -> sqlite3.Connection:
-    path = _db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path, check_same_thread=False)
-    conn.execute("PRAGMA busy_timeout = 3000")
-    return conn
-
-
 def init_db() -> None:
     """Initialize DB schema once."""
     with _DB_INIT_LOCK:
-        with _connect() as conn:
+        with connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS capture_tasks (
                     id TEXT PRIMARY KEY,
@@ -87,7 +70,7 @@ def create_task(task_id: str, mode: str, base: str, hosts: list[str]) -> None:
     """Create a new queued capture task."""
     init_db()
     now = time.time()
-    with _connect() as conn:
+    with connect() as conn:
         conn.execute(
             """
             INSERT INTO capture_tasks
@@ -140,7 +123,7 @@ def update_task(
         return
 
     values.append(task_id)
-    with _connect() as conn:
+    with connect() as conn:
         conn.execute(
             f"UPDATE capture_tasks SET {', '.join(fields)} WHERE id = ?",
             tuple(values),
@@ -151,7 +134,7 @@ def update_task(
 def get_task(task_id: str) -> Optional[TaskRecord]:
     """Fetch one task by id."""
     init_db()
-    with _connect() as conn:
+    with connect() as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             "SELECT * FROM capture_tasks WHERE id = ?",
@@ -167,7 +150,7 @@ def get_task(task_id: str) -> Optional[TaskRecord]:
 def request_cancel(task_id: str) -> bool:
     """Mark queued/running task as cancel requested."""
     init_db()
-    with _connect() as conn:
+    with connect() as conn:
         cur = conn.execute(
             """
             UPDATE capture_tasks
@@ -188,7 +171,7 @@ def request_cancel(task_id: str) -> bool:
 def is_cancel_requested(task_id: str) -> bool:
     """Return whether cancellation has been requested for task."""
     init_db()
-    with _connect() as conn:
+    with connect() as conn:
         row = conn.execute(
             "SELECT cancel_requested FROM capture_tasks WHERE id = ?",
             (task_id,),
@@ -227,7 +210,7 @@ def list_tasks(
     params.append(max(1, min(limit, 500)))
     params.append(max(0, offset))
 
-    with _connect() as conn:
+    with connect() as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(query, tuple(params)).fetchall()
 
@@ -238,7 +221,7 @@ def claim_next_queued_task() -> Optional[TaskRecord]:
     """Atomically claim the oldest queued task and mark it as running."""
     init_db()
     started_at = time.time()
-    with _connect() as conn:
+    with connect() as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("BEGIN IMMEDIATE")
         row = conn.execute(
@@ -287,7 +270,7 @@ def recover_orphaned_running_tasks() -> list[TaskRecord]:
     init_db()
     finished_at = time.time()
     error = "Recovered after process restart while task was running"
-    with _connect() as conn:
+    with connect() as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("BEGIN IMMEDIATE")
         rows = conn.execute(
@@ -319,7 +302,7 @@ def recover_orphaned_running_tasks() -> list[TaskRecord]:
 def count_tasks_by_status() -> dict[str, int]:
     """Return counts grouped by task status."""
     init_db()
-    with _connect() as conn:
+    with connect() as conn:
         rows = conn.execute("""
             SELECT status, COUNT(*) AS cnt
             FROM capture_tasks
@@ -335,7 +318,7 @@ def get_latest_task_for_host(host: str) -> Optional[TaskRecord]:
     """Return latest task containing the target host."""
     init_db()
     needle = f'"{host}"'
-    with _connect() as conn:
+    with connect() as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """

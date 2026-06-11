@@ -28,6 +28,7 @@ from nw_diff_v2.domain.services import capture_service
 from nw_diff_v2.domain.services.lock_service import release_hosts, try_lock_hosts
 from nw_diff_v2.domain.services.task_worker import process_one_queued_task
 from nw_diff_v2.infra.adapters.netmiko_adapter import NetmikoAdapter
+from nw_diff_v2.infra.repositories.sqlite import connect
 from nw_diff_v2.infra.repositories.lock_repo import force_set_lock
 from nw_diff_v2.infra.repositories import task_repo
 from nw_diff_v2.infra.repositories.task_repo import recover_orphaned_running_tasks
@@ -145,7 +146,7 @@ def test_v2_task_repo_uses_sqlite_busy_timeout(tmp_path: Path, monkeypatch) -> N
     db_path = tmp_path / "v2_busy.db"
     monkeypatch.setattr(settings, "db_url", f"sqlite:///{db_path}")
     task_repo.init_db()
-    with task_repo._connect() as conn:  # pylint: disable=protected-access
+    with connect() as conn:
         timeout_ms = conn.execute("PRAGMA busy_timeout").fetchone()[0]
     assert timeout_ms == 3000
 
