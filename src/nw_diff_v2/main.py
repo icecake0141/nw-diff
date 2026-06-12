@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from nw_diff_v2.api.capture import router as capture_router
 from nw_diff_v2.api.compare import router as compare_router
@@ -43,6 +46,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="NW-Diff v2", lifespan=lifespan)
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/v2/static", StaticFiles(directory=str(_STATIC_DIR)), name="v2-static")
 app.include_router(capture_router)
 app.include_router(compare_router)
 app.include_router(hosts_router)

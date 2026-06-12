@@ -291,12 +291,14 @@ def test_v2_index_host_detail_renders_standard_link(
     with TestClient(app) as client:
         response = client.get("/v2")
         assert response.status_code == 200
+        script_response = client.get("/v2/static/index.js")
+        assert script_response.status_code == 200
         assert (
             "href=\"/v2/hosts/' + encodeURIComponent(r.host) + '\">Detail</a>"
-            in response.text
+            in script_response.text
         )
         assert (
             "window.open('/v2/hosts/' + encodeURIComponent(host), '_blank');"
-            not in response.text
+            not in script_response.text
         )
-        assert 'onclick="openHostDetail(' not in response.text
+        assert 'onclick="openHostDetail(' not in script_response.text
