@@ -18,21 +18,22 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT / "tests"))
 
-from nw_diff_v2.config import settings
 from nw_diff_v2.domain.services import capture_service
 from nw_diff_v2.domain.services.lock_service import release_hosts, try_lock_hosts
 from nw_diff_v2.domain.services.task_worker import process_one_queued_task
 from nw_diff_v2.infra.adapters.netmiko_adapter import NetmikoAdapter
 from nw_diff_v2.infra.repositories import task_repo
 from nw_diff_v2.infra.storage.files import ArtifactStorageError
-from v2_helpers import configure_v2_test_env, write_hosts_csv
+from v2_helpers import (
+    configure_v2_test_env,
+    reset_v2_command_profiles,
+    write_hosts_csv,
+)
 
 
 @pytest.fixture(autouse=True)
 def reset_command_profiles(monkeypatch, tmp_path: Path) -> None:
-    missing = tmp_path / "missing-command-profiles.yaml"
-    monkeypatch.setattr(settings, "command_profiles_override_yaml", str(missing))
-    capture_service.validate_command_profile_config()
+    reset_v2_command_profiles(monkeypatch, tmp_path)
 
 
 def test_v2_worker_processes_queued_task(tmp_path: Path, monkeypatch) -> None:

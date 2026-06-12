@@ -21,11 +21,14 @@ sys.path.insert(0, str(PROJECT_ROOT / "tests"))
 
 from nw_diff_v2.config import settings
 from nw_diff_v2.domain.models import CaptureTaskStatus
-from nw_diff_v2.domain.services import capture_service
 from nw_diff_v2.domain.services.lock_service import release_hosts, try_lock_hosts
 from nw_diff_v2.infra.repositories import task_repo
 from nw_diff_v2.main import app
-from v2_helpers import configure_v2_test_env, write_hosts_csv
+from v2_helpers import (
+    configure_v2_test_env,
+    reset_v2_command_profiles,
+    write_hosts_csv,
+)
 
 CAPTURE_QUEUE_LAUNCH = (
     "nw_diff_v2.domain.services.capture_queue_service.launch_capture_task"
@@ -35,9 +38,7 @@ CAPTURE_QUEUE_LOCK = "nw_diff_v2.domain.services.capture_queue_service.try_lock_
 
 @pytest.fixture(autouse=True)
 def reset_command_profiles(monkeypatch, tmp_path: Path) -> None:
-    missing = tmp_path / "missing-command-profiles.yaml"
-    monkeypatch.setattr(settings, "command_profiles_override_yaml", str(missing))
-    capture_service.validate_command_profile_config()
+    reset_v2_command_profiles(monkeypatch, tmp_path)
 
 
 def _patch_completed_capture(monkeypatch) -> None:

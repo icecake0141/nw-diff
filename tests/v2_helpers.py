@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from nw_diff_v2.config import settings
+from nw_diff_v2.domain.services import capture_service
 
 
 def write_hosts_csv(tmp_path: Path, rows: list[str]) -> Path:
@@ -15,6 +16,13 @@ def write_hosts_csv(tmp_path: Path, rows: list[str]) -> Path:
         encoding="utf-8",
     )
     return hosts_csv
+
+
+def reset_v2_command_profiles(monkeypatch, tmp_path: Path) -> None:
+    """Reset command profile overrides to the default bundled config."""
+    missing = tmp_path / "missing-command-profiles.yaml"
+    monkeypatch.setattr(settings, "command_profiles_override_yaml", str(missing))
+    capture_service.validate_command_profile_config()
 
 
 def configure_v2_test_env(
