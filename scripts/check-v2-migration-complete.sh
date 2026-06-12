@@ -46,7 +46,12 @@ export LOCKS_OUTPUT="${LOCKS_OUTPUT:-${ARTIFACT_DIR}/v2_locks_gate_runtime.json}
 export LOG_OUTPUT="${LOG_OUTPUT:-${ARTIFACT_DIR}/v2_contract_gate_runtime.log}"
 ./scripts/check-v2-contract.sh
 
-echo "[gate] checking required v2 scaffold tests"
-"${PYTHON_BIN}" -m pytest -q tests/test_v2_scaffold.py
+echo "[gate] checking required v2 focused API/UI tests"
+"${PYTHON_BIN}" -m pytest -q \
+  tests/test_v2_capture_api.py \
+  tests/test_v2_tasks.py \
+  tests/test_v2_system.py \
+  tests/test_v2_ui.py \
+  tests/test_v2_end_to_end.py
 
 echo "v2 migration completion gate passed"

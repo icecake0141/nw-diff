@@ -6,7 +6,12 @@
 
 - [x] Define "v2 migration complete" as code-level acceptance criteria in this repository:
   - v2 route contract (`docs/contract/v2.json`) matches runtime (`GET /api/v2/system/routes`)
-  - v2 scaffold tests are required green in CI (`tests/test_v2_scaffold.py`)
+  - focused v2 API/UI/system tests are required green in CI:
+    - `tests/test_v2_capture_api.py`
+    - `tests/test_v2_tasks.py`
+    - `tests/test_v2_system.py`
+    - `tests/test_v2_ui.py`
+    - `tests/test_v2_end_to_end.py`
   - default startup path remains v2 (`docker-compose.yml`, README quick start)
 - [x] Decide the fate of the legacy runtime entrypoint (`run_app.py`):
   - either deprecate/remove it, or explicitly mark it as legacy-only

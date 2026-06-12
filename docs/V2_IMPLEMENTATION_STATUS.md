@@ -1,6 +1,6 @@
 # NW-Diff v2 Implementation Status
 
-Last updated: 2026-02-28
+Last updated: 2026-06-13
 
 ## Completed
 
@@ -9,6 +9,16 @@ Last updated: 2026-02-28
   - `/v2`
   - `/v2/hosts/{hostname}`
   - `/v2/logs`
+- v2 UI maintainability updates:
+  - `/v2` page CSS and JavaScript are served from `src/nw_diff_v2/static/`
+  - `/v2/static` is mounted by the FastAPI app
+  - control panel section jumps are available for Hosts, Tasks, Console, Export, Compare, and Diagnostics
+- v2 focused test suites:
+  - `tests/test_v2_capture_api.py`
+  - `tests/test_v2_tasks.py`
+  - `tests/test_v2_system.py`
+  - `tests/test_v2_ui.py`
+  - `tests/test_v2_end_to_end.py`
 - Host-level locking policy:
   - same-host concurrent capture rejected
   - different-host parallel capture allowed
@@ -42,7 +52,12 @@ Last updated: 2026-02-28
 
 - Unit/integration tests in this repository:
   - `pytest -q tests`
-  - current result: `268 passed, 3 skipped`
+  - current result: `147 passed`
+- Static analysis and lint:
+  - `mypy src/nw_diff_v2 tests/test_v2_core_services.py tests/test_v2_worker.py tests/test_v2_export_compare.py tests/test_v2_hosts_diff.py tests/test_v2_logs.py tests/test_v2_system.py tests/test_v2_tasks.py tests/test_v2_capture_api.py tests/test_v2_ui.py tests/test_v2_end_to_end.py tests/v2_helpers.py`
+  - current result: passed
+  - `pylint src/nw_diff_v2 tests/test_v2_core_services.py tests/test_v2_worker.py tests/test_v2_export_compare.py tests/test_v2_hosts_diff.py tests/test_v2_logs.py tests/test_v2_system.py tests/test_v2_tasks.py tests/test_v2_capture_api.py tests/test_v2_ui.py tests/test_v2_end_to_end.py tests/v2_helpers.py`
+  - current result: `10.00/10`
 - Local contract smoke:
   - `./scripts/check-v2-contract.sh`
   - current result: passed
@@ -77,28 +92,18 @@ Last updated: 2026-02-28
 
 ## Remaining Work (Code/Repo Hygiene)
 
-1. Separate unrelated local edits from v2 track
-   - Current mixed local changes include:
-     - `requirements.txt`
-     - `tests/test_auth_basic.py`
-     - `tests/test_docker.py`
-   - Use `scripts/report-local-diff.sh` before each commit to keep PR scope isolated.
+No high-priority code/repository hygiene work is currently open.
 
-2. CI workflow de-duplication
-   - Shared v2 contract/readiness/cutover steps are duplicated in:
-     - `.github/workflows/ci.yml`
-     - `.github/workflows/integration.yml`
-   - Extract common logic into one script entrypoint and keep workflow files thin.
-
-3. Lint policy cleanup
-   - Current test modules use selective pylint disables for CI stability.
-   - Replace suppressions with structural fixes where low-cost, then tighten `.pylintrc`.
+- The working tree is clean and `main` is in sync with `origin/main` as of this update.
+- The v2 scaffold test file has been replaced by focused test suites.
+- CI and integration workflows both call `scripts/run-v2-ci-contract-suite.sh` for the shared v2 contract/post-check path.
+- Low-value pylint suppressions have been reduced where practical; remaining suppressions are scoped to test ergonomics.
 
 ## 日本語訳
 
 # NW-Diff v2 実装ステータス
 
-最終更新: 2026-02-28
+最終更新: 2026-06-13
 
 ## 完了済み
 
@@ -107,6 +112,16 @@ Last updated: 2026-02-28
   - `/v2`
   - `/v2/hosts/{hostname}`
   - `/v2/logs`
+- v2 UI の保守性改善:
+  - `/v2` ページの CSS/JavaScript は `src/nw_diff_v2/static/` から配信
+  - FastAPI app が `/v2/static` を mount
+  - Control Panel に Hosts / Tasks / Console / Export / Compare / Diagnostics のセクションジャンプを追加
+- v2 の責務別テストスイート:
+  - `tests/test_v2_capture_api.py`
+  - `tests/test_v2_tasks.py`
+  - `tests/test_v2_system.py`
+  - `tests/test_v2_ui.py`
+  - `tests/test_v2_end_to_end.py`
 - ホスト単位ロックポリシー:
   - 同一ホストへの同時 capture は拒否
   - 異なるホストの並列 capture は許可
@@ -140,7 +155,12 @@ Last updated: 2026-02-28
 
 - このリポジトリのユニット/統合テスト:
   - `pytest -q tests`
-  - 現在結果: `268 passed, 3 skipped`
+  - 現在結果: `147 passed`
+- 静的解析と lint:
+  - `mypy src/nw_diff_v2 tests/test_v2_core_services.py tests/test_v2_worker.py tests/test_v2_export_compare.py tests/test_v2_hosts_diff.py tests/test_v2_logs.py tests/test_v2_system.py tests/test_v2_tasks.py tests/test_v2_capture_api.py tests/test_v2_ui.py tests/test_v2_end_to_end.py tests/v2_helpers.py`
+  - 現在結果: passed
+  - `pylint src/nw_diff_v2 tests/test_v2_core_services.py tests/test_v2_worker.py tests/test_v2_export_compare.py tests/test_v2_hosts_diff.py tests/test_v2_logs.py tests/test_v2_system.py tests/test_v2_tasks.py tests/test_v2_capture_api.py tests/test_v2_ui.py tests/test_v2_end_to_end.py tests/v2_helpers.py`
+  - 現在結果: `10.00/10`
 - ローカル contract スモーク:
   - `./scripts/check-v2-contract.sh`
   - 現在結果: passed
@@ -175,19 +195,9 @@ Last updated: 2026-02-28
 
 ## 残作業（コード/リポジトリ衛生）
 
-1. v2 トラックと無関係なローカル編集を分離
-   - 現在の混在ローカル変更:
-     - `requirements.txt`
-     - `tests/test_auth_basic.py`
-     - `tests/test_docker.py`
-   - 各コミット前に `scripts/report-local-diff.sh` を使い PR スコープを分離。
+現時点で優先度の高いコード/リポジトリ衛生タスクはありません。
 
-2. CI ワークフロー重複排除
-   - 共有 v2 contract/readiness/cutover 手順が次に重複:
-     - `.github/workflows/ci.yml`
-     - `.github/workflows/integration.yml`
-   - 共通ロジックを 1 つのスクリプト入口へ抽出し、workflow ファイルを薄く保つ。
-
-3. Lint ポリシー整理
-   - 現在のテストモジュールは CI 安定性のため選択的な pylint disable を利用。
-   - 低コストで置換可能な suppressions を構造的修正に置き換え、`.pylintrc` を引き締める。
+- 作業ツリーは clean で、この更新時点の `main` は `origin/main` と同期済み。
+- v2 scaffold テストファイルは責務別テストスイートへ置換済み。
+- CI / integration workflow は共通の v2 contract/post-check 経路として `scripts/run-v2-ci-contract-suite.sh` を利用。
+- 低価値な pylint suppressions は実用的な範囲で削減済み。残る suppressions はテスト記述上の局所的なもの。

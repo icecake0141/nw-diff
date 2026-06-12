@@ -34,19 +34,13 @@
 
 ## Verification
 
-- Test suite: `268 passed, 3 skipped`
-- Local preflight: `scripts/run-v2-preflight.sh` succeeded with `GO`
+- Current repository test suite: `147 passed`
+- Current local contract smoke: `./scripts/check-v2-contract.sh` passed
+- Current static analysis/lint: mypy passed, pylint `10.00/10`
 
 ## Remaining Non-v2 Working Tree Changes
 
-The following files remain modified and are not included in the v2 split commits:
-
-- `requirements-dev.txt`
-- `requirements.txt`
-- `src/nw_diff/app.py`
-- `tests/test_auth_basic.py`
-- `tests/test_docker.py`
-- `tests/test_installation.py`
+None. The working tree is clean and `main` is in sync with `origin/main` as of the latest documentation refresh.
 
 ## 日本語訳
 
@@ -86,16 +80,10 @@ The following files remain modified and are not included in the v2 split commits
 
 ## 検証
 
-- テストスイート: `268 passed, 3 skipped`
-- ローカル preflight: `scripts/run-v2-preflight.sh` が `GO` で成功
+- 現在のリポジトリテストスイート: `147 passed`
+- 現在のローカル contract smoke: `./scripts/check-v2-contract.sh` passed
+- 現在の静的解析/lint: mypy passed、pylint `10.00/10`
 
 ## v2 以外の残存ワークツリー変更
 
-以下ファイルは変更済みだが、v2 分割コミットには含まれていません:
-
-- `requirements-dev.txt`
-- `requirements.txt`
-- `src/nw_diff/app.py`
-- `tests/test_auth_basic.py`
-- `tests/test_docker.py`
-- `tests/test_installation.py`
+なし。最新の文書更新時点で作業ツリーは clean、`main` は `origin/main` と同期済みです。

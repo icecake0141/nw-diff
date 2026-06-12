@@ -47,8 +47,8 @@ def _collect_actual_routes() -> list[dict]:
 
 def _collect_required_routes() -> list[dict]:
     required_route_contract = importlib.import_module(
-        "nw_diff_v2.api.system"
-    )._REQUIRED_ROUTE_CONTRACT
+        "nw_diff_v2.domain.services.system_service"
+    ).REQUIRED_ROUTE_CONTRACT
     items = [
         {"path": path, "methods": list(methods)}
         for path, methods in required_route_contract
