@@ -208,10 +208,7 @@ def release_locks_payload(hosts: list[str]) -> dict[str, Any]:
 
 def build_routes_payload(route_keys: set[RouteKey]) -> dict[str, Any]:
     """Return current v2 route surface for compatibility checks."""
-    items = [
-        {**item, "name": ""}
-        for item in _route_items(route_keys)
-    ]
+    items = [{**item, "name": ""} for item in _route_items(route_keys)]
     return {"count": len(items), "routes": items}
 
 
