@@ -15,5 +15,5 @@ mypy==2.3.1
 types-PyYAML==6.0.12.20260815
 pip-audit==2.10.0
 pre-commit==4.6.2
-pylint==4.0.5
+pylint==4.0.7
 pytest==9.0.3
