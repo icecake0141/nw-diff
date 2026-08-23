@@ -101,9 +101,7 @@ def test_v2_compare_files_endpoint(tmp_path: Path, monkeypatch) -> None:
         assert payload["base"] == "origin"
 
 
-def test_v2_compare_files_rejects_invalid_command(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_v2_compare_files_rejects_invalid_command(tmp_path: Path, monkeypatch) -> None:
     hosts_csv = write_hosts_csv(
         tmp_path,
         [

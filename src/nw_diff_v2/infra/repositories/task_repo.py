@@ -43,6 +43,7 @@ class TaskRecord(TypedDict):
     error: Optional[str]
     result: Optional[dict[str, Any]]
 
+
 def init_db() -> None:
     """Initialize DB schema once."""
     with _DB_INIT_LOCK:
@@ -61,8 +62,7 @@ def init_db() -> None:
                     error TEXT,
                     result_json TEXT
                 )
-                """
-            )
+                """)
             conn.commit()
 
 

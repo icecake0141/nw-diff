@@ -230,9 +230,7 @@ def _append_replace_rows(
     return origin_line_num, dest_line_num
 
 
-def _build_side_by_side_rows(
-    origin_data: str, dest_data: str
-) -> list[dict[str, Any]]:
+def _build_side_by_side_rows(origin_data: str, dest_data: str) -> list[dict[str, Any]]:
     origin_lines = origin_data.splitlines() if origin_data else []
     dest_lines = dest_data.splitlines() if dest_data else []
     matcher = difflib.SequenceMatcher(None, origin_lines, dest_lines)
