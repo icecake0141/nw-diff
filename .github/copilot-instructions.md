@@ -57,6 +57,11 @@ PR content and quality expectations
 - Attach logs or screenshots if the change affects UI or developer UX.
 - Commit messages: follow the repository's convention (e.g., Conventional Commits). Keep commits atomic and well-scoped.
 
+Dependency-update requirements
+- Never resolve a dependency conflict by downgrading a security-pinned dependency or by force-installing an upstream-declared unsupported version.
+- Before merging a dependency-update PR, verify dependency resolution, run `pip-audit`, run the relevant CI checks, and review open dependency-compatibility issues.
+- Follow `docs/DEPENDENCY_POLICY.md`. For Netmiko or Paramiko changes, review issue #181 before proposing or accepting an update.
+
 PR checklist (include in PR description or use as template)
 - [ ] License header added to new files and top-level LICENSE present
 - [ ] LLM attribution added to modified/generated files
